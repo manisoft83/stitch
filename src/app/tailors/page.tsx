@@ -2,11 +2,11 @@
 "use client";
 
 import { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, CalendarClock, Check, PackageCheck, ListTodo, PlusCircle, Edit2, Trash2, Phone } from "lucide-react";
+import { Users, CalendarClock, PackageCheck, ListTodo, PlusCircle, Edit2, Trash2, Phone } from "lucide-react";
 import { AssignTailorDialog } from '@/components/tailors/assign-tailor-dialog';
 import { TailorFormDialog, type TailorFormData } from '@/components/tailors/tailor-form-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -22,8 +22,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { mockTailors as initialMockTailors, type Tailor } from '@/lib/mockData'; // Import centralized mock data
 
-export interface Order {
+export interface Order { // This Order interface is specific to this page's needs for assignment
   id: string;
   item: string;
   dueDateRequested: string;
@@ -33,21 +34,6 @@ export interface Order {
   status?: 'Pending Assignment' | 'Assigned' | 'In Progress' | 'Completed';
 }
 
-export interface Tailor {
-  id: string;
-  name: string;
-  mobile: string;
-  expertise: string[];
-  availability: "Available" | "Busy";
-  avatar: string;
-  dataAiHint: string;
-}
-
-const initialTailors: Tailor[] = [
-  { id: "T001", name: "Alice Wonderland", mobile: "555-0101", expertise: ["Dresses", "Evening Wear"], availability: "Available", avatar: "https://placehold.co/100x100.png?text=AW", dataAiHint: "woman portrait" },
-  { id: "T002", name: "Bob The Builder", mobile: "555-0102", expertise: ["Suits", "Formal Trousers"], availability: "Busy", avatar: "https://placehold.co/100x100.png?text=BB", dataAiHint: "man portrait" },
-  { id: "T003", name: "Carol Danvers", mobile: "555-0103", expertise: ["Casual Wear", "Alterations"], availability: "Available", avatar: "https://placehold.co/100x100.png?text=CD", dataAiHint: "woman professional" },
-];
 
 const initialUnassignedOrders: Order[] = [
     { id: "ORD101", item: "Custom Silk Blouse", dueDateRequested: "2024-08-15", status: "Pending Assignment" },
@@ -56,7 +42,7 @@ const initialUnassignedOrders: Order[] = [
 ];
 
 export default function TailorsPage() {
-  const [tailors, setTailors] = useState<Tailor[]>(initialTailors);
+  const [tailors, setTailors] = useState<Tailor[]>(initialMockTailors); // Use centralized mock tailors
   const [unassignedOrders, setUnassignedOrders] = useState<Order[]>(initialUnassignedOrders);
   const [assignedOrders, setAssignedOrders] = useState<Order[]>([]);
   
@@ -110,10 +96,6 @@ export default function TailorsPage() {
 
   const handleDeleteTailor = (tailorId: string) => {
     setTailors(prev => prev.filter(t => t.id !== tailorId));
-    // Also check if this tailor had any assigned orders in the `assignedOrders` state on this page,
-    // and potentially unassign them or mark them as needing reassignment.
-    // For this mock, we'll just remove the tailor.
-    // In a real app, you'd handle cascading effects or prevent deletion if orders are active.
     setAssignedOrders(prev => prev.map(o => 
         o.assignedTailorId === tailorId 
         ? { ...o, assignedTailorId: undefined, assignedTailorName: undefined, status: "Pending Assignment" as Order['status'] } 
@@ -125,22 +107,22 @@ export default function TailorsPage() {
       description: `Tailor (ID: ${tailorId}) has been removed.`,
       variant: "destructive"
     });
-    setDeletingTailorId(null); // Close alert dialog
+    setDeletingTailorId(null); 
   };
 
   const handleSaveTailor = (data: TailorFormData) => {
     const expertiseArray = data.expertise.split(',').map(e => e.trim()).filter(e => e);
-    if (editingTailor) { // Update existing tailor
+    if (editingTailor) { 
       setTailors(prev => prev.map(t => t.id === editingTailor.id ? { ...t, ...data, expertise: expertiseArray } : t));
       toast({ title: "Tailor Updated", description: `${data.name}'s details have been updated.` });
-    } else { // Add new tailor
+    } else { 
       const newTailor: Tailor = {
-        id: `T${Date.now().toString().slice(-3)}${Math.floor(Math.random()*100)}`, // simple unique ID
+        id: `T${Date.now().toString().slice(-3)}${Math.floor(Math.random()*100)}`,
         ...data,
         expertise: expertiseArray,
-        availability: "Available", // Default for new tailors
+        availability: "Available", 
         avatar: `https://placehold.co/100x100.png?text=${data.name.substring(0,2).toUpperCase()}`,
-        dataAiHint: "person portrait" // Generic hint
+        dataAiHint: "person portrait" 
       };
       setTailors(prev => [...prev, newTailor]);
       toast({ title: "Tailor Added", description: `${newTailor.name} has been added to the roster.` });
@@ -154,7 +136,7 @@ export default function TailorsPage() {
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-primary flex items-center">
-          <Users className="mr-3 h-7 w-7" /> Tailor Hub & Order Assignment
+          <Users className="mr-3 h-7 w-7" /> Tailor Hub &amp; Order Assignment
         </h1>
         <Button onClick={handleOpenAddTailorDialog} className="shadow-md">
           <PlusCircle className="mr-2 h-4 w-4" /> Add New Tailor
@@ -162,7 +144,6 @@ export default function TailorsPage() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
-        {/* Unassigned Orders Section (No changes to core functionality here) */}
         <Card className="shadow-lg lg:col-span-1">
           <CardHeader>
             <CardTitle className="text-lg text-primary flex items-center"><ListTodo className="mr-2 h-5 w-5"/>Orders Awaiting Assignment</CardTitle>
@@ -185,7 +166,6 @@ export default function TailorsPage() {
           </CardContent>
         </Card>
 
-        {/* Tailor List Section - Now with CRUD operations */}
         <Card className="shadow-lg lg:col-span-1">
           <CardHeader>
             <CardTitle className="text-lg text-primary">Manage Tailors</CardTitle>
@@ -225,7 +205,6 @@ export default function TailorsPage() {
                         <Trash2 className="h-4 w-4 mr-1" /> Delete
                       </Button>
                     </AlertDialogTrigger>
-                    {/* Conditionally render DialogContent or handle it through open state */}
                     {deletingTailorId === tailor.id && ( 
                       <AlertDialogContent>
                         <AlertDialogHeader>
@@ -248,7 +227,6 @@ export default function TailorsPage() {
           </CardContent>
         </Card>
 
-        {/* Recently Assigned Orders Section (No changes to core functionality here) */}
         <Card className="shadow-lg lg:col-span-1">
           <CardHeader>
             <CardTitle className="text-lg text-primary flex items-center"><PackageCheck className="mr-2 h-5 w-5"/>Recently Assigned Orders</CardTitle>
@@ -275,7 +253,7 @@ export default function TailorsPage() {
         isOpen={isAssignDialogOpen}
         onOpenChange={setIsAssignDialogOpen}
         order={selectedOrderForAssignment}
-        tailors={tailors} // Pass the dynamic tailors list
+        tailors={tailors} 
         onAssign={handleAssignOrder}
       />
 
@@ -296,5 +274,3 @@ export default function TailorsPage() {
     </div>
   );
 }
-
-    

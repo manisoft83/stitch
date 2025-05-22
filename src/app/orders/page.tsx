@@ -13,88 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format, subDays, startOfDay, endOfDay, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
-
-type OrderStatus = "Pending Assignment" | "Assigned" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
-type StatusFilterValue = OrderStatus | "all" | "active_default";
-
-
-interface Order {
-  id: string;
-  date: string; // Order creation date
-  status: OrderStatus;
-  total: string;
-  items: string[];
-  customerName?: string;
-  assignedTailorId?: string | null;
-  assignedTailorName?: string | null;
-  dueDate?: string | null; // Assignment due date
-}
-
-const mockOrders: Order[] = [
-  { 
-    id: "ORD001", date: format(subDays(new Date(), 2), "yyyy-MM-dd"), status: "Processing", total: "$125.00", 
-    items: ["Custom A-Line Dress", "Silk Scarf"], customerName: "Eleanor Vance",
-    assignedTailorId: "T001", assignedTailorName: "Alice Wonderland", dueDate: format(addDays(new Date(), 5), "yyyy-MM-dd")
-  },
-  { 
-    id: "ORD002", date: format(subDays(new Date(), 20), "yyyy-MM-dd"), status: "Shipped", total: "$75.00", 
-    items: ["Fitted Blouse"], customerName: "Marcus Green",
-    assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: format(subDays(new Date(), 10), "yyyy-MM-dd")
-  },
-  { 
-    id: "ORD003", date: format(subDays(new Date(), 30), "yyyy-MM-dd"), status: "Delivered", total: "$210.00", 
-    items: ["Wide-Leg Trousers", "Linen Shirt"], customerName: "Sarah Miller",
-    assignedTailorId: "T001", assignedTailorName: "Alice Wonderland", dueDate: format(subDays(new Date(), 25), "yyyy-MM-dd")
-  },
-  { 
-    id: "ORD101", date: format(subDays(new Date(), 1), "yyyy-MM-dd"), status: "Assigned", total: "$95.00", 
-    items: ["Custom Silk Blouse"], customerName: "John Doe",
-    assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: format(addDays(new Date(), 12), "yyyy-MM-dd")
-  },
-   { 
-    id: "ORD102", date: format(new Date(), "yyyy-MM-dd"), status: "Pending Assignment", total: "$150.00", 
-    items: ["Evening Gown Alteration"], customerName: "Jane Smith",
-    assignedTailorId: null, assignedTailorName: null, dueDate: null
-  },
-  { 
-    id: "ORD104", date: format(subDays(new Date(), 5), "yyyy-MM-dd"), status: "Processing", total: "$180.00", 
-    items: ["Summer Dress"], customerName: "Emily White",
-    assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(addDays(new Date(), 8), "yyyy-MM-dd")
-  },
-  { 
-    id: "ORD105", date: format(subDays(new Date(), 1), "yyyy-MM-dd"), status: "Pending Assignment", total: "$250.00", 
-    items: ["Formal Suit"], customerName: "Robert Brown",
-    assignedTailorId: null, assignedTailorName: null, dueDate: null
-  },
-  { 
-    id: "ORD106", date: format(subDays(new Date(), 60), "yyyy-MM-dd"), status: "Delivered", total: "$80.00", 
-    items: ["Skirt Alteration"], customerName: "Linda Davis",
-    assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(subDays(new Date(), 50), "yyyy-MM-dd")
-  },
-  // Add more mock orders to test pagination
-  { id: "ORD201", date: format(subDays(new Date(), 3), "yyyy-MM-dd"), status: "Processing", total: "$110.00", items: ["Casual Shirt"], customerName: "Chris Pine", assignedTailorId: "T001", assignedTailorName: "Alice Wonderland", dueDate: format(addDays(new Date(), 7), "yyyy-MM-dd") },
-  { id: "ORD202", date: format(subDays(new Date(), 4), "yyyy-MM-dd"), status: "Assigned", total: "$220.00", items: ["Bespoke Jacket"], customerName: "Anna Kendrick", assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(addDays(new Date(), 10), "yyyy-MM-dd") },
-  { id: "ORD203", date: format(subDays(new Date(), 6), "yyyy-MM-dd"), status: "Pending Assignment", total: "$130.00", items: ["Dress Pants"], customerName: "Ryan Reynolds", assignedTailorId: null, assignedTailorName: null, dueDate: null },
-  { id: "ORD204", date: format(subDays(new Date(), 7), "yyyy-MM-dd"), status: "Processing", total: "$140.00", items: ["Custom Skirt"], customerName: "Gal Gadot", assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: format(addDays(new Date(), 6), "yyyy-MM-dd") },
-  { id: "ORD205", date: format(subDays(new Date(), 8), "yyyy-MM-dd"), status: "Shipped", total: "$160.00", items: ["Winter Coat"], customerName: "Tom Hardy", assignedTailorId: "T001", assignedTailorName: "Alice Wonderland", dueDate: format(subDays(new Date(), 1), "yyyy-MM-dd") },
-  { id: "ORD206", date: format(subDays(new Date(), 9), "yyyy-MM-dd"), status: "Delivered", total: "$170.00", items: ["Formal Gown"], customerName: "Emma Stone", assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(subDays(new Date(), 3), "yyyy-MM-dd") },
-  { id: "ORD207", date: format(subDays(new Date(), 10), "yyyy-MM-dd"), status: "Processing", total: "$190.00", items: ["Children's Outfit"], customerName: "Zoe Saldana", assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: format(addDays(new Date(), 4), "yyyy-MM-dd") },
-];
-
-
-const mockTailors = [
-  { id: "T001", name: "Alice Wonderland" },
-  { id: "T002", name: "Bob The Builder" },
-  { id: "T003", name: "Carol Danvers" },
-];
-
-const allOrderStatuses: OrderStatus[] = ["Pending Assignment", "Assigned", "Processing", "Shipped", "Delivered", "Cancelled"];
-
-const statusFilterOptions: { value: StatusFilterValue; label: string }[] = [
-  { value: "active_default", label: "Active Orders (Default)" },
-  { value: "all", label: "All Statuses" },
-  ...allOrderStatuses.map(status => ({ value: status, label: status }))
-];
+import { mockOrders, mockTailors, statusFilterOptions, type Order, type OrderStatus, type StatusFilterValue } from "@/lib/mockData";
 
 
 export default function OrdersPage() {
@@ -146,8 +65,6 @@ export default function OrdersPage() {
     // 4. Date Filter
     if (dateRange.from) { 
       const rangeStart = startOfDay(dateRange.from);
-      // If only 'from' date is set, consider 'to' date as today for an open-ended range from the past.
-      // If 'to' date is also set, use it.
       const rangeEnd = dateRange.to ? endOfDay(dateRange.to) : endOfDay(new Date()); 
 
       tempOrders = tempOrders.filter(order => {
@@ -155,7 +72,6 @@ export default function OrdersPage() {
         return orderDate >= rangeStart && orderDate <= rangeEnd;
       });
     } else if (!dateRange.from && !dateRange.to && statusFilter === "active_default") { 
-      // Default 15-day view for "Active Orders (Default)" when no date range is explicitly set.
       const fifteenDaysAgo = startOfDay(subDays(new Date(), 15));
       const today = endOfDay(new Date());
       tempOrders = tempOrders.filter(order => {
@@ -163,10 +79,9 @@ export default function OrdersPage() {
         return orderDate >= fifteenDaysAgo && orderDate <= today;
       });
     }
-    // If no date range is set AND status filter is NOT active_default, show all dates for that status.
 
     setFilteredOrders(tempOrders);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1); 
 
   }, [viewMode, selectedTailorId, adminTailorFilterId, statusFilter, customerNameFilter, dateRange]);
 
@@ -183,7 +98,6 @@ export default function OrdersPage() {
     }
   };
 
-  // Pagination calculations
   const indexOfLastOrder = currentPage * ordersPerPage;
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
   const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
@@ -372,7 +286,7 @@ export default function OrdersPage() {
             </CardDescription>
           </CardHeader>
           { (viewMode === 'admin' || (viewMode === 'tailor' && selectedTailorId)) && (
-             filteredOrders.length === 0 && ( // Only show if genuinely no orders after filtering
+             filteredOrders.length === 0 && ( 
                 <CardContent>
                 <Button asChild size="lg">
                     <Link href="/design">Design Your First Item</Link>
@@ -418,9 +332,14 @@ export default function OrdersPage() {
                 </CardContent>
                 <CardFooter className="mt-auto">
                   <div className="flex gap-2 w-full">
-                    <Button variant="outline" size="sm" className="flex-1">View Details</Button>
+                    <Button variant="outline" size="sm" className="flex-1" asChild>
+                        <Link href={`/orders/${order.id}`}>View Details</Link>
+                    </Button>
                     {(order.status === "Processing" || order.status === "Shipped" || order.status === "Assigned") && 
-                      <Button variant="ghost" size="sm" className="text-primary flex-1">Track Order</Button>}
+                      <Button variant="ghost" size="sm" className="text-primary flex-1" asChild>
+                        <Link href={`/tracking?orderId=${order.id}`}>Track Order</Link>
+                      </Button>
+                    }
                   </div>
                 </CardFooter>
               </Card>
@@ -464,6 +383,3 @@ export default function OrdersPage() {
     </div>
   );
 }
-
-
-    
