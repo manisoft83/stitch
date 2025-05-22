@@ -17,10 +17,10 @@ interface NavItem {
 
 const allNavItems: NavItem[] = [
   { href: '/', label: 'Home', icon: Home, roles: ['admin', 'tailor'] },
-  { href: '/measurements', label: 'Measurements', icon: Ruler, roles: ['admin', 'tailor'] },
-  { href: '/design', label: 'Design Studio', icon: Palette, roles: ['admin', 'tailor'] },
+  { href: '/measurements', label: 'Precise Measurements', icon: Ruler, roles: ['admin', 'tailor'] },
+  { href: '/design', label: 'Custom Design Studio', icon: Palette, roles: ['admin', 'tailor'] },
   { href: '/recommendations', label: 'AI Styles', icon: Wand2, roles: ['admin', 'tailor'] },
-  { href: '/orders', label: 'My Orders', icon: ShoppingCart, roles: ['admin', 'tailor'] },
+  { href: '/orders', label: 'Order Management', icon: ShoppingCart, roles: ['admin', 'tailor'] },
   { href: '/tracking', label: 'Order Tracking', icon: PackageSearch, roles: ['admin', 'tailor'] },
   { href: '/tailors', label: 'Tailor Hub', icon: Users, roles: ['admin'] }, // Admin only
 ];
