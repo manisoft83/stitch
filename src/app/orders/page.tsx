@@ -5,13 +5,18 @@ import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ShoppingCart, PackagePlus, Users, UserCog, CalendarClock, Tag, Filter } from "lucide-react";
+import { ShoppingCart, PackagePlus, Users, UserCog, CalendarClock, Tag, Filter, Calendar as CalendarIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { cn } from "@/lib/utils";
 
 type OrderStatus = "Pending Assignment" | "Assigned" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
+type StatusFilterValue = OrderStatus | "all" | "active_default";
+
 
 interface Order {
   id: string;
@@ -27,46 +32,54 @@ interface Order {
 
 const mockOrders: Order[] = [
   { 
-    id: "ORD001", date: "2024-07-15", status: "Processing", total: "$125.00", 
+    id: "ORD001", date: format(subDays(new Date(), 2), "yyyy-MM-dd"), status: "Processing", total: "$125.00", 
     items: ["Custom A-Line Dress", "Silk Scarf"], customerName: "Eleanor Vance",
-    assignedTailorId: "T001", assignedTailorName: "Alice Wonderland", dueDate: "2024-07-25"
+    assignedTailorId: "T001", assignedTailorName: "Alice Wonderland", dueDate: format(addDays(new Date(), 5), "yyyy-MM-dd")
   },
   { 
-    id: "ORD002", date: "2024-07-10", status: "Shipped", total: "$75.00", 
+    id: "ORD002", date: format(subDays(new Date(), 20), "yyyy-MM-dd"), status: "Shipped", total: "$75.00", 
     items: ["Fitted Blouse"], customerName: "Marcus Green",
-    assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: "2024-07-18"
+    assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: format(subDays(new Date(), 10), "yyyy-MM-dd")
   },
   { 
-    id: "ORD003", date: "2024-06-28", status: "Delivered", total: "$210.00", 
+    id: "ORD003", date: format(subDays(new Date(), 30), "yyyy-MM-dd"), status: "Delivered", total: "$210.00", 
     items: ["Wide-Leg Trousers", "Linen Shirt"], customerName: "Sarah Miller",
-    assignedTailorId: "T001", assignedTailorName: "Alice Wonderland", dueDate: "2024-07-05"
+    assignedTailorId: "T001", assignedTailorName: "Alice Wonderland", dueDate: format(subDays(new Date(), 25), "yyyy-MM-dd")
   },
   { 
-    id: "ORD101", date: "2024-07-18", status: "Assigned", total: "$95.00", 
+    id: "ORD101", date: format(subDays(new Date(), 1), "yyyy-MM-dd"), status: "Assigned", total: "$95.00", 
     items: ["Custom Silk Blouse"], customerName: "John Doe",
-    assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: "2024-08-10"
+    assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: format(addDays(new Date(), 12), "yyyy-MM-dd")
   },
    { 
-    id: "ORD102", date: "2024-07-19", status: "Pending Assignment", total: "$150.00", 
+    id: "ORD102", date: format(new Date(), "yyyy-MM-dd"), status: "Pending Assignment", total: "$150.00", 
     items: ["Evening Gown Alteration"], customerName: "Jane Smith",
     assignedTailorId: null, assignedTailorName: null, dueDate: null
   },
   { 
-    id: "ORD104", date: "2024-07-20", status: "Processing", total: "$180.00", 
+    id: "ORD104", date: format(subDays(new Date(), 5), "yyyy-MM-dd"), status: "Processing", total: "$180.00", 
     items: ["Summer Dress"], customerName: "Emily White",
-    assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: "2024-08-01" 
+    assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(addDays(new Date(), 8), "yyyy-MM-dd")
   },
   { 
-    id: "ORD105", date: "2024-07-21", status: "Pending Assignment", total: "$250.00", 
+    id: "ORD105", date: format(subDays(new Date(), 1), "yyyy-MM-dd"), status: "Pending Assignment", total: "$250.00", 
     items: ["Formal Suit"], customerName: "Robert Brown",
     assignedTailorId: null, assignedTailorName: null, dueDate: null
   },
   { 
-    id: "ORD106", date: "2024-07-22", status: "Assigned", total: "$80.00", 
+    id: "ORD106", date: format(subDays(new Date(), 60), "yyyy-MM-dd"), status: "Delivered", total: "$80.00", 
     items: ["Skirt Alteration"], customerName: "Linda Davis",
-    assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: "2024-07-30"
+    assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(subDays(new Date(), 50), "yyyy-MM-dd")
   },
 ];
+
+// Helper to add days to a date, for mock data generation
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
 
 const mockTailors = [
   { id: "T001", name: "Alice Wonderland" },
@@ -76,50 +89,77 @@ const mockTailors = [
 
 const allOrderStatuses: OrderStatus[] = ["Pending Assignment", "Assigned", "Processing", "Shipped", "Delivered", "Cancelled"];
 
+const statusFilterOptions: { value: StatusFilterValue; label: string }[] = [
+  { value: "active_default", label: "Active Orders (Default)" },
+  { value: "all", label: "All Statuses" },
+  ...allOrderStatuses.map(status => ({ value: status, label: status }))
+];
+
 
 export default function OrdersPage() {
   const [viewMode, setViewMode] = useState<"admin" | "tailor">("admin");
-  const [selectedTailorId, setSelectedTailorId] = useState<string | null>(null); // For Tailor View
-  const [displayedOrders, setDisplayedOrders] = useState<Order[]>(mockOrders);
+  const [selectedTailorId, setSelectedTailorId] = useState<string | null>(null);
+  const [displayedOrders, setDisplayedOrders] = useState<Order[]>([]); // Initialize empty
 
-  // New filter states
-  const [adminTailorFilterId, setAdminTailorFilterId] = useState<string | "all">("all"); // For Admin View Tailor Filter
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
+  const [adminTailorFilterId, setAdminTailorFilterId] = useState<string | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("active_default");
   const [customerNameFilter, setCustomerNameFilter] = useState<string>("");
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({ from: undefined, to: undefined });
+
 
   useEffect(() => {
-    let filtered = [...mockOrders];
+    let tempOrders = [...mockOrders];
 
-    // View Mode specific primary filtering
+    // 1. View Mode primary filtering
     if (viewMode === 'admin') {
-      // If in admin view, reset the tailor view's selectedTailorId, apply admin-specific tailor filter
-      setSelectedTailorId(null); 
-      if (adminTailorFilterId && adminTailorFilterId !== "all") {
-        filtered = filtered.filter(order => order.assignedTailorId === adminTailorFilterId);
+      if (adminTailorFilterId !== "all") {
+        tempOrders = tempOrders.filter(order => order.assignedTailorId === adminTailorFilterId);
       }
     } else { // viewMode === 'tailor'
       if (selectedTailorId) {
-        filtered = filtered.filter(order => order.assignedTailorId === selectedTailorId);
+        tempOrders = tempOrders.filter(order => order.assignedTailorId === selectedTailorId);
       } else {
-        filtered = []; // No tailor selected in tailor view, show no orders initially
+        tempOrders = []; 
       }
     }
 
-    // Apply status filter (common for both views, applied to the already view-mode-filtered list)
-    if (statusFilter && statusFilter !== "all") {
-      filtered = filtered.filter(order => order.status === statusFilter);
+    // 2. Status Filter
+    if (statusFilter === "active_default") {
+      const defaultActiveStatuses: OrderStatus[] = ["Pending Assignment", "Assigned", "Processing"];
+      tempOrders = tempOrders.filter(order => defaultActiveStatuses.includes(order.status));
+    } else if (statusFilter !== "all") { 
+      tempOrders = tempOrders.filter(order => order.status === statusFilter);
     }
 
-    // Apply customer name filter (common for both views)
+    // 3. Customer Name Filter
     if (customerNameFilter.trim() !== "") {
       const searchTerm = customerNameFilter.toLowerCase().trim();
-      filtered = filtered.filter(order => 
+      tempOrders = tempOrders.filter(order =>
         order.customerName?.toLowerCase().includes(searchTerm)
       );
     }
 
-    setDisplayedOrders(filtered);
-  }, [viewMode, selectedTailorId, adminTailorFilterId, statusFilter, customerNameFilter]);
+    // 4. Date Filter
+    if (dateRange.from) { 
+      const rangeStart = startOfDay(dateRange.from);
+      const rangeEnd = dateRange.to ? endOfDay(dateRange.to) : endOfDay(new Date()); 
+
+      tempOrders = tempOrders.filter(order => {
+        const orderDate = startOfDay(new Date(order.date));
+        return orderDate >= rangeStart && orderDate <= rangeEnd;
+      });
+    } else { 
+      const fifteenDaysAgo = startOfDay(subDays(new Date(), 15));
+      const today = endOfDay(new Date());
+      tempOrders = tempOrders.filter(order => {
+        const orderDate = startOfDay(new Date(order.date));
+        return orderDate >= fifteenDaysAgo && orderDate <= today;
+      });
+    }
+
+    setDisplayedOrders(tempOrders);
+
+  }, [viewMode, selectedTailorId, adminTailorFilterId, statusFilter, customerNameFilter, dateRange]);
 
 
   const getStatusBadgeColor = (status: OrderStatus) => {
@@ -147,19 +187,23 @@ export default function OrdersPage() {
         </Button>
       </div>
 
-      {/* Filter Controls */}
       <Card className="mb-6 shadow-md">
         <CardHeader>
-          <CardTitle className="text-lg flex items-center"><Filter className="mr-2 h-5 w-5 text-primary"/>Filter Orders</CardTitle>
+          <CardTitle className="text-lg flex items-center"><Filter className="mr-2 h-5 w-5 text-primary"/>Filter &amp; View Options</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
           <div>
             <label htmlFor="viewModeSelect" className="block text-sm font-medium text-muted-foreground mb-1">View Mode</label>
             <Select 
               value={viewMode} 
               onValueChange={(value: "admin" | "tailor") => {
                 setViewMode(value);
-                if (value === "admin") setAdminTailorFilterId("all"); // Reset admin tailor filter when switching to admin
+                if (value === "admin") {
+                    setSelectedTailorId(null); // Clear specific tailor selection if switching to admin
+                    // setAdminTailorFilterId("all"); // Keep admin tailor filter or reset as needed
+                } else {
+                     setAdminTailorFilterId("all"); // Reset admin tailor filter when switching to tailor
+                }
               }}
             >
               <SelectTrigger id="viewModeSelect" className="w-full">
@@ -208,14 +252,13 @@ export default function OrdersPage() {
           
           <div>
             <label htmlFor="statusFilter" className="block text-sm font-medium text-muted-foreground mb-1">Filter by Status</label>
-            <Select value={statusFilter} onValueChange={(value: OrderStatus | "all") => setStatusFilter(value)}>
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilterValue)}>
               <SelectTrigger id="statusFilter" className="w-full">
                 <SelectValue placeholder="Filter by Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                {allOrderStatuses.map(status => (
-                  <SelectItem key={status} value={status}>{status}</SelectItem>
+                {statusFilterOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -232,6 +275,71 @@ export default function OrdersPage() {
               className="w-full"
             />
           </div>
+
+          {/* Date Range Pickers */}
+           <div>
+            <label htmlFor="fromDate" className="block text-sm font-medium text-muted-foreground mb-1">From Date</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  id="fromDate"
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dateRange.from && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange.from ? format(dateRange.from, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={dateRange.from}
+                  onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div>
+            <label htmlFor="toDate" className="block text-sm font-medium text-muted-foreground mb-1">To Date</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  id="toDate"
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dateRange.to && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange.to ? format(dateRange.to, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={dateRange.to}
+                  onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}
+                  disabled={(date) =>
+                    dateRange.from ? date < dateRange.from : false
+                  }
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+           <Button 
+            variant="outline" 
+            onClick={() => setDateRange({ from: undefined, to: undefined })}
+            className="md:col-span-2 lg:col-span-1" 
+            disabled={!dateRange.from && !dateRange.to}
+            >
+            Clear Dates
+          </Button>
         </CardContent>
       </Card>
 
@@ -247,7 +355,7 @@ export default function OrdersPage() {
             <CardDescription>
               {viewMode === 'tailor' && !selectedTailorId
                 ? "Please select a tailor to view their assigned orders."
-                : "There are no orders matching the current filter criteria."}
+                : "There are no orders matching the current filter criteria. Try adjusting filters or clearing the date range."}
             </CardDescription>
           </CardHeader>
           { (viewMode === 'admin' || (viewMode === 'tailor' && selectedTailorId)) && (
@@ -304,7 +412,7 @@ export default function OrdersPage() {
         </div>
       )}
        <Card className="mt-8 p-6 text-center bg-secondary/30 dark:bg-secondary/20">
-        <CardTitle className="text-lg">Secure Payments & Order System</CardTitle>
+        <CardTitle className="text-lg">Secure Payments &amp; Order System</CardTitle>
         <CardDescription className="mt-2">
             All transactions are processed securely. Order data displayed is currently mock data.
             Tailor assignment and status updates here reflect a simulated system.
@@ -313,4 +421,3 @@ export default function OrdersPage() {
     </div>
   );
 }
-
