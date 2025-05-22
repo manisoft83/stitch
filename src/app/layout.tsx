@@ -1,8 +1,10 @@
+
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google'; // Corrected: Geist is from next/font/google as per user files
 import './globals.css';
 import { AppProviders } from '@/providers/app-providers';
 import MainLayout from '@/components/layout/main-layout';
+import { AuthProvider } from '@/contexts/auth-context';
 
 const geistSans = Geist({ // Corrected: Geist is from next/font/google
   variable: '--font-geist-sans',
@@ -28,7 +30,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <AppProviders>
-          <MainLayout>{children}</MainLayout>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </AppProviders>
       </body>
     </html>
