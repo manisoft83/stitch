@@ -5,13 +5,13 @@ import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ShoppingCart, PackagePlus, Users, UserCog, CalendarClock, Tag, Filter, Calendar as CalendarIcon } from "lucide-react";
+import { ShoppingCart, PackagePlus, Users, UserCog, CalendarClock, Tag, Filter, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { format, subDays, startOfDay, endOfDay, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 
 type OrderStatus = "Pending Assignment" | "Assigned" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
@@ -71,14 +71,15 @@ const mockOrders: Order[] = [
     items: ["Skirt Alteration"], customerName: "Linda Davis",
     assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(subDays(new Date(), 50), "yyyy-MM-dd")
   },
+  // Add more mock orders to test pagination
+  { id: "ORD201", date: format(subDays(new Date(), 3), "yyyy-MM-dd"), status: "Processing", total: "$110.00", items: ["Casual Shirt"], customerName: "Chris Pine", assignedTailorId: "T001", assignedTailorName: "Alice Wonderland", dueDate: format(addDays(new Date(), 7), "yyyy-MM-dd") },
+  { id: "ORD202", date: format(subDays(new Date(), 4), "yyyy-MM-dd"), status: "Assigned", total: "$220.00", items: ["Bespoke Jacket"], customerName: "Anna Kendrick", assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(addDays(new Date(), 10), "yyyy-MM-dd") },
+  { id: "ORD203", date: format(subDays(new Date(), 6), "yyyy-MM-dd"), status: "Pending Assignment", total: "$130.00", items: ["Dress Pants"], customerName: "Ryan Reynolds", assignedTailorId: null, assignedTailorName: null, dueDate: null },
+  { id: "ORD204", date: format(subDays(new Date(), 7), "yyyy-MM-dd"), status: "Processing", total: "$140.00", items: ["Custom Skirt"], customerName: "Gal Gadot", assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: format(addDays(new Date(), 6), "yyyy-MM-dd") },
+  { id: "ORD205", date: format(subDays(new Date(), 8), "yyyy-MM-dd"), status: "Shipped", total: "$160.00", items: ["Winter Coat"], customerName: "Tom Hardy", assignedTailorId: "T001", assignedTailorName: "Alice Wonderland", dueDate: format(subDays(new Date(), 1), "yyyy-MM-dd") },
+  { id: "ORD206", date: format(subDays(new Date(), 9), "yyyy-MM-dd"), status: "Delivered", total: "$170.00", items: ["Formal Gown"], customerName: "Emma Stone", assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(subDays(new Date(), 3), "yyyy-MM-dd") },
+  { id: "ORD207", date: format(subDays(new Date(), 10), "yyyy-MM-dd"), status: "Processing", total: "$190.00", items: ["Children's Outfit"], customerName: "Zoe Saldana", assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: format(addDays(new Date(), 4), "yyyy-MM-dd") },
 ];
-
-// Helper to add days to a date, for mock data generation
-function addDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
 
 
 const mockTailors = [
@@ -99,12 +100,15 @@ const statusFilterOptions: { value: StatusFilterValue; label: string }[] = [
 export default function OrdersPage() {
   const [viewMode, setViewMode] = useState<"admin" | "tailor">("admin");
   const [selectedTailorId, setSelectedTailorId] = useState<string | null>(null);
-  const [displayedOrders, setDisplayedOrders] = useState<Order[]>([]); // Initialize empty
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]); 
 
   const [adminTailorFilterId, setAdminTailorFilterId] = useState<string | "all">("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("active_default");
   const [customerNameFilter, setCustomerNameFilter] = useState<string>("");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({ from: undefined, to: undefined });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 10;
 
 
   useEffect(() => {
@@ -142,13 +146,16 @@ export default function OrdersPage() {
     // 4. Date Filter
     if (dateRange.from) { 
       const rangeStart = startOfDay(dateRange.from);
+      // If only 'from' date is set, consider 'to' date as today for an open-ended range from the past.
+      // If 'to' date is also set, use it.
       const rangeEnd = dateRange.to ? endOfDay(dateRange.to) : endOfDay(new Date()); 
 
       tempOrders = tempOrders.filter(order => {
         const orderDate = startOfDay(new Date(order.date));
         return orderDate >= rangeStart && orderDate <= rangeEnd;
       });
-    } else { 
+    } else if (!dateRange.from && !dateRange.to && statusFilter === "active_default") { 
+      // Default 15-day view for "Active Orders (Default)" when no date range is explicitly set.
       const fifteenDaysAgo = startOfDay(subDays(new Date(), 15));
       const today = endOfDay(new Date());
       tempOrders = tempOrders.filter(order => {
@@ -156,8 +163,10 @@ export default function OrdersPage() {
         return orderDate >= fifteenDaysAgo && orderDate <= today;
       });
     }
+    // If no date range is set AND status filter is NOT active_default, show all dates for that status.
 
-    setDisplayedOrders(tempOrders);
+    setFilteredOrders(tempOrders);
+    setCurrentPage(1); // Reset to first page when filters change
 
   }, [viewMode, selectedTailorId, adminTailorFilterId, statusFilter, customerNameFilter, dateRange]);
 
@@ -173,6 +182,12 @@ export default function OrdersPage() {
       default: return "bg-gray-100 text-gray-700 border border-gray-300";
     }
   };
+
+  // Pagination calculations
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
+  const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
   
   return (
     <div className="container mx-auto py-8">
@@ -199,10 +214,9 @@ export default function OrdersPage() {
               onValueChange={(value: "admin" | "tailor") => {
                 setViewMode(value);
                 if (value === "admin") {
-                    setSelectedTailorId(null); // Clear specific tailor selection if switching to admin
-                    // setAdminTailorFilterId("all"); // Keep admin tailor filter or reset as needed
+                    setSelectedTailorId(null); 
                 } else {
-                     setAdminTailorFilterId("all"); // Reset admin tailor filter when switching to tailor
+                     setAdminTailorFilterId("all"); 
                 }
               }}
             >
@@ -276,7 +290,6 @@ export default function OrdersPage() {
             />
           </div>
 
-          {/* Date Range Pickers */}
            <div>
             <label htmlFor="fromDate" className="block text-sm font-medium text-muted-foreground mb-1">From Date</label>
             <Popover>
@@ -344,7 +357,7 @@ export default function OrdersPage() {
       </Card>
 
 
-      {displayedOrders.length === 0 ? (
+      {currentOrders.length === 0 ? (
         <Card className="text-center py-12 shadow-lg">
           <CardHeader>
             <CardTitle>
@@ -359,57 +372,87 @@ export default function OrdersPage() {
             </CardDescription>
           </CardHeader>
           { (viewMode === 'admin' || (viewMode === 'tailor' && selectedTailorId)) && (
-            <CardContent>
-              <Button asChild size="lg">
-                <Link href="/design">Design Your First Item</Link>
-              </Button>
-            </CardContent>
+             filteredOrders.length === 0 && ( // Only show if genuinely no orders after filtering
+                <CardContent>
+                <Button asChild size="lg">
+                    <Link href="/design">Design Your First Item</Link>
+                </Button>
+                </CardContent>
+            )
           )}
         </Card>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displayedOrders.map(order => (
-            <Card key={order.id} className="shadow-lg hover:shadow-xl transition-shadow flex flex-col">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg text-primary">Order #{order.id}</CardTitle>
-                    <CardDescription>Date: {format(new Date(order.date), "PPP")} | Total: {order.total}</CardDescription>
-                    {order.customerName && <CardDescription>Customer: {order.customerName}</CardDescription>}
+        <>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentOrders.map(order => (
+              <Card key={order.id} className="shadow-lg hover:shadow-xl transition-shadow flex flex-col">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg text-primary">Order #{order.id}</CardTitle>
+                      <CardDescription>Date: {format(new Date(order.date), "PPP")} | Total: {order.total}</CardDescription>
+                      {order.customerName && <CardDescription>Customer: {order.customerName}</CardDescription>}
+                    </div>
+                    <Badge className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(order.status)}`}>
+                      {order.status}
+                    </Badge>
                   </div>
-                  <Badge className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(order.status)}`}>
-                    {order.status}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-grow space-y-2">
-                <div>
-                  <p className="font-medium mb-1 text-sm text-muted-foreground flex items-center"><Tag className="mr-1 h-4 w-4"/>Items:</p>
-                  <ul className="list-disc list-inside text-sm text-foreground/90">
-                    {order.items.map(item => <li key={item}>{item}</li>)}
-                  </ul>
-                </div>
-                {order.assignedTailorName && (
-                  <p className="text-sm text-muted-foreground flex items-center">
-                    <Users className="mr-1 h-4 w-4 text-primary/70"/> Assigned to: <span className="font-medium text-foreground/80 ml-1">{order.assignedTailorName}</span>
-                  </p>
-                )}
-                {order.dueDate && (
-                  <p className="text-sm text-muted-foreground flex items-center">
-                     <CalendarClock className="mr-1 h-4 w-4 text-primary/70"/> Due: <span className="font-medium text-foreground/80 ml-1">{format(new Date(order.dueDate), "PPP")}</span>
-                  </p>
-                )}
-              </CardContent>
-              <CardFooter className="mt-auto">
-                <div className="flex gap-2 w-full">
-                  <Button variant="outline" size="sm" className="flex-1">View Details</Button>
-                  {(order.status === "Processing" || order.status === "Shipped" || order.status === "Assigned") && 
-                    <Button variant="ghost" size="sm" className="text-primary flex-1">Track Order</Button>}
-                </div>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+                </CardHeader>
+                <CardContent className="flex-grow space-y-2">
+                  <div>
+                    <p className="font-medium mb-1 text-sm text-muted-foreground flex items-center"><Tag className="mr-1 h-4 w-4"/>Items:</p>
+                    <ul className="list-disc list-inside text-sm text-foreground/90">
+                      {order.items.map(item => <li key={item}>{item}</li>)}
+                    </ul>
+                  </div>
+                  {order.assignedTailorName && (
+                    <p className="text-sm text-muted-foreground flex items-center">
+                      <Users className="mr-1 h-4 w-4 text-primary/70"/> Assigned to: <span className="font-medium text-foreground/80 ml-1">{order.assignedTailorName}</span>
+                    </p>
+                  )}
+                  {order.dueDate && (
+                    <p className="text-sm text-muted-foreground flex items-center">
+                       <CalendarClock className="mr-1 h-4 w-4 text-primary/70"/> Due: <span className="font-medium text-foreground/80 ml-1">{format(new Date(order.dueDate), "PPP")}</span>
+                    </p>
+                  )}
+                </CardContent>
+                <CardFooter className="mt-auto">
+                  <div className="flex gap-2 w-full">
+                    <Button variant="outline" size="sm" className="flex-1">View Details</Button>
+                    {(order.status === "Processing" || order.status === "Shipped" || order.status === "Assigned") && 
+                      <Button variant="ghost" size="sm" className="text-primary flex-1">Track Order</Button>}
+                  </div>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center space-x-4 mt-8">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </>
       )}
        <Card className="mt-8 p-6 text-center bg-secondary/30 dark:bg-secondary/20">
         <CardTitle className="text-lg">Secure Payments &amp; Order System</CardTitle>
@@ -421,3 +464,6 @@ export default function OrdersPage() {
     </div>
   );
 }
+
+
+    
