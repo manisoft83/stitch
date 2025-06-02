@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -9,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { CheckSquare, Palette, Scissors, Shirt } from 'lucide-react';
+import type { DesignDetails } from '@/contexts/order-workflow-context'; // Import DesignDetails
 
 // Mock data - replace with actual data sources
 const fabricOptions = [
@@ -33,21 +35,31 @@ const styleOptions = [
   { id: 'pencil-skirt', name: 'Pencil Skirt' },
 ];
 
-export function DesignTool() {
-  const [selectedFabric, setSelectedFabric] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
-  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
-  const [customNotes, setCustomNotes] = useState('');
+interface DesignToolProps {
+  initialDesign?: DesignDetails | null;
+  onSaveDesign?: (design: DesignDetails) => void;
+}
+
+export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
+  const [selectedFabric, setSelectedFabric] = useState<string | null>(initialDesign?.fabric || null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(initialDesign?.color || null);
+  const [selectedStyle, setSelectedStyle] = useState<string | null>(initialDesign?.style || null);
+  const [customNotes, setCustomNotes] = useState(initialDesign?.notes || '');
 
   const handleSubmitDesign = () => {
-    // TODO: Implement design submission logic
-    console.log({
+    const designDetails: DesignDetails = {
       fabric: selectedFabric,
       color: selectedColor,
       style: selectedStyle,
       notes: customNotes,
-    });
-    alert('Design submitted (mock)! Check console for details.');
+    };
+    if (onSaveDesign) {
+      onSaveDesign(designDetails);
+    } else {
+      // Default behavior if not used in workflow
+      console.log(designDetails);
+      alert('Design submitted (mock)! Check console for details.');
+    }
   };
 
   return (
@@ -60,7 +72,7 @@ export function DesignTool() {
             <CardDescription>Choose the base style for your custom piece.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Select onValueChange={setSelectedStyle}>
+            <Select onValueChange={setSelectedStyle} defaultValue={selectedStyle || undefined}>
               <SelectTrigger id="style-select">
                 <SelectValue placeholder="Choose a style..." />
               </SelectTrigger>
@@ -79,7 +91,7 @@ export function DesignTool() {
             <CardDescription>Pick the perfect fabric for your design.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Select onValueChange={setSelectedFabric}>
+            <Select onValueChange={setSelectedFabric} defaultValue={selectedFabric || undefined}>
               <SelectTrigger id="fabric-select">
                 <SelectValue placeholder="Choose a fabric..." />
               </SelectTrigger>
@@ -91,12 +103,12 @@ export function DesignTool() {
             </Select>
             {selectedFabric && (
               <div className="mt-4 p-4 border rounded-md flex items-center gap-4 bg-muted/50">
-                <Image 
-                  src={fabricOptions.find(f => f.id === selectedFabric)?.image || 'https://placehold.co/100x100.png'} 
-                  alt={fabricOptions.find(f => f.id === selectedFabric)?.name || 'Fabric'} 
-                  width={80} height={80} 
+                <Image
+                  src={fabricOptions.find(f => f.id === selectedFabric)?.image || 'https://placehold.co/100x100.png'}
+                  alt={fabricOptions.find(f => f.id === selectedFabric)?.name || 'Fabric'}
+                  width={80} height={80}
                   className="rounded-md"
-                  data-ai-hint={fabricOptions.find(f => f.id === selectedFabric)?.dataAiHint}
+                  data-ai-hint={fabricOptions.find(f => f.id === selectedFabric)?.dataAiHint || "fabric sample"}
                 />
                 <p>You selected: <strong>{fabricOptions.find(f => f.id === selectedFabric)?.name}</strong></p>
               </div>
@@ -112,16 +124,16 @@ export function DesignTool() {
           <CardContent>
             <div className="flex flex-wrap gap-3">
               {colorOptions.map(color => (
-                <Button 
-                  key={color.id} 
+                <Button
+                  key={color.id}
                   variant={selectedColor === color.id ? "default" : "outline"}
                   onClick={() => setSelectedColor(color.id)}
                   className="h-12 w-12 p-0 border-2"
                   style={{ backgroundColor: selectedColor === color.id ? color.hex : 'transparent' }}
                   aria-label={color.name}
                 >
-                  <span 
-                    className="h-8 w-8 rounded-sm block" 
+                  <span
+                    className="h-8 w-8 rounded-sm block"
                     style={{ backgroundColor: color.hex }}
                   ></span>
                   {selectedColor === color.id && <CheckSquare className="absolute h-5 w-5 text-primary-foreground" />}
@@ -184,12 +196,12 @@ export function DesignTool() {
             )}
           </CardContent>
           <CardFooter>
-            <Button 
-              className="w-full shadow-md hover:shadow-lg transition-shadow" 
+            <Button
+              className="w-full shadow-md hover:shadow-lg transition-shadow"
               onClick={handleSubmitDesign}
               disabled={!selectedFabric || !selectedColor || !selectedStyle}
             >
-              Add to Order & Proceed
+              {onSaveDesign ? "Save Design & Proceed to Summary" : "Add to Order & Proceed"}
             </Button>
           </CardFooter>
         </Card>
