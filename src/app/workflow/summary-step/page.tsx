@@ -1,16 +1,16 @@
 
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react'; // Added useState
 import { useRouter } from 'next/navigation';
-import Image from 'next/image'; // Import Image
+import Image from 'next/image';
 import { useOrderWorkflow, type DesignDetails } from '@/contexts/order-workflow-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { mockOrders, type Order, mockCustomers } from '@/lib/mockData';
-import { format, addDays } from 'date-fns'; // Added addDays
+import { format, addDays } from 'date-fns';
 import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon } from 'lucide-react';
 
 const fabricOptions = [
@@ -48,7 +48,11 @@ export default function SummaryStepPage() {
     workflowReturnPath 
   } = useOrderWorkflow();
 
+  const [isSubmitted, setIsSubmitted] = useState(false); // Flag to prevent effect on submission
+
   useEffect(() => {
+    if (isSubmitted) return; // Don't run redirection logic if order was just submitted
+
     if (!currentCustomer) {
       toast({ title: "Missing Customer", description: "Please start from the customer step.", variant: "destructive" });
       router.replace('/workflow/customer-step');
@@ -59,7 +63,7 @@ export default function SummaryStepPage() {
       toast({ title: "Missing Design", description: "Please complete the design step.", variant: "destructive" });
       router.replace('/workflow/design-step');
     }
-  }, [currentCustomer, currentMeasurements, currentDesign, router, toast]);
+  }, [currentCustomer, currentMeasurements, currentDesign, router, toast, isSubmitted]);
 
   const getDetailName = (id: string | null, options: Array<{id: string, name: string}>): string => {
     if (!id) return 'Not selected';
@@ -71,6 +75,10 @@ export default function SummaryStepPage() {
       toast({ title: "Error", description: "Missing order information.", variant: "destructive" });
       return;
     }
+
+    // Capture the return path BEFORE resetting the workflow
+    const pathAfterConfirm = workflowReturnPath || '/orders'; 
+    setIsSubmitted(true); // Set submitted flag before resetting and navigating
 
     const itemsOrdered = [
         `${getDetailName(currentDesign.style, styleOptions)} (${getDetailName(currentDesign.fabric, fabricOptions)}, ${getDetailName(currentDesign.color, colorOptions)})`
@@ -85,7 +93,6 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
     }
 
     if (editingOrderId) {
-        // Update existing order
         const orderIndex = mockOrders.findIndex(o => o.id === editingOrderId);
         if (orderIndex !== -1) {
             mockOrders[orderIndex] = {
@@ -93,8 +100,6 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
                 items: itemsOrdered,
                 notes: orderNotes,
                 referenceImageUrls: currentDesign.referenceImages || [],
-                // Optionally update other fields like date if modification date is relevant
-                // date: format(new Date(), "yyyy-MM-dd"), 
             };
              toast({
                 title: "Order Updated!",
@@ -102,25 +107,25 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
             });
         } else {
             toast({ title: "Error", description: `Could not find order #${editingOrderId} to update.`, variant: "destructive" });
+            setIsSubmitted(false); // Reset submitted flag on error
             return;
         }
     } else {
-        // Create new order
         const newOrderId = `ORD${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 100)}`;
-        const defaultDueDate = format(addDays(new Date(), 5), "yyyy-MM-dd"); // Default due date: 5 days from now
+        const defaultDueDate = format(addDays(new Date(), 5), "yyyy-MM-dd");
 
         const newOrder: Order = {
           id: newOrderId,
           date: format(new Date(), "yyyy-MM-dd"),
           status: "Pending Assignment",
-          total: "$0.00", // Mock total
+          total: "$0.00", 
           items: itemsOrdered,
           customerId: currentCustomer.id,
           customerName: currentCustomer.name,
           assignedTailorId: null,
           assignedTailorName: null,
-          dueDate: defaultDueDate, // Set default due date
-          shippingAddress: { // Mock shipping address
+          dueDate: defaultDueDate,
+          shippingAddress: { 
             street: "123 Workflow Ln",
             city: "Context City",
             zipCode: "98765",
@@ -136,18 +141,16 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
         });
     }
 
-
-    // Update customer's measurements in mockCustomers if they were part of this workflow
     const customerIndex = mockCustomers.findIndex(c => c.id === currentCustomer.id);
     if (customerIndex !== -1) {
         mockCustomers[customerIndex] = {
             ...mockCustomers[customerIndex],
-            measurements: currentMeasurements, // Save potentially updated measurements
+            measurements: currentMeasurements, 
         };
     }
 
-    resetWorkflow(); // This will clear editingOrderId and workflowReturnPath
-    router.push(workflowReturnPath || '/orders'); // Navigate to return path or default to orders
+    resetWorkflow(); 
+    router.push(pathAfterConfirm);
   };
 
   if (!currentCustomer || !currentMeasurements || !currentDesign) {
