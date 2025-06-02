@@ -2,11 +2,12 @@
 "use client";
 
 import { useState } from 'react';
+import Image from 'next/image'; // Added for displaying assigned image
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, CalendarClock, PackageCheck, ListTodo, PlusCircle, Edit2, Trash2, Phone } from "lucide-react";
+import { Users, CalendarClock, PackageCheck, ListTodo, PlusCircle, Edit2, Trash2, Phone, FileText, Image as ImageIcon } from "lucide-react";
 import { AssignTailorDialog } from '@/components/tailors/assign-tailor-dialog';
 import { TailorFormDialog, type TailorFormData } from '@/components/tailors/tailor-form-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -22,9 +23,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { mockTailors as initialMockTailors, type Tailor } from '@/lib/mockData'; // Import centralized mock data
+import { mockTailors as initialMockTailors, type Tailor } from '@/lib/mockData'; 
+import { Separator } from '@/components/ui/separator';
 
-export interface Order { // This Order interface is specific to this page's needs for assignment
+export interface Order { 
   id: string;
   item: string;
   dueDateRequested: string;
@@ -32,6 +34,8 @@ export interface Order { // This Order interface is specific to this page's need
   assignedTailorName?: string;
   actualDueDate?: string;
   status?: 'Pending Assignment' | 'Assigned' | 'In Progress' | 'Completed';
+  assignmentInstructions?: string;
+  assignmentImage?: string; // Data URL of the image
 }
 
 
@@ -42,7 +46,7 @@ const initialUnassignedOrders: Order[] = [
 ];
 
 export default function TailorsPage() {
-  const [tailors, setTailors] = useState<Tailor[]>(initialMockTailors); // Use centralized mock tailors
+  const [tailors, setTailors] = useState<Tailor[]>(initialMockTailors); 
   const [unassignedOrders, setUnassignedOrders] = useState<Order[]>(initialUnassignedOrders);
   const [assignedOrders, setAssignedOrders] = useState<Order[]>([]);
   
@@ -61,7 +65,14 @@ export default function TailorsPage() {
     setIsAssignDialogOpen(true);
   };
 
-  const handleAssignOrder = (orderId: string, tailorId: string, tailorName: string, dueDate: Date) => {
+  const handleAssignOrder = (
+    orderId: string, 
+    tailorId: string, 
+    tailorName: string, 
+    dueDate: Date,
+    instructions?: string,
+    imageDataUrl?: string
+  ) => {
     const orderToAssign = unassignedOrders.find(o => o.id === orderId);
     if (orderToAssign) {
       const updatedOrder: Order = {
@@ -70,6 +81,8 @@ export default function TailorsPage() {
         assignedTailorName: tailorName,
         actualDueDate: format(dueDate, "yyyy-MM-dd"),
         status: "Assigned",
+        assignmentInstructions: instructions,
+        assignmentImage: imageDataUrl,
       };
       
       setUnassignedOrders(prev => prev.filter(o => o.id !== orderId));
@@ -234,15 +247,41 @@ export default function TailorsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {assignedOrders.length > 0 ? assignedOrders.map(order => (
-              <Card key={order.id} className="p-4 bg-green-50 dark:bg-green-900/30 border-green-200">
-                <p className="font-semibold">{order.item} (Order #{order.id})</p>
-                <p className="text-sm text-muted-foreground">
-                  Assigned to: {order.assignedTailorName || 'N/A'}
-                </p>
-                <p className="text-sm text-muted-foreground flex items-center">
-                    <CalendarClock className="h-4 w-4 mr-1"/> Due: {order.actualDueDate ? format(new Date(order.actualDueDate), "PPP") : 'N/A'}
-                </p>
-                 <Badge className="mt-1 bg-blue-100 text-blue-700 border border-blue-300">{order.status}</Badge>
+              <Card key={order.id} className="p-4 bg-green-50 dark:bg-green-900/30 border-green-200 space-y-3">
+                <div>
+                    <p className="font-semibold">{order.item} (Order #{order.id})</p>
+                    <p className="text-sm text-muted-foreground">
+                    Assigned to: {order.assignedTailorName || 'N/A'}
+                    </p>
+                    <p className="text-sm text-muted-foreground flex items-center">
+                        <CalendarClock className="h-4 w-4 mr-1"/> Due: {order.actualDueDate ? format(new Date(order.actualDueDate), "PPP") : 'N/A'}
+                    </p>
+                    <Badge className="mt-1 bg-blue-100 text-blue-700 border border-blue-300">{order.status}</Badge>
+                </div>
+                {(order.assignmentInstructions || order.assignmentImage) && <Separator />}
+                {order.assignmentInstructions && (
+                    <div>
+                        <h4 className="text-xs font-medium text-muted-foreground flex items-center mb-1">
+                            <FileText className="h-3 w-3 mr-1" /> Instructions:
+                        </h4>
+                        <p className="text-xs text-foreground whitespace-pre-wrap bg-background/50 p-2 rounded-md">{order.assignmentInstructions}</p>
+                    </div>
+                )}
+                {order.assignmentImage && (
+                     <div>
+                        <h4 className="text-xs font-medium text-muted-foreground flex items-center mb-1">
+                            <ImageIcon className="h-3 w-3 mr-1" /> Attached Image:
+                        </h4>
+                        <Image 
+                            src={order.assignmentImage} 
+                            alt={`Reference for order ${order.id}`} 
+                            width={100} 
+                            height={100} 
+                            className="rounded-md border object-cover"
+                            data-ai-hint="fabric clothing reference"
+                        />
+                    </div>
+                )}
               </Card>
             )) : <p className="text-muted-foreground">No orders assigned yet via this session.</p>}
           </CardContent>
