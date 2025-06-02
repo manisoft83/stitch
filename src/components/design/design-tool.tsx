@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,10 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { CheckSquare, Palette, Scissors, Shirt } from 'lucide-react';
-import type { DesignDetails } from '@/contexts/order-workflow-context'; // Import DesignDetails
+import { Input } from '@/components/ui/input';
+import { CheckSquare, Palette, Scissors, Shirt, UploadCloud, XCircle } from 'lucide-react';
+import type { DesignDetails } from '@/contexts/order-workflow-context';
 
-// Mock data - replace with actual data sources
 const fabricOptions = [
   { id: 'cotton', name: 'Cotton', image: 'https://placehold.co/100x100.png', dataAiHint: 'cotton fabric' },
   { id: 'silk', name: 'Silk', image: 'https://placehold.co/100x100.png', dataAiHint: 'silk fabric' },
@@ -45,6 +45,43 @@ export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
   const [selectedColor, setSelectedColor] = useState<string | null>(initialDesign?.color || null);
   const [selectedStyle, setSelectedStyle] = useState<string | null>(initialDesign?.style || null);
   const [customNotes, setCustomNotes] = useState(initialDesign?.notes || '');
+  const [referenceImagePreviews, setReferenceImagePreviews] = useState<string[]>(initialDesign?.referenceImages || []);
+
+  useEffect(() => {
+    if (initialDesign) {
+      setSelectedFabric(initialDesign.fabric || null);
+      setSelectedColor(initialDesign.color || null);
+      setSelectedStyle(initialDesign.style || null);
+      setCustomNotes(initialDesign.notes || '');
+      setReferenceImagePreviews(initialDesign.referenceImages || []);
+    }
+  }, [initialDesign]);
+
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const newPreviews: string[] = [...referenceImagePreviews];
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (reader.result) {
+            newPreviews.push(reader.result as string);
+            // Ensure not to exceed a reasonable limit, e.g., 5 images
+            if (newPreviews.length <= 5) {
+              setReferenceImagePreviews([...newPreviews]); // Create new array instance
+            } else {
+              alert("You can upload a maximum of 5 images.");
+            }
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setReferenceImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmitDesign = () => {
     const designDetails: DesignDetails = {
@@ -52,11 +89,11 @@ export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
       color: selectedColor,
       style: selectedStyle,
       notes: customNotes,
+      referenceImages: referenceImagePreviews,
     };
     if (onSaveDesign) {
       onSaveDesign(designDetails);
     } else {
-      // Default behavior if not used in workflow
       console.log(designDetails);
       alert('Design submitted (mock)! Check console for details.');
     }
@@ -64,7 +101,6 @@ export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
 
   return (
     <div className="grid lg:grid-cols-3 gap-8">
-      {/* Configuration Panel */}
       <div className="lg:col-span-2 space-y-6">
         <Card>
           <CardHeader>
@@ -72,7 +108,7 @@ export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
             <CardDescription>Choose the base style for your custom piece.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Select onValueChange={setSelectedStyle} defaultValue={selectedStyle || undefined}>
+            <Select onValueChange={setSelectedStyle} value={selectedStyle || undefined}>
               <SelectTrigger id="style-select">
                 <SelectValue placeholder="Choose a style..." />
               </SelectTrigger>
@@ -91,7 +127,7 @@ export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
             <CardDescription>Pick the perfect fabric for your design.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Select onValueChange={setSelectedFabric} defaultValue={selectedFabric || undefined}>
+            <Select onValueChange={setSelectedFabric} value={selectedFabric || undefined}>
               <SelectTrigger id="fabric-select">
                 <SelectValue placeholder="Choose a fabric..." />
               </SelectTrigger>
@@ -148,6 +184,55 @@ export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
 
         <Card>
           <CardHeader>
+            <CardTitle className="flex items-center gap-2"><UploadCloud className="h-6 w-6 text-primary" /> Reference Images</CardTitle>
+            <CardDescription>Upload up to 5 images for design reference (e.g., inspiration, specific details).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Input 
+              id="image-upload" 
+              type="file" 
+              accept="image/*" 
+              multiple
+              onChange={handleImageChange} 
+              className="text-sm file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+              disabled={referenceImagePreviews.length >= 5}
+            />
+            {referenceImagePreviews.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <Label className="text-xs text-muted-foreground">Image Previews:</Label>
+                <div className="flex flex-wrap gap-2">
+                  {referenceImagePreviews.map((src, index) => (
+                    <div key={index} className="relative group">
+                      <Image 
+                          src={src} 
+                          alt={`Reference ${index + 1}`} 
+                          width={80} 
+                          height={80} 
+                          className="rounded-md border object-cover" 
+                          data-ai-hint="design clothing reference"
+                      />
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => removeImage(index)}
+                        aria-label="Remove image"
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+             {referenceImagePreviews.length >= 5 && (
+                <p className="text-xs text-destructive mt-2">Maximum of 5 images reached.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Custom Notes</CardTitle>
             <CardDescription>Add any specific instructions or details for your design.</CardDescription>
           </CardHeader>
@@ -162,9 +247,8 @@ export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
         </Card>
       </div>
 
-      {/* Preview & Summary Panel */}
       <div className="lg:col-span-1 space-y-6">
-        <Card className="sticky top-20 shadow-lg"> {/* Sticky for summary */}
+        <Card className="sticky top-20 shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl">Your Design Summary</CardTitle>
           </CardHeader>
@@ -185,6 +269,27 @@ export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
                 {selectedColor ? colorOptions.find(c => c.id === selectedColor)?.name : 'Not selected'}
               </p>
             </div>
+            {referenceImagePreviews.length > 0 && (
+                <>
+                <Separator />
+                <div>
+                    <Label>Reference Images:</Label>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                    {referenceImagePreviews.map((src, index) => (
+                        <Image 
+                            key={index}
+                            src={src} 
+                            alt={`Ref ${index + 1}`} 
+                            width={40} 
+                            height={40} 
+                            className="rounded border object-cover"
+                            data-ai-hint="thumbnail reference"
+                        />
+                    ))}
+                    </div>
+                </div>
+                </>
+            )}
             {customNotes && (
               <>
                 <Separator />

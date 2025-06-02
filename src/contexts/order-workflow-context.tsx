@@ -12,18 +12,19 @@ export interface DesignDetails {
   color: string | null;
   style: string | null;
   notes: string;
+  referenceImages?: string[]; // Array of Data URLs for images
 }
 
 interface OrderWorkflowState {
   currentCustomer: Customer | null;
   currentMeasurements: MeasurementFormValues | null;
-  currentDesign: DesignDetails | null; // Added currentDesign
+  currentDesign: DesignDetails | null;
 }
 
 interface OrderWorkflowContextType extends OrderWorkflowState {
   setCustomer: (customer: Customer | null) => void;
   setMeasurements: (measurements: MeasurementFormValues | null) => void;
-  setDesign: (design: DesignDetails | null) => void; // Added setDesign
+  setDesign: (design: DesignDetails | null) => void;
   resetWorkflow: () => void;
 }
 
@@ -32,7 +33,7 @@ const OrderWorkflowContext = createContext<OrderWorkflowContextType | undefined>
 const initialState: OrderWorkflowState = {
   currentCustomer: null,
   currentMeasurements: null,
-  currentDesign: null, // Initialize currentDesign
+  currentDesign: null,
 };
 
 export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
@@ -43,7 +44,8 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
       ...prevState,
       currentCustomer: customer,
       currentMeasurements: customer?.measurements || null,
-      currentDesign: null, // Reset design when customer changes
+      // Reset design when customer changes, but preserve if it's already there and we are just re-selecting
+      currentDesign: prevState.currentCustomer?.id === customer?.id ? prevState.currentDesign : null,
     }));
   }, []);
 
@@ -51,7 +53,7 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
     setWorkflowState(prevState => ({ ...prevState, currentMeasurements: measurements }));
   }, []);
 
-  const setDesign = useCallback((design: DesignDetails | null) => { // Implemented setDesign
+  const setDesign = useCallback((design: DesignDetails | null) => {
     setWorkflowState(prevState => ({ ...prevState, currentDesign: design }));
   }, []);
 
@@ -63,7 +65,7 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
     ...workflowState,
     setCustomer,
     setMeasurements,
-    setDesign, // Added setDesign to context value
+    setDesign,
     resetWorkflow,
   };
 

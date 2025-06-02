@@ -3,17 +3,16 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image'; // Import Image
 import { useOrderWorkflow, type DesignDetails } from '@/contexts/order-workflow-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { mockOrders, type Order, mockCustomers } from '@/lib/mockData'; // Import mockOrders and Order type
+import { mockOrders, type Order, mockCustomers } from '@/lib/mockData';
 import { format } from 'date-fns';
-import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info } from 'lucide-react';
+import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon } from 'lucide-react';
 
-// Re-defining these here for simplicity, or they could be imported if centralized
-// These should match the options in DesignTool.tsx
 const fabricOptions = [
   { id: 'cotton', name: 'Cotton' },
   { id: 'silk', name: 'Silk' },
@@ -70,36 +69,39 @@ export default function SummaryStepPage() {
     const itemsOrdered = [
         `${getDetailName(currentDesign.style, styleOptions)} (${getDetailName(currentDesign.fabric, fabricOptions)}, ${getDetailName(currentDesign.color, colorOptions)})`
     ];
-    if (currentDesign.notes) {
-        itemsOrdered.push(`Notes: ${currentDesign.notes.substring(0,30)}...`);
+    
+    let orderNotes = `Design Notes: ${currentDesign.notes || 'N/A'}
+Measurements Profile: ${currentMeasurements.name || 'Default'}
+Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${currentMeasurements.hips}, Height: ${currentMeasurements.height}`;
+
+    if (currentDesign.referenceImages && currentDesign.referenceImages.length > 0) {
+        itemsOrdered.push(`Ref Images: ${currentDesign.referenceImages.length}`);
+        orderNotes += `\nReference Images: ${currentDesign.referenceImages.length} uploaded.`;
     }
 
 
     const newOrder: Order = {
       id: newOrderId,
       date: format(new Date(), "yyyy-MM-dd"),
-      status: "Pending Assignment", // Default status for new orders
-      total: "$0.00", // Mock total, could be calculated based on design
+      status: "Pending Assignment",
+      total: "$0.00", // Mock total
       items: itemsOrdered,
       customerId: currentCustomer.id,
       customerName: currentCustomer.name,
       assignedTailorId: null,
       assignedTailorName: null,
-      dueDate: null, // To be set upon assignment
-      shippingAddress: { // Mock shipping address, could be part of customer profile
+      dueDate: null,
+      shippingAddress: {
         street: "123 Workflow Ln",
         city: "Context City",
         zipCode: "98765",
         country: "USA",
       },
-      notes: `Design Notes: ${currentDesign.notes || 'N/A'}
-Measurements Profile: ${currentMeasurements.name || 'Default'}
-Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${currentMeasurements.hips}, Height: ${currentMeasurements.height}`,
+      notes: orderNotes,
     };
 
-    mockOrders.unshift(newOrder); // Add to the beginning of the array for visibility
+    mockOrders.unshift(newOrder);
 
-    // Persist updated measurements to the mock customer data if they made changes
     const customerIndex = mockCustomers.findIndex(c => c.id === currentCustomer.id);
     if (customerIndex !== -1) {
         mockCustomers[customerIndex] = {
@@ -107,7 +109,6 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
             measurements: currentMeasurements,
         };
     }
-
 
     toast({
       title: "Order Placed!",
@@ -140,7 +141,6 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Customer Details */}
           <Card className="bg-muted/30">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2"><User className="h-5 w-5 text-primary"/>Customer Details</CardTitle>
@@ -154,7 +154,6 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
           
           <Separator />
 
-          {/* Measurement Details */}
           <Card className="bg-muted/30">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2"><Ruler className="h-5 w-5 text-primary"/>Measurement Profile: {currentMeasurements.name || "Default"}</CardTitle>
@@ -169,16 +168,34 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
 
           <Separator />
 
-          {/* Design Details */}
           <Card className="bg-muted/30">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2"><Palette className="h-5 w-5 text-primary"/>Design Specifications</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm space-y-1">
+            <CardContent className="text-sm space-y-2">
               <p><strong>Style:</strong> {getDetailName(currentDesign.style, styleOptions)}</p>
               <p><strong>Fabric:</strong> {getDetailName(currentDesign.fabric, fabricOptions)}</p>
               <p><strong>Color:</strong> {getDetailName(currentDesign.color, colorOptions)}</p>
               {currentDesign.notes && <p><strong>Notes:</strong> <span className="whitespace-pre-wrap">{currentDesign.notes}</span></p>}
+              
+              {currentDesign.referenceImages && currentDesign.referenceImages.length > 0 && (
+                <div>
+                  <strong className="flex items-center gap-1"><ImageIcon className="h-4 w-4 text-muted-foreground" />Reference Images:</strong>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {currentDesign.referenceImages.map((src, index) => (
+                      <Image
+                        key={index}
+                        src={src}
+                        alt={`Reference ${index + 1}`}
+                        width={60}
+                        height={60}
+                        className="rounded-md border object-cover shadow-sm"
+                        data-ai-hint="design reference thumbnail"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -192,8 +209,6 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
                 <p className="mt-2 text-xs text-muted-foreground">Note: This is a prototype. Order placement is simulated and payment is not processed.</p>
              </CardContent>
            </Card>
-
-
         </CardContent>
         <CardFooter className="flex flex-col sm:flex-row justify-between gap-3">
           <Button variant="outline" onClick={() => router.push('/workflow/design-step')} className="w-full sm:w-auto">
@@ -207,4 +222,3 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
     </div>
   );
 }
-
