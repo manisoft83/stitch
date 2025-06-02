@@ -69,7 +69,8 @@ export default function CustomerStepPage() {
 
   const filteredCustomers = mockCustomers.filter(customer =>
     customer.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
-    customer.email.toLowerCase().includes(customerSearchTerm.toLowerCase())
+    customer.email.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+    customer.phone.toLowerCase().includes(customerSearchTerm.toLowerCase())
   );
 
   const handleFormSubmit = (data: CustomerFormValues) => {
@@ -156,7 +157,7 @@ export default function CustomerStepPage() {
               </Label>
               <Input
                 id="customer-search"
-                placeholder="Filter by name or email..."
+                placeholder="Filter by name, email, or phone..."
                 value={customerSearchTerm}
                 onChange={(e) => setCustomerSearchTerm(e.target.value)}
                 className="mb-4"
@@ -176,7 +177,7 @@ export default function CustomerStepPage() {
                       <Label htmlFor={`cust-${customer.id}`} className="font-normal cursor-pointer w-full">
                         <div className="flex justify-between items-center">
                             <span>{customer.name}</span>
-                            <span className="text-xs text-muted-foreground">{customer.email}</span>
+                            <span className="text-xs text-muted-foreground">{customer.email} | {customer.phone}</span>
                         </div>
                       </Label>
                     </div>
