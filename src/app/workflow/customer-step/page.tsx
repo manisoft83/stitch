@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,66 +14,115 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
-import { mockCustomers, type Customer } from '@/lib/mockData'; // Assuming mockCustomers is mutable for prototype
-import { UserPlus, Users, ArrowRight } from 'lucide-react';
+import { mockCustomers, type Customer } from '@/lib/mockData'; 
+import { UserPlus, Users, Edit3, ArrowRight } from 'lucide-react';
 
-const newCustomerSchema = z.object({
+const customerSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Invalid email address." }),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
 });
 
-type NewCustomerFormValues = z.infer<typeof newCustomerSchema>;
+type CustomerFormValues = z.infer<typeof customerSchema>;
 
 export default function CustomerStepPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { setCustomer, currentCustomer } = useOrderWorkflow();
-  const [customerType, setCustomerType] = useState<'new' | 'existing'>(currentCustomer ? 'existing' : 'new');
+  
+  // Determine initial customerType based on currentCustomer
+  const initialCustomerType = currentCustomer ? 'existing' : 'new';
+  const [customerType, setCustomerType] = useState<'new' | 'existing'>(initialCustomerType);
+  
+  // Set initial selectedCustomerId if currentCustomer exists
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(currentCustomer?.id || '');
 
-  const { register, handleSubmit, control, formState: { errors }, reset } = useForm<NewCustomerFormValues>({
-    resolver: zodResolver(newCustomerSchema),
-    defaultValues: { name: '', email: '', phone: '' },
+  const { register, handleSubmit, control, formState: { errors }, reset, setValue } = useForm<CustomerFormValues>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: { 
+      name: currentCustomer && customerType === 'existing' ? currentCustomer.name : '', 
+      email: currentCustomer && customerType === 'existing' ? currentCustomer.email : '', 
+      phone: currentCustomer && customerType === 'existing' ? currentCustomer.phone : '' 
+    },
   });
 
-  const handleProceed = (data?: NewCustomerFormValues) => {
-    let customerToSet: Customer | null = null;
+  // Effect to populate form when an existing customer is selected
+  useEffect(() => {
+    if (customerType === 'existing' && selectedCustomerId) {
+      const customer = mockCustomers.find(c => c.id === selectedCustomerId);
+      if (customer) {
+        reset({ name: customer.name, email: customer.email, phone: customer.phone });
+      }
+    } else if (customerType === 'new') {
+      // Clear form if switching to New Customer, unless it's the initial load with a new type
+      if(selectedCustomerId !== '' || (currentCustomer && initialCustomerType === 'existing') ) {
+         reset({ name: '', email: '', phone: '' });
+      }
+      setSelectedCustomerId(''); // Clear selected customer ID
+    }
+  }, [customerType, selectedCustomerId, reset, currentCustomer, initialCustomerType]);
+  
+  // Effect to handle initial load if currentCustomer exists (e.g. navigating back)
+  useEffect(() => {
+    if (currentCustomer) {
+      setCustomerType('existing');
+      setSelectedCustomerId(currentCustomer.id);
+      reset({ name: currentCustomer.name, email: currentCustomer.email, phone: currentCustomer.phone });
+    }
+  }, [currentCustomer, reset]);
 
-    if (customerType === 'new' && data) {
+
+  const handleFormSubmit = (data: CustomerFormValues) => {
+    let customerToSet: Customer | null = null;
+    let toastMessage = {};
+
+    if (customerType === 'existing' && selectedCustomerId) {
+      // Update existing customer
+      const customerIndex = mockCustomers.findIndex(c => c.id === selectedCustomerId);
+      if (customerIndex !== -1) {
+        customerToSet = {
+          ...mockCustomers[customerIndex],
+          ...data, // Update with form data
+        };
+        mockCustomers[customerIndex] = customerToSet;
+        toastMessage = { title: "Customer Updated", description: `${customerToSet.name}'s details have been updated.` };
+      } else {
+         toast({ title: "Error", description: "Could not find customer to update.", variant: "destructive" });
+         return;
+      }
+    } else {
+      // Create new customer
       const newCustId = `CUST${Date.now().toString().slice(-4)}${Math.floor(Math.random() * 100)}`;
       customerToSet = {
         id: newCustId,
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
+        ...data,
       };
-      // For prototype: directly add to mockCustomers. In real app, this would be an API call.
-      mockCustomers.push(customerToSet);
-      toast({ title: "New Customer Registered", description: `${customerToSet.name} has been registered.` });
-    } else if (customerType === 'existing' && selectedCustomerId) {
-      customerToSet = mockCustomers.find(c => c.id === selectedCustomerId) || null;
-      if (customerToSet) {
-        toast({ title: "Customer Selected", description: `Proceeding with ${customerToSet.name}.` });
-      }
+      mockCustomers.push(customerToSet); // Add to mock data for prototype
+      toastMessage = { title: "New Customer Registered", description: `${customerToSet.name} has been registered.` };
     }
 
     if (customerToSet) {
       setCustomer(customerToSet);
-      // Navigate to the next step (measurement step, to be created)
+      toast(toastMessage);
       router.push('/workflow/measurement-step');
-    } else if (customerType === 'existing' && !selectedCustomerId) {
-      toast({ title: "Error", description: "Please select an existing customer.", variant: "destructive" });
     }
   };
   
-  const onNewCustomerSubmit = (data: NewCustomerFormValues) => {
-    handleProceed(data);
-  };
+  const handleSelectExistingAndProceed = () => {
+     if (selectedCustomerId) {
+        const customer = mockCustomers.find(c => c.id === selectedCustomerId);
+        if (customer) {
+            setCustomer(customer); // Set this customer with their current (potentially unedited form) details
+            toast({ title: "Customer Selected", description: `Proceeding with ${customer.name}. Current details loaded for editing if needed.` });
+            router.push('/workflow/measurement-step');
+        } else {
+            toast({ title: "Error", description: "Selected customer not found.", variant: "destructive" });
+        }
+     } else {
+        toast({ title: "Error", description: "Please select an existing customer.", variant: "destructive" });
+     }
+  }
 
-  const onExistingCustomerProceed = () => {
-    handleProceed();
-  };
 
   return (
     <div className="container mx-auto py-8">
@@ -81,7 +130,9 @@ export default function CustomerStepPage() {
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-primary">Customer Details</CardTitle>
           <CardDescription>
-            Start by identifying the customer for this order.
+            {customerType === 'existing' && selectedCustomerId 
+              ? "Review or update the selected customer's details below, or proceed with current information." 
+              : "Start by identifying the customer for this order. Choose 'New' or 'Existing'."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -89,7 +140,7 @@ export default function CustomerStepPage() {
             value={customerType}
             onValueChange={(value: 'new' | 'existing') => {
               setCustomerType(value);
-              if (value === 'new') setSelectedCustomerId(''); else reset();
+              // setSelectedCustomerId(''); // Let useEffect handle reset based on new customerType
             }}
             className="grid grid-cols-2 gap-4"
           >
@@ -115,8 +166,16 @@ export default function CustomerStepPage() {
             </div>
           </RadioGroup>
 
-          {customerType === 'new' && (
-            <form onSubmit={handleSubmit(onNewCustomerSubmit)} className="space-y-4">
+          {/* Form for New or Editing Existing Customer */}
+          {(customerType === 'new' || (customerType === 'existing' && selectedCustomerId)) && (
+            <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 border-t pt-6 mt-6 border-dashed">
+              <h3 className="text-lg font-medium text-foreground mb-3">
+                {customerType === 'existing' && selectedCustomerId ? (
+                  <span className="flex items-center"><Edit3 className="mr-2 h-5 w-5"/>Edit Details for {mockCustomers.find(c=>c.id===selectedCustomerId)?.name || 'Selected Customer'}</span>
+                ) : (
+                  <span className="flex items-center"><UserPlus className="mr-2 h-5 w-5"/>Register New Customer</span>
+                )}
+              </h3>
               <div>
                 <Label htmlFor="name">Full Name</Label>
                 <Input id="name" {...register("name")} placeholder="e.g., Jane Doe" />
@@ -133,33 +192,43 @@ export default function CustomerStepPage() {
                 {errors.phone && <p className="text-sm text-destructive mt-1">{errors.phone.message}</p>}
               </div>
               <Button type="submit" className="w-full">
-                Register & Proceed <ArrowRight className="ml-2 h-4 w-4" />
+                {customerType === 'existing' && selectedCustomerId ? "Update Details & Proceed" : "Register & Proceed"} 
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
           )}
-
+          
+          {/* Selector for Existing Customer - shown when 'existing' is chosen AND form is not yet active for editing specific user */}
           {customerType === 'existing' && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="customer-select">Select Customer</Label>
-                <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-                  <SelectTrigger id="customer-select">
-                    <SelectValue placeholder="Choose an existing customer..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockCustomers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name} ({customer.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+            <div className="space-y-4 pt-6 border-t border-dashed">
+                 <Label htmlFor="customer-select" className="block mb-1">Select Existing Customer</Label>
+                 <Select 
+                    value={selectedCustomerId} 
+                    onValueChange={(id) => {
+                        setSelectedCustomerId(id);
+                        // Form population is handled by useEffect
+                    }}
+                  >
+                    <SelectTrigger id="customer-select">
+                        <SelectValue placeholder="Choose an existing customer..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {mockCustomers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                            {customer.name} ({customer.email})
+                        </SelectItem>
+                        ))}
+                    </SelectContent>
                 </Select>
-              </div>
-              <Button onClick={onExistingCustomerProceed} className="w-full" disabled={!selectedCustomerId}>
-                Select Customer & Proceed <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+                {/* This button is less relevant if form populates for edit, but can be a "proceed without editing" option */}
+                {selectedCustomerId && !(customerType === 'existing' && selectedCustomerId) /* Hide if edit form is active */ && (
+                    <Button onClick={handleSelectExistingAndProceed} className="w-full" disabled={!selectedCustomerId}>
+                        Proceed with Selected Customer <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                )}
             </div>
           )}
+
         </CardContent>
          <CardFooter>
             <p className="text-xs text-muted-foreground text-center w-full">
@@ -170,3 +239,4 @@ export default function CustomerStepPage() {
     </div>
   );
 }
+
