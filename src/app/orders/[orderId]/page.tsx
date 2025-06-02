@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image'; // Import Image
 import { mockOrders, type Order, allOrderStatuses, type OrderStatus } from '@/lib/mockData';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Shuffle } from "lucide-react";
+import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Shuffle, ImageIcon } from "lucide-react"; // Added ImageIcon
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 
@@ -138,6 +139,29 @@ export default function OrderDetailsPage() {
               ))}
             </ul>
           </div>
+          
+          {currentOrder.referenceImageUrls && currentOrder.referenceImageUrls.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <h3 className="text-lg font-semibold mb-2 flex items-center"><ImageIcon className="mr-2 h-5 w-5 text-primary" />Reference Images</h3>
+                <div className="flex flex-wrap gap-3 mt-2">
+                    {currentOrder.referenceImageUrls.map((src, index) => (
+                        <Image
+                            key={index}
+                            src={src}
+                            alt={`Reference Image ${index + 1}`}
+                            width={100}
+                            height={100}
+                            className="rounded-md border object-cover shadow-sm"
+                            data-ai-hint="design clothing reference"
+                        />
+                    ))}
+                </div>
+              </div>
+            </>
+          )}
+
 
           {currentOrder.shippingAddress && (
             <>
@@ -178,4 +202,3 @@ export default function OrderDetailsPage() {
     </div>
   );
 }
-

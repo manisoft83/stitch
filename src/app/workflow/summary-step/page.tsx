@@ -75,8 +75,7 @@ Measurements Profile: ${currentMeasurements.name || 'Default'}
 Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${currentMeasurements.hips}, Height: ${currentMeasurements.height}`;
 
     if (currentDesign.referenceImages && currentDesign.referenceImages.length > 0) {
-        itemsOrdered.push(`Ref Images: ${currentDesign.referenceImages.length}`);
-        orderNotes += `\nReference Images: ${currentDesign.referenceImages.length} uploaded.`;
+        orderNotes += `\nReference Images: ${currentDesign.referenceImages.length} provided.`;
     }
 
 
@@ -91,13 +90,14 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
       assignedTailorId: null,
       assignedTailorName: null,
       dueDate: null,
-      shippingAddress: {
+      shippingAddress: { // Mock shipping address
         street: "123 Workflow Ln",
         city: "Context City",
         zipCode: "98765",
         country: "USA",
       },
       notes: orderNotes,
+      referenceImageUrls: currentDesign.referenceImages || [], // Save the image URLs
     };
 
     mockOrders.unshift(newOrder);

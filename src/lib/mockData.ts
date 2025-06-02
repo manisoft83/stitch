@@ -18,7 +18,7 @@ export const mockCustomers: Customer[] = [
     name: "Eleanor Vance", 
     email: "eleanor@example.com", 
     phone: "555-0101",
-    measurements: { name: "Eleanor - Standard", bust: 34, waist: 28, hips: 38, height: 65 } // Was profileName
+    measurements: { name: "Eleanor - Standard", bust: 34, waist: 28, hips: 38, height: 65 }
   },
   { id: "CUST002", name: "Marcus Green", email: "marcus@example.com", phone: "555-0102" },
   { id: "CUST003", name: "Sarah Miller", email: "sarah@example.com", phone: "555-0103" },
@@ -42,6 +42,7 @@ export interface Order {
     country: string;
   };
   notes?: string;
+  referenceImageUrls?: string[]; // Added for storing uploaded image data URLs
 }
 
 export const mockOrders: Order[] = [
@@ -85,7 +86,7 @@ export const mockOrders: Order[] = [
   },
   {
     id: "ORD105", date: format(subDays(new Date(), 1), "yyyy-MM-dd"), status: "Pending Assignment", total: "$250.00",
-    items: ["Formal Suit"], customerId: "CUST_NEW_RBrown", customerName: "Robert Brown", // Example of a new customer not in mockCustomers yet
+    items: ["Formal Suit"], customerId: "CUST_NEW_RBrown", customerName: "Robert Brown", 
     assignedTailorId: null, assignedTailorName: null, dueDate: null,
     shippingAddress: { street: "404 Thread TRL", city: "Philadelphia", zipCode: "19101", country: "USA" }
   },
