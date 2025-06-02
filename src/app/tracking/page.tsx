@@ -2,16 +2,17 @@
 "use client";
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation'; // Added useRouter
+import Link from 'next/link'; // Added Link
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge"; // Added import
-import { PackageSearch, MapPin, CheckCircle, Truck, HomeIcon, Hourglass, Users, XCircle, CalendarDays } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { PackageSearch, MapPin, CheckCircle, Truck, HomeIcon, Hourglass, Users, XCircle, CalendarDays, FileText } from "lucide-react"; // Added FileText for View Details
 import { mockOrders, type Order } from '@/lib/mockData'; 
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils'; // Added for inline SVGs
+import { cn } from '@/lib/utils';
 
 interface TrackingStep {
   status: string;
@@ -176,7 +177,14 @@ function TrackingPageContent() {
 
           {searchedOrder && trackingInfo.length > 0 && !error && (
             <div className="mt-6 border-t pt-6">
-              <h3 className="text-lg font-semibold mb-1 text-primary">Order #{searchedOrder.id}</h3>
+              <div className="flex justify-between items-center mb-1">
+                <h3 className="text-lg font-semibold text-primary">Order #{searchedOrder.id}</h3>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/orders/${searchedOrder.id}`}>
+                    <FileText className="mr-2 h-4 w-4" /> View Details
+                  </Link>
+                </Button>
+              </div>
               <p className="text-sm text-muted-foreground mb-4">Current Status: <Badge variant={
                 searchedOrder.status === "Delivered" ? "default" : 
                 searchedOrder.status === "Cancelled" ? "destructive" : "secondary"
@@ -231,12 +239,6 @@ export default function TrackingPage() {
     </Suspense>
   )
 }
-
-// Additional icons that might be needed based on mock logic
-// These are now imported from lucide-react directly or removed if duplicate
-// const Users = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("lucide lucide-users", className)}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-// const XCircle = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("lucide lucide-x-circle", className)}><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>;
-// const CalendarDays = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("lucide lucide-calendar-days", className)}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>;
-
+    
 
     
