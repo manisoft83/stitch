@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { MeasurementFormValues } from '@/lib/schemas';
-import { mockCustomers } from '@/lib/mockData'; // For updating mock data
+import { mockCustomers } from '@/lib/mockData'; 
 import { ArrowLeft, ArrowRight, Ruler } from 'lucide-react';
 
 export default function MeasurementStepPage() {
@@ -28,15 +28,9 @@ export default function MeasurementStepPage() {
     }
   }, [currentCustomer, router, toast]);
 
-  const handleSaveMeasurements = (data: MeasurementFormValues & { name?: string }) => {
-    const measurementsToSave = {
-        profileName: data.name, // 'name' from form is profileName
-        bust: data.bust,
-        waist: data.waist,
-        hips: data.hips,
-        height: data.height,
-    };
-    setMeasurements(measurementsToSave);
+  // data is MeasurementFormValues, which includes 'name' for the profile name
+  const handleSaveMeasurements = (data: MeasurementFormValues) => { 
+    setMeasurements(data); // data already matches MeasurementFormValues
 
     // Mock: Update customer in mockCustomers array
     if (currentCustomer) {
@@ -44,24 +38,22 @@ export default function MeasurementStepPage() {
       if (customerIndex !== -1) {
         const updatedCustomer = {
           ...mockCustomers[customerIndex],
-          measurements: measurementsToSave,
+          measurements: data, // Save data (which is MeasurementFormValues) directly
         };
         mockCustomers[customerIndex] = updatedCustomer;
-        // Also update the customer in the context if it changed (e.g. new measurements added)
         setCustomer(updatedCustomer); 
       }
     }
 
     toast({
       title: "Measurements Saved",
-      description: `${currentCustomer?.name}'s measurements have been updated.`,
+      description: `${currentCustomer?.name}'s measurements ${data.name ? "for profile '" + data.name + "'" : ""} have been updated.`,
     });
     // Navigate to the next step (e.g., design/order step)
-    router.push('/workflow/design-step'); // Placeholder for now
+    router.push('/workflow/design-step'); 
   };
 
   if (!currentCustomer) {
-    // router.replace will handle redirection, show minimal content or loader
     return (
         <div className="container mx-auto py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
             <p>Redirecting to customer selection...</p>
@@ -69,12 +61,12 @@ export default function MeasurementStepPage() {
     );
   }
   
-  // Determine initial values for the form:
-  // Use currentMeasurements from context if available, otherwise use customer's saved measurements or empty.
-  const initialFormValues = currentMeasurements || currentCustomer?.measurements || {
-    name: '', bust: undefined, waist: undefined, hips: undefined, height: undefined
-  };
-
+  // currentMeasurements or currentCustomer.measurements are of type MeasurementFormValues | null/undefined
+  // MeasurementFormValues includes 'name' for the profile name.
+  const initialFormValues: Partial<MeasurementFormValues> = 
+    currentMeasurements || 
+    currentCustomer?.measurements || 
+    { name: '', bust: undefined, waist: undefined, hips: undefined, height: undefined };
 
   return (
     <div className="container mx-auto py-8">
@@ -91,13 +83,7 @@ export default function MeasurementStepPage() {
         </CardHeader>
         <CardContent>
           <MeasurementForm
-            initialValues={{
-                name: initialFormValues.profileName, // Map profileName to form's 'name'
-                bust: initialFormValues.bust,
-                waist: initialFormValues.waist,
-                hips: initialFormValues.hips,
-                height: initialFormValues.height,
-            }}
+            initialValues={initialFormValues} // Pass the correctly structured initial values
             onSave={handleSaveMeasurements}
           />
         </CardContent>

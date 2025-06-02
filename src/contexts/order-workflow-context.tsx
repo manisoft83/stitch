@@ -8,12 +8,12 @@ import type { MeasurementFormValues } from '@/lib/schemas';
 
 interface OrderWorkflowState {
   currentCustomer: Customer | null;
-  currentMeasurements: (MeasurementFormValues & {profileName?: string}) | null; 
+  currentMeasurements: MeasurementFormValues | null; // Standardized to MeasurementFormValues
 }
 
 interface OrderWorkflowContextType extends OrderWorkflowState {
   setCustomer: (customer: Customer | null) => void;
-  setMeasurements: (measurements: (MeasurementFormValues & {profileName?: string}) | null) => void;
+  setMeasurements: (measurements: MeasurementFormValues | null) => void; // Standardized
   resetWorkflow: () => void;
 }
 
@@ -31,12 +31,13 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
     setWorkflowState(prevState => ({ 
       ...prevState, 
       currentCustomer: customer, 
-      // If customer exists and has measurements, load them. Otherwise, null.
+      // If customer exists and has measurements, load them.
+      // Customer.measurements is now directly MeasurementFormValues | undefined
       currentMeasurements: customer?.measurements || null 
     }));
   }, []);
 
-  const setMeasurements = useCallback((measurements: (MeasurementFormValues & {profileName?: string}) | null) => {
+  const setMeasurements = useCallback((measurements: MeasurementFormValues | null) => { // Standardized
     setWorkflowState(prevState => ({ ...prevState, currentMeasurements: measurements }));
   }, []);
 

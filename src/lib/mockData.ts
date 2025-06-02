@@ -9,7 +9,7 @@ export interface Customer {
   name: string;
   email: string;
   phone: string;
-  measurements?: (MeasurementFormValues & { profileName?: string }); // Customer can have saved measurements
+  measurements?: MeasurementFormValues; // Standardized to use MeasurementFormValues which includes 'name' for profile
 }
 
 export const mockCustomers: Customer[] = [
@@ -18,7 +18,7 @@ export const mockCustomers: Customer[] = [
     name: "Eleanor Vance", 
     email: "eleanor@example.com", 
     phone: "555-0101",
-    measurements: { profileName: "Eleanor - Standard", bust: 34, waist: 28, hips: 38, height: 65 }
+    measurements: { name: "Eleanor - Standard", bust: 34, waist: 28, hips: 38, height: 65 } // Was profileName
   },
   { id: "CUST002", name: "Marcus Green", email: "marcus@example.com", phone: "555-0102" },
   { id: "CUST003", name: "Sarah Miller", email: "sarah@example.com", phone: "555-0103" },
@@ -30,8 +30,8 @@ export interface Order {
   status: OrderStatus;
   total: string;
   items: string[];
-  customerId: string; // Link to Customer ID
-  customerName?: string; // Can be denormalized or fetched via customerId
+  customerId: string; 
+  customerName?: string; 
   assignedTailorId?: string | null;
   assignedTailorName?: string | null;
   dueDate?: string | null;

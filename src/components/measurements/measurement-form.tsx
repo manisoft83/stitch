@@ -20,24 +20,30 @@ import { Ruler } from "lucide-react";
 import { measurementFormSchema, type MeasurementFormValues } from "@/lib/schemas";
 import { useEffect } from "react";
 
-
+// MeasurementFormValues already includes 'name' for the profile name.
 interface MeasurementFormProps {
-  initialValues?: Partial<MeasurementFormValues & { name?: string }>; // name is profileName
-  onSave?: (data: MeasurementFormValues & { name?: string }) => void;
+  initialValues?: Partial<MeasurementFormValues>; // Standardized to MeasurementFormValues
+  onSave?: (data: MeasurementFormValues) => void;   // Standardized to MeasurementFormValues
 }
 
 export function MeasurementForm({ initialValues, onSave }: MeasurementFormProps) {
   const { toast } = useToast();
-  const form = useForm<MeasurementFormValues & { name?: string }>({ // Allow name (profileName)
+  const form = useForm<MeasurementFormValues>({ // Form data type is MeasurementFormValues
     resolver: zodResolver(measurementFormSchema),
-    defaultValues: initialValues || {},
+    defaultValues: initialValues || { // Default values if none provided
+      name: '',
+      bust: undefined,
+      waist: undefined,
+      hips: undefined,
+      height: undefined,
+    },
     mode: "onChange",
   });
 
   useEffect(() => {
     if (initialValues) {
       form.reset({
-        name: initialValues.name || '', // profileName maps to name in form
+        name: initialValues.name || '', // 'name' is the profile name field
         bust: initialValues.bust,
         waist: initialValues.waist,
         hips: initialValues.hips,
@@ -46,20 +52,15 @@ export function MeasurementForm({ initialValues, onSave }: MeasurementFormProps)
     }
   }, [initialValues, form]);
 
-  function onSubmit(data: MeasurementFormValues & { name?: string }) {
-    const submittedData = {
-        ...data,
-        name: data.name || undefined // Ensure 'name' is undefined if empty, not empty string
-    };
-
+  function onSubmit(data: MeasurementFormValues) { // data is MeasurementFormValues
     if (onSave) {
-      onSave(submittedData);
+      onSave(data); // Pass data directly
     } else {
       // Default behavior if not used in workflow
-      console.log("Measurement data:", submittedData);
+      console.log("Measurement data:", data);
       toast({
         title: "Measurements Saved!",
-        description: `Profile ${submittedData.name ? "'" + submittedData.name + "'" : ""} measurements have been saved.`,
+        description: `Profile ${data.name ? "'" + data.name + "'" : ""} measurements have been saved.`,
         variant: "default",
       });
     }
@@ -70,7 +71,7 @@ export function MeasurementForm({ initialValues, onSave }: MeasurementFormProps)
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}
-          name="name" // This is the 'profileName'
+          name="name" // This field is for the profile name
           render={({ field }) => (
             <FormItem>
               <FormLabel>Profile Name (Optional)</FormLabel>

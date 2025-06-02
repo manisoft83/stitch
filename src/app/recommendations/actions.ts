@@ -1,3 +1,4 @@
+
 "use server";
 
 import { generateStyleRecommendations, type StyleRecommendationsInput, type StyleRecommendationsOutput } from "@/ai/flows/generate-style-recommendations";
@@ -21,7 +22,14 @@ export async function generateStyleRecommendationsAction(
 
   if (!validatedInput.success) {
     console.error("Invalid input for recommendations:", validatedInput.error.flatten());
-    throw new Error(`Invalid input: ${validatedInput.error.flatten().fieldErrorsՃ}`);
+    // Corrected error message construction
+    const fieldErrors = validatedInput.error.flatten().fieldErrors;
+    const formErrors = validatedInput.error.flatten().formErrors;
+    let errorMessages = formErrors.join(', ');
+    if (Object.keys(fieldErrors).length > 0) {
+        errorMessages += (errorMessages ? '; ' : '') + JSON.stringify(fieldErrors);
+    }
+    throw new Error(`Invalid input: ${errorMessages || "Validation failed."}`);
   }
 
   try {
