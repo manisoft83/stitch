@@ -14,14 +14,16 @@ import { Calendar } from "@/components/ui/calendar";
 import { format, subDays, startOfDay, endOfDay, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { mockOrders, mockTailors, statusFilterOptions, type Order, type OrderStatus, type StatusFilterValue } from "@/lib/mockData";
+import { useAuth } from "@/hooks/use-auth";
 
 
 export default function OrdersPage() {
-  const [viewMode, setViewMode] = useState<"admin" | "tailor">("admin");
-  const [selectedTailorId, setSelectedTailorId] = useState<string | null>(null);
+  const auth = useAuth();
+  const [viewMode, setViewMode] = useState<"admin" | "tailor">("admin"); // Relevant for admin
+  const [selectedTailorId, setSelectedTailorId] = useState<string | null>(null); // Relevant for admin viewing as tailor
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]); 
 
-  const [adminTailorFilterId, setAdminTailorFilterId] = useState<string | "all">("all");
+  const [adminTailorFilterId, setAdminTailorFilterId] = useState<string | "all">("all"); // Admin's specific filter for a tailor
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("active_default");
   const [customerNameFilter, setCustomerNameFilter] = useState<string>("");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({ from: undefined, to: undefined });
@@ -31,20 +33,33 @@ export default function OrdersPage() {
 
 
   useEffect(() => {
+    const { role, tailorId: loggedInUserTailorId } = auth;
     let tempOrders = [...mockOrders];
 
-    // 1. View Mode primary filtering
-    if (viewMode === 'admin') {
-      if (adminTailorFilterId !== "all") {
-        tempOrders = tempOrders.filter(order => order.assignedTailorId === adminTailorFilterId);
+    // Primary filtering based on user role
+    if (role === 'tailor' && loggedInUserTailorId) {
+      // Tailor view: Filter by their own ID. UI for other tailor selections is hidden.
+      tempOrders = tempOrders.filter(order => order.assignedTailorId === loggedInUserTailorId);
+    } else if (role === 'admin') {
+      // Admin view: Respects the admin's UI choices for filtering
+      if (viewMode === 'admin') { // Admin is viewing as "admin" (can see all or filter by one tailor)
+        if (adminTailorFilterId !== "all") {
+          tempOrders = tempOrders.filter(order => order.assignedTailorId === adminTailorFilterId);
+        }
+        // If adminTailorFilterId is "all", admin sees all orders (subject to other filters below)
+      } else if (viewMode === 'tailor') { // Admin selected to view *as* a specific tailor
+        if (selectedTailorId) { // This selectedTailorId is from the admin's dropdown choice
+          tempOrders = tempOrders.filter(order => order.assignedTailorId === selectedTailorId);
+        } else {
+          // Admin selected "Tailor View" but hasn't picked a tailor yet
+          tempOrders = []; 
+        }
       }
-    } else { // viewMode === 'tailor'
-      if (selectedTailorId) {
-        tempOrders = tempOrders.filter(order => order.assignedTailorId === selectedTailorId);
-      } else {
-        tempOrders = []; 
-      }
+    } else {
+      // Not logged in or role not determined (AuthProvider should handle this for non-login pages)
+      tempOrders = [];
     }
+
 
     // 2. Status Filter
     if (statusFilter === "active_default") {
@@ -80,10 +95,16 @@ export default function OrdersPage() {
       });
     }
 
+    const previousFilteredOrdersCount = filteredOrders.length;
     setFilteredOrders(tempOrders);
-    setCurrentPage(1); 
 
-  }, [viewMode, selectedTailorId, adminTailorFilterId, statusFilter, customerNameFilter, dateRange]);
+    // Reset to page 1 if the dataset has significantly changed or if current page is invalid
+    if (tempOrders.length !== previousFilteredOrdersCount || currentPage > Math.ceil(tempOrders.length / ordersPerPage)) {
+        setCurrentPage(1);
+    }
+
+
+  }, [auth, viewMode, selectedTailorId, adminTailorFilterId, statusFilter, customerNameFilter, dateRange, filteredOrders.length, currentPage, ordersPerPage]);
 
 
   const getStatusBadgeColor = (status: OrderStatus) => {
@@ -118,64 +139,71 @@ export default function OrdersPage() {
 
       <Card className="mb-6 shadow-md">
         <CardHeader>
-          <CardTitle className="text-lg flex items-center"><Filter className="mr-2 h-5 w-5 text-primary"/>Filter &amp; View Options</CardTitle>
+          <CardTitle className="text-lg flex items-center">
+            <Filter className="mr-2 h-5 w-5 text-primary"/>
+            {auth.role === 'admin' ? "Filter & View Options" : "Filter Your Orders"}
+            </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
-          <div>
-            <label htmlFor="viewModeSelect" className="block text-sm font-medium text-muted-foreground mb-1">View Mode</label>
-            <Select 
-              value={viewMode} 
-              onValueChange={(value: "admin" | "tailor") => {
-                setViewMode(value);
-                if (value === "admin") {
-                    setSelectedTailorId(null); 
-                } else {
-                     setAdminTailorFilterId("all"); 
-                }
-              }}
-            >
-              <SelectTrigger id="viewModeSelect" className="w-full">
-                <SelectValue placeholder="Select View Mode" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin"><UserCog className="mr-2 h-4 w-4 inline-block"/>Admin View</SelectItem>
-                <SelectItem value="tailor"><Users className="mr-2 h-4 w-4 inline-block"/>Tailor View</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {auth.role === 'admin' && (
+            <>
+              <div>
+                <label htmlFor="viewModeSelect" className="block text-sm font-medium text-muted-foreground mb-1">View Mode</label>
+                <Select 
+                  value={viewMode} 
+                  onValueChange={(value: "admin" | "tailor") => {
+                    setViewMode(value);
+                    if (value === "admin") {
+                        setSelectedTailorId(null); 
+                    } else {
+                        setAdminTailorFilterId("all"); 
+                    }
+                  }}
+                >
+                  <SelectTrigger id="viewModeSelect" className="w-full">
+                    <SelectValue placeholder="Select View Mode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin"><UserCog className="mr-2 h-4 w-4 inline-block"/>Admin View</SelectItem>
+                    <SelectItem value="tailor"><Users className="mr-2 h-4 w-4 inline-block"/>Tailor View</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          {viewMode === 'tailor' && (
-            <div>
-              <label htmlFor="tailorSelect" className="block text-sm font-medium text-muted-foreground mb-1">Select Your Tailor Profile</label>
-              <Select value={selectedTailorId || ""} onValueChange={(value) => setSelectedTailorId(value || null)}>
-                <SelectTrigger id="tailorSelect" className="w-full">
-                  <SelectValue placeholder="Select Tailor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">None</SelectItem>
-                  {mockTailors.map(tailor => (
-                    <SelectItem key={tailor.id} value={tailor.id}>{tailor.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+              {viewMode === 'tailor' && (
+                <div>
+                  <label htmlFor="tailorSelect" className="block text-sm font-medium text-muted-foreground mb-1">Select Tailor Profile (Admin)</label>
+                  <Select value={selectedTailorId || ""} onValueChange={(value) => setSelectedTailorId(value || null)}>
+                    <SelectTrigger id="tailorSelect" className="w-full">
+                      <SelectValue placeholder="Select Tailor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {mockTailors.map(tailor => (
+                        <SelectItem key={tailor.id} value={tailor.id}>{tailor.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-          {viewMode === 'admin' && (
-             <div>
-              <label htmlFor="adminTailorFilter" className="block text-sm font-medium text-muted-foreground mb-1">Filter by Tailor (Admin)</label>
-              <Select value={adminTailorFilterId} onValueChange={(value: string) => setAdminTailorFilterId(value as string | "all")}>
-                <SelectTrigger id="adminTailorFilter" className="w-full">
-                  <SelectValue placeholder="Filter by Tailor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Tailors</SelectItem>
-                  {mockTailors.map(tailor => (
-                    <SelectItem key={tailor.id} value={tailor.id}>{tailor.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              {viewMode === 'admin' && (
+                <div>
+                  <label htmlFor="adminTailorFilter" className="block text-sm font-medium text-muted-foreground mb-1">Filter by Tailor (Admin)</label>
+                  <Select value={adminTailorFilterId} onValueChange={(value: string) => setAdminTailorFilterId(value as string | "all")}>
+                    <SelectTrigger id="adminTailorFilter" className="w-full">
+                      <SelectValue placeholder="Filter by Tailor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Tailors</SelectItem>
+                      {mockTailors.map(tailor => (
+                        <SelectItem key={tailor.id} value={tailor.id}>{tailor.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </>
           )}
           
           <div>
@@ -275,17 +303,19 @@ export default function OrdersPage() {
         <Card className="text-center py-12 shadow-lg">
           <CardHeader>
             <CardTitle>
-              {viewMode === 'tailor' && !selectedTailorId 
+              {auth.role === 'admin' && viewMode === 'tailor' && !selectedTailorId 
                 ? "Select a Tailor" 
                 : "No Orders Found"}
             </CardTitle>
             <CardDescription>
-              {viewMode === 'tailor' && !selectedTailorId
+              {auth.role === 'tailor' 
+                ? "You have no orders matching the current filter criteria." 
+                : auth.role === 'admin' && viewMode === 'tailor' && !selectedTailorId
                 ? "Please select a tailor to view their assigned orders."
                 : "There are no orders matching the current filter criteria. Try adjusting filters or clearing the date range."}
             </CardDescription>
           </CardHeader>
-          { (viewMode === 'admin' || (viewMode === 'tailor' && selectedTailorId)) && (
+          { (auth.role === 'admin' || (auth.role === 'tailor' && auth.tailorId)) && (
              filteredOrders.length === 0 && ( 
                 <CardContent>
                 <Button asChild size="lg">
@@ -383,3 +413,4 @@ export default function OrdersPage() {
     </div>
   );
 }
+
