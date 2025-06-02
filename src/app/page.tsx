@@ -1,32 +1,18 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Palette, Ruler, Wand2, ShoppingCart, Users, PackageSearch } from "lucide-react";
+import { Palette, ShoppingCart } from "lucide-react"; // Removed Ruler, Wand2, Users, PackageSearch as their cards are removed or roles covered
 import Image from "next/image";
 import Link from "next/link";
 
 export default function HomePage() {
   const features = [
     {
-      icon: <Ruler className="h-10 w-10 text-primary" />,
-      title: "Precise Measurements",
-      description: "Input your measurements for a perfect fit. Our guides ensure accuracy.",
-      link: "/measurements", // Can also be part of the new workflow
-      actionText: "Enter Measurements",
-    },
-    {
       icon: <Palette className="h-10 w-10 text-primary" />,
-      title: "Custom Design Studio",
-      description: "Unleash your creativity. Choose fabrics, colors, and styles.",
-      link: "/workflow/customer-step", // Changed to new workflow
-      actionText: "Design Now",
-    },
-    {
-      icon: <Wand2 className="h-10 w-10 text-primary" />,
-      title: "AI Style Advisor",
-      description: "Get personalized style recommendations based on your profile.",
-      link: "/recommendations",
-      actionText: "Get Style Advice",
+      title: "Place Order",
+      description: "Unleash your creativity. Input customer details, measurements, choose fabrics, colors, and styles.",
+      link: "/workflow/customer-step",
+      actionText: "Start New Order",
     },
     {
       icon: <ShoppingCart className="h-10 w-10 text-primary" />,
@@ -49,15 +35,16 @@ export default function HomePage() {
                   StitchStyle: Your Vision, Perfectly Tailored.
                 </h1>
                 <p className="max-w-[600px] text-foreground/80 md:text-xl dark:text-foreground/70">
-                  Design unique women's clothing that fits you flawlessly. Input your measurements, customize your style, and let our AI assist you.
+                  Design unique women's clothing that fits you flawlessly. Input your measurements, customize your style, and manage your orders.
                 </p>
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
                 <Button asChild size="lg" className="shadow-md hover:shadow-lg transition-shadow">
-                  <Link href="/workflow/customer-step">Start Designing</Link>
+                  <Link href="/workflow/customer-step">Place New Order</Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="shadow-md hover:shadow-lg transition-shadow">
-                  <Link href="/recommendations">Get Recommendations</Link>
+                {/* Secondary button can be for "Learn More" or "View Orders" if desired */}
+                 <Button asChild variant="outline" size="lg" className="shadow-md hover:shadow-lg transition-shadow">
+                  <Link href="/orders">View Orders</Link>
                 </Button>
               </div>
             </div>
@@ -85,11 +72,11 @@ export default function HomePage() {
                 Craft Your Unique Style
               </h2>
               <p className="max-w-[900px] text-foreground/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-foreground/70">
-                From precise measurements to AI-powered style advice, StitchStyle offers everything you need to create clothing that's uniquely yours.
+                From precise measurements to custom designs, StitchStyle offers everything you need to create clothing that's uniquely yours.
               </p>
             </div>
           </div>
-          <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-2 lg:max-w-none xl:grid-cols-4 pt-12">
+          <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-1 md:gap-12 lg:grid-cols-2 lg:max-w-none xl:grid-cols-2 pt-12"> {/* Adjusted grid for 2 features */}
             {features.map((feature) => (
               <Card key={feature.title} className="shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col">
                 <CardHeader className="items-center">
@@ -123,7 +110,7 @@ export default function HomePage() {
           </div>
           <div className="mx-auto w-full max-w-sm space-y-2">
             <Button asChild size="lg" className="w-full shadow-md hover:shadow-lg transition-shadow">
-              <Link href="/workflow/customer-step">Get Started Now</Link>
+              <Link href="/workflow/customer-step">Place New Order</Link>
             </Button>
           </div>
         </div>
