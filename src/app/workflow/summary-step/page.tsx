@@ -1,0 +1,210 @@
+
+"use client";
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useOrderWorkflow, type DesignDetails } from '@/contexts/order-workflow-context';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { mockOrders, type Order, mockCustomers } from '@/lib/mockData'; // Import mockOrders and Order type
+import { format } from 'date-fns';
+import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info } from 'lucide-react';
+
+// Re-defining these here for simplicity, or they could be imported if centralized
+// These should match the options in DesignTool.tsx
+const fabricOptions = [
+  { id: 'cotton', name: 'Cotton' },
+  { id: 'silk', name: 'Silk' },
+  { id: 'linen', name: 'Linen' },
+  { id: 'wool', name: 'Wool' },
+];
+
+const colorOptions = [
+  { id: 'red', name: 'Red', hex: '#FF0000' },
+  { id: 'blue', name: 'Blue', hex: '#0000FF' },
+  { id: 'green', name: 'Green', hex: '#00FF00' },
+  { id: 'black', name: 'Black', hex: '#000000' },
+  { id: 'white', name: 'White', hex: '#FFFFFF' },
+];
+
+const styleOptions = [
+  { id: 'a-line-dress', name: 'A-Line Dress' },
+  { id: 'fitted-blouse', name: 'Fitted Blouse' },
+  { id: 'wide-leg-trousers', name: 'Wide-Leg Trousers' },
+  { id: 'pencil-skirt', name: 'Pencil Skirt' },
+];
+
+
+export default function SummaryStepPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const { currentCustomer, currentMeasurements, currentDesign, resetWorkflow } = useOrderWorkflow();
+
+  useEffect(() => {
+    if (!currentCustomer) {
+      toast({ title: "Missing Customer", description: "Please start from the customer step.", variant: "destructive" });
+      router.replace('/workflow/customer-step');
+    } else if (!currentMeasurements) {
+      toast({ title: "Missing Measurements", description: "Please complete the measurement step.", variant: "destructive" });
+      router.replace('/workflow/measurement-step');
+    } else if (!currentDesign) {
+      toast({ title: "Missing Design", description: "Please complete the design step.", variant: "destructive" });
+      router.replace('/workflow/design-step');
+    }
+  }, [currentCustomer, currentMeasurements, currentDesign, router, toast]);
+
+  const getDetailName = (id: string | null, options: Array<{id: string, name: string}>): string => {
+    if (!id) return 'Not selected';
+    return options.find(opt => opt.id === id)?.name || 'Unknown';
+  };
+
+  const handleConfirmOrder = () => {
+    if (!currentCustomer || !currentMeasurements || !currentDesign) {
+      toast({ title: "Error", description: "Missing order information.", variant: "destructive" });
+      return;
+    }
+
+    const newOrderId = `ORD${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 100)}`;
+    const itemsOrdered = [
+        `${getDetailName(currentDesign.style, styleOptions)} (${getDetailName(currentDesign.fabric, fabricOptions)}, ${getDetailName(currentDesign.color, colorOptions)})`
+    ];
+    if (currentDesign.notes) {
+        itemsOrdered.push(`Notes: ${currentDesign.notes.substring(0,30)}...`);
+    }
+
+
+    const newOrder: Order = {
+      id: newOrderId,
+      date: format(new Date(), "yyyy-MM-dd"),
+      status: "Pending Assignment", // Default status for new orders
+      total: "$0.00", // Mock total, could be calculated based on design
+      items: itemsOrdered,
+      customerId: currentCustomer.id,
+      customerName: currentCustomer.name,
+      assignedTailorId: null,
+      assignedTailorName: null,
+      dueDate: null, // To be set upon assignment
+      shippingAddress: { // Mock shipping address, could be part of customer profile
+        street: "123 Workflow Ln",
+        city: "Context City",
+        zipCode: "98765",
+        country: "USA",
+      },
+      notes: `Design Notes: ${currentDesign.notes || 'N/A'}
+Measurements Profile: ${currentMeasurements.name || 'Default'}
+Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${currentMeasurements.hips}, Height: ${currentMeasurements.height}`,
+    };
+
+    mockOrders.unshift(newOrder); // Add to the beginning of the array for visibility
+
+    // Persist updated measurements to the mock customer data if they made changes
+    const customerIndex = mockCustomers.findIndex(c => c.id === currentCustomer.id);
+    if (customerIndex !== -1) {
+        mockCustomers[customerIndex] = {
+            ...mockCustomers[customerIndex],
+            measurements: currentMeasurements,
+        };
+    }
+
+
+    toast({
+      title: "Order Placed!",
+      description: `Your order #${newOrderId} has been successfully submitted.`,
+      variant: "default",
+    });
+
+    resetWorkflow();
+    router.push('/orders');
+  };
+
+  if (!currentCustomer || !currentMeasurements || !currentDesign) {
+    return (
+      <div className="container mx-auto py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
+        <p>Loading workflow state or redirecting...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-8">
+      <Card className="max-w-3xl mx-auto shadow-xl">
+        <CardHeader>
+          <div className="flex items-center gap-2 mb-1">
+            <CheckCircle className="h-7 w-7 text-primary" />
+            <CardTitle className="text-2xl font-bold text-primary">Order Summary & Confirmation</CardTitle>
+          </div>
+          <CardDescription>
+            Please review all details before placing your custom order for {currentCustomer.name}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Customer Details */}
+          <Card className="bg-muted/30">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2"><User className="h-5 w-5 text-primary"/>Customer Details</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm space-y-1">
+              <p><strong>Name:</strong> {currentCustomer.name}</p>
+              <p><strong>Email:</strong> {currentCustomer.email}</p>
+              <p><strong>Phone:</strong> {currentCustomer.phone}</p>
+            </CardContent>
+          </Card>
+          
+          <Separator />
+
+          {/* Measurement Details */}
+          <Card className="bg-muted/30">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2"><Ruler className="h-5 w-5 text-primary"/>Measurement Profile: {currentMeasurements.name || "Default"}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm space-y-1">
+              <p><strong>Bust:</strong> {currentMeasurements.bust} inches</p>
+              <p><strong>Waist:</strong> {currentMeasurements.waist} inches</p>
+              <p><strong>Hips:</strong> {currentMeasurements.hips} inches</p>
+              <p><strong>Height:</strong> {currentMeasurements.height} inches</p>
+            </CardContent>
+          </Card>
+
+          <Separator />
+
+          {/* Design Details */}
+          <Card className="bg-muted/30">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2"><Palette className="h-5 w-5 text-primary"/>Design Specifications</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm space-y-1">
+              <p><strong>Style:</strong> {getDetailName(currentDesign.style, styleOptions)}</p>
+              <p><strong>Fabric:</strong> {getDetailName(currentDesign.fabric, fabricOptions)}</p>
+              <p><strong>Color:</strong> {getDetailName(currentDesign.color, colorOptions)}</p>
+              {currentDesign.notes && <p><strong>Notes:</strong> <span className="whitespace-pre-wrap">{currentDesign.notes}</span></p>}
+            </CardContent>
+          </Card>
+
+          <Separator />
+           <Card className="border-primary/50 bg-primary/5">
+             <CardHeader>
+                <CardTitle className="text-md flex items-center gap-2"><Info className="h-5 w-5 text-primary"/>Next Steps</CardTitle>
+             </CardHeader>
+             <CardContent className="text-sm">
+                <p>Upon confirmation, your order will be submitted and will appear in "My Orders". It will then await assignment to one of our skilled tailors. You can track its progress from there.</p>
+                <p className="mt-2 text-xs text-muted-foreground">Note: This is a prototype. Order placement is simulated and payment is not processed.</p>
+             </CardContent>
+           </Card>
+
+
+        </CardContent>
+        <CardFooter className="flex flex-col sm:flex-row justify-between gap-3">
+          <Button variant="outline" onClick={() => router.push('/workflow/design-step')} className="w-full sm:w-auto">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Design
+          </Button>
+          <Button onClick={handleConfirmOrder} className="w-full sm:w-auto shadow-md hover:shadow-lg">
+            <CheckCircle className="mr-2 h-4 w-4" /> Confirm & Place Order
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}
+
