@@ -12,10 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Shuffle, ImageIcon, Ruler } from "lucide-react"; 
+import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Shuffle, ImageIcon, Ruler, Palette } from "lucide-react"; 
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
-import { useOrderWorkflow } from '@/contexts/order-workflow-context'; // Import workflow context
+import { useOrderWorkflow, type DesignDetails } from '@/contexts/order-workflow-context'; 
 
 // Helper to get status badge color
 const getStatusBadgeColor = (status: OrderStatus | undefined) => {
@@ -40,7 +40,13 @@ export default function OrderDetailsPage() {
 
   const [currentOrder, setCurrentOrder] = useState<Order | null | undefined>(undefined);
   const [customerForOrder, setCustomerForOrder] = useState<Customer | null>(null);
-  const { setCustomer, setMeasurements, setWorkflowReturnPath } = useOrderWorkflow();
+  const { 
+    setCustomer, 
+    setMeasurements, 
+    setDesign, 
+    setWorkflowReturnPath, 
+    setEditingOrderId 
+  } = useOrderWorkflow();
 
 
   useEffect(() => {
@@ -79,9 +85,10 @@ export default function OrderDetailsPage() {
   };
 
   const handleEditMeasurements = () => {
-    if (customerForOrder) {
+    if (customerForOrder && currentOrder) {
       setCustomer(customerForOrder);
       setMeasurements(customerForOrder.measurements || null);
+      setEditingOrderId(null); // Not editing an order's design, just customer measurements
       setWorkflowReturnPath(`/orders/${currentOrder.id}`);
       router.push('/workflow/measurement-step');
     } else {
@@ -92,6 +99,42 @@ export default function OrderDetailsPage() {
         });
     }
   };
+
+  const handleEditDesign = () => {
+    if (customerForOrder && currentOrder) {
+      setCustomer(customerForOrder);
+      setMeasurements(customerForOrder.measurements || null);
+      
+      // Pre-fill design context
+      let designNotes = '';
+      if (currentOrder.notes) {
+        const notesMatch = currentOrder.notes.match(/Design Notes: ([\s\S]*?)(?=\nMeasurements Profile:|$)/);
+        if (notesMatch && notesMatch[1]) {
+            designNotes = notesMatch[1].trim() === 'N/A' ? '' : notesMatch[1].trim();
+        }
+      }
+
+      const designToEdit: DesignDetails = {
+        fabric: null, // Style, fabric, color will be re-selected in DesignTool
+        color: null,
+        style: null,
+        notes: designNotes,
+        referenceImages: currentOrder.referenceImageUrls || [],
+      };
+      setDesign(designToEdit);
+      setEditingOrderId(currentOrder.id);
+      setWorkflowReturnPath(`/orders/${currentOrder.id}`);
+      router.push('/workflow/design-step');
+
+    } else {
+       toast({
+            title: "Order or Customer Not Found",
+            description: "Could not load details to edit design.",
+            variant: "destructive"
+        });
+    }
+  };
+
 
   return (
     <div className="container mx-auto py-8">
@@ -173,7 +216,12 @@ export default function OrderDetailsPage() {
 
 
           <div>
-            <h3 className="text-lg font-semibold mb-2 flex items-center"><Tag className="mr-2 h-5 w-5 text-primary" />Items Ordered</h3>
+            <div className="flex justify-between items-center mb-2">
+                <h3 className="text-lg font-semibold flex items-center"><Tag className="mr-2 h-5 w-5 text-primary" />Items Ordered</h3>
+                 <Button variant="outline" size="sm" onClick={handleEditDesign}>
+                    <Palette className="mr-2 h-4 w-4" /> Edit Design / Items
+                </Button>
+            </div>
             <ul className="space-y-1 list-disc list-inside pl-2">
               {currentOrder.items.map((item, index) => (
                 <li key={index} className="text-sm">{item}</li>
@@ -185,7 +233,10 @@ export default function OrderDetailsPage() {
             <>
               <Separator />
               <div>
-                <h3 className="text-lg font-semibold mb-2 flex items-center"><ImageIcon className="mr-2 h-5 w-5 text-primary" />Reference Images</h3>
+                 <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold flex items-center"><ImageIcon className="mr-2 h-5 w-5 text-primary" />Reference Images</h3>
+                    {/* The "Edit Design / Items" button above also covers editing images */}
+                 </div>
                 <div className="flex flex-wrap gap-3 mt-2">
                     {currentOrder.referenceImageUrls.map((src, index) => (
                         <Image

@@ -20,6 +20,7 @@ interface OrderWorkflowState {
   currentMeasurements: MeasurementFormValues | null;
   currentDesign: DesignDetails | null;
   workflowReturnPath: string | null; // Path to return to after a sub-workflow
+  editingOrderId: string | null; // ID of the order being edited
 }
 
 interface OrderWorkflowContextType extends OrderWorkflowState {
@@ -27,6 +28,7 @@ interface OrderWorkflowContextType extends OrderWorkflowState {
   setMeasurements: (measurements: MeasurementFormValues | null) => void;
   setDesign: (design: DesignDetails | null) => void;
   setWorkflowReturnPath: (path: string | null) => void;
+  setEditingOrderId: (orderId: string | null) => void;
   resetWorkflow: () => void;
 }
 
@@ -35,8 +37,15 @@ const OrderWorkflowContext = createContext<OrderWorkflowContextType | undefined>
 const initialState: OrderWorkflowState = {
   currentCustomer: null,
   currentMeasurements: null,
-  currentDesign: null,
+  currentDesign: { // Initialize currentDesign to avoid issues with undefined
+    fabric: null,
+    color: null,
+    style: null,
+    notes: '',
+    referenceImages: [],
+  },
   workflowReturnPath: null,
+  editingOrderId: null,
 };
 
 export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
@@ -46,8 +55,9 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
     setWorkflowState(prevState => ({
       ...prevState,
       currentCustomer: customer,
-      currentMeasurements: customer?.measurements || null,
-      currentDesign: prevState.currentCustomer?.id === customer?.id ? prevState.currentDesign : null,
+      // If customer changes, reset measurements and design unless it's the same customer
+      currentMeasurements: customer?.id === prevState.currentCustomer?.id ? prevState.currentMeasurements : (customer?.measurements || null),
+      currentDesign: customer?.id === prevState.currentCustomer?.id ? prevState.currentDesign : initialState.currentDesign,
     }));
   }, []);
 
@@ -56,11 +66,15 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setDesign = useCallback((design: DesignDetails | null) => {
-    setWorkflowState(prevState => ({ ...prevState, currentDesign: design }));
+    setWorkflowState(prevState => ({ ...prevState, currentDesign: design || initialState.currentDesign }));
   }, []);
 
   const setWorkflowReturnPath = useCallback((path: string | null) => {
     setWorkflowState(prevState => ({ ...prevState, workflowReturnPath: path }));
+  }, []);
+
+  const setEditingOrderId = useCallback((orderId: string | null) => {
+    setWorkflowState(prevState => ({ ...prevState, editingOrderId: orderId }));
   }, []);
 
   const resetWorkflow = useCallback(() => {
@@ -73,6 +87,7 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
     setMeasurements,
     setDesign,
     setWorkflowReturnPath,
+    setEditingOrderId,
     resetWorkflow,
   };
 
@@ -90,4 +105,3 @@ export function useOrderWorkflow() {
   }
   return context;
 }
-

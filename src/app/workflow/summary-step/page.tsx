@@ -39,7 +39,14 @@ const styleOptions = [
 export default function SummaryStepPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { currentCustomer, currentMeasurements, currentDesign, resetWorkflow } = useOrderWorkflow();
+  const { 
+    currentCustomer, 
+    currentMeasurements, 
+    currentDesign, 
+    resetWorkflow,
+    editingOrderId, // Get editingOrderId from context
+    workflowReturnPath // Get workflowReturnPath from context
+  } = useOrderWorkflow();
 
   useEffect(() => {
     if (!currentCustomer) {
@@ -65,7 +72,6 @@ export default function SummaryStepPage() {
       return;
     }
 
-    const newOrderId = `ORD${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 100)}`;
     const itemsOrdered = [
         `${getDetailName(currentDesign.style, styleOptions)} (${getDetailName(currentDesign.fabric, fabricOptions)}, ${getDetailName(currentDesign.color, colorOptions)})`
     ];
@@ -78,46 +84,68 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
         orderNotes += `\nReference Images: ${currentDesign.referenceImages.length} provided.`;
     }
 
+    if (editingOrderId) {
+        // Update existing order
+        const orderIndex = mockOrders.findIndex(o => o.id === editingOrderId);
+        if (orderIndex !== -1) {
+            mockOrders[orderIndex] = {
+                ...mockOrders[orderIndex],
+                items: itemsOrdered,
+                notes: orderNotes,
+                referenceImageUrls: currentDesign.referenceImages || [],
+                // Optionally update other fields like date if modification date is relevant
+                // date: format(new Date(), "yyyy-MM-dd"), 
+            };
+             toast({
+                title: "Order Updated!",
+                description: `Order #${editingOrderId} has been successfully updated.`,
+            });
+        } else {
+            toast({ title: "Error", description: `Could not find order #${editingOrderId} to update.`, variant: "destructive" });
+            return;
+        }
+    } else {
+        // Create new order
+        const newOrderId = `ORD${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 100)}`;
+        const newOrder: Order = {
+          id: newOrderId,
+          date: format(new Date(), "yyyy-MM-dd"),
+          status: "Pending Assignment",
+          total: "$0.00", // Mock total
+          items: itemsOrdered,
+          customerId: currentCustomer.id,
+          customerName: currentCustomer.name,
+          assignedTailorId: null,
+          assignedTailorName: null,
+          dueDate: null,
+          shippingAddress: { // Mock shipping address
+            street: "123 Workflow Ln",
+            city: "Context City",
+            zipCode: "98765",
+            country: "USA",
+          },
+          notes: orderNotes,
+          referenceImageUrls: currentDesign.referenceImages || [],
+        };
+        mockOrders.unshift(newOrder);
+        toast({
+            title: "Order Placed!",
+            description: `Your order #${newOrderId} has been successfully submitted.`,
+        });
+    }
 
-    const newOrder: Order = {
-      id: newOrderId,
-      date: format(new Date(), "yyyy-MM-dd"),
-      status: "Pending Assignment",
-      total: "$0.00", // Mock total
-      items: itemsOrdered,
-      customerId: currentCustomer.id,
-      customerName: currentCustomer.name,
-      assignedTailorId: null,
-      assignedTailorName: null,
-      dueDate: null,
-      shippingAddress: { // Mock shipping address
-        street: "123 Workflow Ln",
-        city: "Context City",
-        zipCode: "98765",
-        country: "USA",
-      },
-      notes: orderNotes,
-      referenceImageUrls: currentDesign.referenceImages || [], // Save the image URLs
-    };
 
-    mockOrders.unshift(newOrder);
-
+    // Update customer's measurements in mockCustomers if they were part of this workflow
     const customerIndex = mockCustomers.findIndex(c => c.id === currentCustomer.id);
     if (customerIndex !== -1) {
         mockCustomers[customerIndex] = {
             ...mockCustomers[customerIndex],
-            measurements: currentMeasurements,
+            measurements: currentMeasurements, // Save potentially updated measurements
         };
     }
 
-    toast({
-      title: "Order Placed!",
-      description: `Your order #${newOrderId} has been successfully submitted.`,
-      variant: "default",
-    });
-
-    resetWorkflow();
-    router.push('/orders');
+    resetWorkflow(); // This will clear editingOrderId and workflowReturnPath
+    router.push(workflowReturnPath || '/orders'); // Navigate to return path or default to orders
   };
 
   if (!currentCustomer || !currentMeasurements || !currentDesign) {
@@ -134,10 +162,12 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
         <CardHeader>
           <div className="flex items-center gap-2 mb-1">
             <CheckCircle className="h-7 w-7 text-primary" />
-            <CardTitle className="text-2xl font-bold text-primary">Order Summary & Confirmation</CardTitle>
+            <CardTitle className="text-2xl font-bold text-primary">
+              {editingOrderId ? `Review Updated Order #${editingOrderId}` : "Order Summary & Confirmation"}
+            </CardTitle>
           </div>
           <CardDescription>
-            Please review all details before placing your custom order for {currentCustomer.name}.
+            Please review all details before {editingOrderId ? "updating" : "placing"} your custom order for {currentCustomer.name}.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -205,8 +235,11 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
                 <CardTitle className="text-md flex items-center gap-2"><Info className="h-5 w-5 text-primary"/>Next Steps</CardTitle>
              </CardHeader>
              <CardContent className="text-sm">
-                <p>Upon confirmation, your order will be submitted and will appear in "My Orders". It will then await assignment to one of our skilled tailors. You can track its progress from there.</p>
-                <p className="mt-2 text-xs text-muted-foreground">Note: This is a prototype. Order placement is simulated and payment is not processed.</p>
+                <p>
+                  Upon confirmation, your order will be {editingOrderId ? "updated" : "submitted and will appear in 'My Orders'"}.
+                  {editingOrderId ? "" : " It will then await assignment to one of our skilled tailors."} You can track its progress from there.
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">Note: This is a prototype. Order {editingOrderId ? "updates are" : "placement is"} simulated and payment is not processed.</p>
              </CardContent>
            </Card>
         </CardContent>
@@ -215,7 +248,8 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Design
           </Button>
           <Button onClick={handleConfirmOrder} className="w-full sm:w-auto shadow-md hover:shadow-lg">
-            <CheckCircle className="mr-2 h-4 w-4" /> Confirm & Place Order
+            <CheckCircle className="mr-2 h-4 w-4" /> 
+            {editingOrderId ? "Confirm & Update Order" : "Confirm & Place Order"}
           </Button>
         </CardFooter>
       </Card>
