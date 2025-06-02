@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { mockOrders, type Order, mockCustomers } from '@/lib/mockData';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns'; // Added addDays
 import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon } from 'lucide-react';
 
 const fabricOptions = [
@@ -44,8 +44,8 @@ export default function SummaryStepPage() {
     currentMeasurements, 
     currentDesign, 
     resetWorkflow,
-    editingOrderId, // Get editingOrderId from context
-    workflowReturnPath // Get workflowReturnPath from context
+    editingOrderId, 
+    workflowReturnPath 
   } = useOrderWorkflow();
 
   useEffect(() => {
@@ -107,6 +107,8 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
     } else {
         // Create new order
         const newOrderId = `ORD${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 100)}`;
+        const defaultDueDate = format(addDays(new Date(), 5), "yyyy-MM-dd"); // Default due date: 5 days from now
+
         const newOrder: Order = {
           id: newOrderId,
           date: format(new Date(), "yyyy-MM-dd"),
@@ -117,7 +119,7 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
           customerName: currentCustomer.name,
           assignedTailorId: null,
           assignedTailorName: null,
-          dueDate: null,
+          dueDate: defaultDueDate, // Set default due date
           shippingAddress: { // Mock shipping address
             street: "123 Workflow Ln",
             city: "Context City",
@@ -238,6 +240,7 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
                 <p>
                   Upon confirmation, your order will be {editingOrderId ? "updated" : "submitted and will appear in 'My Orders'"}.
                   {editingOrderId ? "" : " It will then await assignment to one of our skilled tailors."} You can track its progress from there.
+                  {!editingOrderId && currentDesign && <span className="block mt-1">The estimated due date will be {format(addDays(new Date(), 5), "PPP")}.</span>}
                 </p>
                 <p className="mt-2 text-xs text-muted-foreground">Note: This is a prototype. Order {editingOrderId ? "updates are" : "placement is"} simulated and payment is not processed.</p>
              </CardContent>
@@ -256,3 +259,4 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
     </div>
   );
 }
+
