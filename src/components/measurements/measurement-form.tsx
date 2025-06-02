@@ -3,7 +3,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -17,48 +17,52 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Ruler } from "lucide-react";
+import { measurementFormSchema, type MeasurementFormValues } from "@/lib/schemas";
+import { useEffect } from "react";
 
-const measurementFormSchema = z.object({
-  name: z.string().min(2, {
-    message: "Profile name must be at least 2 characters.",
-  }).optional(),
-  bust: z.coerce.number().positive({ message: "Bust size must be a positive number." }),
-  waist: z.coerce.number().positive({ message: "Waist size must be a positive number." }),
-  hips: z.coerce.number().positive({ message: "Hip size must be a positive number." }),
-  height: z.coerce.number().positive({ message: "Height must be a positive number." }),
-  // Optional: Add more specific measurements based on tailoring needs
-  // shoulderWidth: z.coerce.number().positive().optional(),
-  // sleeveLength: z.coerce.number().positive().optional(),
-  // inseam: z.coerce.number().positive().optional(),
-});
 
-type MeasurementFormValues = z.infer<typeof measurementFormSchema>;
+interface MeasurementFormProps {
+  initialValues?: Partial<MeasurementFormValues & { name?: string }>; // name is profileName
+  onSave?: (data: MeasurementFormValues & { name?: string }) => void;
+}
 
-// Default values for the form
-const defaultValues: Partial<MeasurementFormValues> = {
-  // bust: 34,
-  // waist: 28,
-  // hips: 38,
-  // height: 65,
-};
-
-export function MeasurementForm() {
+export function MeasurementForm({ initialValues, onSave }: MeasurementFormProps) {
   const { toast } = useToast();
-  const form = useForm<MeasurementFormValues>({
+  const form = useForm<MeasurementFormValues & { name?: string }>({ // Allow name (profileName)
     resolver: zodResolver(measurementFormSchema),
-    defaultValues,
+    defaultValues: initialValues || {},
     mode: "onChange",
   });
 
-  function onSubmit(data: MeasurementFormValues) {
-    // TODO: Implement actual saving logic (e.g., API call, localStorage)
-    console.log("Measurement data:", data);
-    toast({
-      title: "Measurements Saved!",
-      description: `Profile ${data.name ? "'" + data.name + "'" : ""} measurements have been saved.`,
-      variant: "default",
-    });
-    // form.reset(); // Optionally reset form
+  useEffect(() => {
+    if (initialValues) {
+      form.reset({
+        name: initialValues.name || '', // profileName maps to name in form
+        bust: initialValues.bust,
+        waist: initialValues.waist,
+        hips: initialValues.hips,
+        height: initialValues.height,
+      });
+    }
+  }, [initialValues, form]);
+
+  function onSubmit(data: MeasurementFormValues & { name?: string }) {
+    const submittedData = {
+        ...data,
+        name: data.name || undefined // Ensure 'name' is undefined if empty, not empty string
+    };
+
+    if (onSave) {
+      onSave(submittedData);
+    } else {
+      // Default behavior if not used in workflow
+      console.log("Measurement data:", submittedData);
+      toast({
+        title: "Measurements Saved!",
+        description: `Profile ${submittedData.name ? "'" + submittedData.name + "'" : ""} measurements have been saved.`,
+        variant: "default",
+      });
+    }
   }
 
   return (
@@ -66,12 +70,12 @@ export function MeasurementForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}
-          name="name"
+          name="name" // This is the 'profileName'
           render={({ field }) => (
             <FormItem>
               <FormLabel>Profile Name (Optional)</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., My Casual Fit" {...field} />
+                <Input placeholder="e.g., My Casual Fit" {...field} value={field.value || ''} />
               </FormControl>
               <FormDescription>
                 Give this measurement set a name for easy recall.
@@ -143,32 +147,18 @@ export function MeasurementForm() {
                 <FormControl>
                   <Input type="number" placeholder="e.g., 65" {...field} />
                 </FormControl>
-                <FormDescription>Your total height without shoes. Stand straight.</FormDescription>
+                <FormDescription>Your total height without shoes. Stand straight.
+                <br />Tip: Stand against a wall for best results.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
         
-        {/* Example for additional measurements if uncommented in schema
-        <FormField
-          control={form.control}
-          name="shoulderWidth"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Shoulder Width (inches)</FormLabel>
-              <FormControl>
-                <Input type="number" placeholder="e.g., 15" {...field} />
-              </FormControl>
-              <FormDescription>Measure from one shoulder point to the other across your back.</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        */}
-
         <Button type="submit" className="w-full md:w-auto shadow-md hover:shadow-lg transition-shadow">
-          <Ruler className="mr-2 h-4 w-4" /> Save Measurements
+          <Ruler className="mr-2 h-4 w-4" />
+          {onSave ? "Save & Continue" : "Save Measurements"}
         </Button>
       </form>
     </Form>

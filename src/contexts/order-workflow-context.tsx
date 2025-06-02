@@ -8,7 +8,7 @@ import type { MeasurementFormValues } from '@/lib/schemas';
 
 interface OrderWorkflowState {
   currentCustomer: Customer | null;
-  currentMeasurements: (MeasurementFormValues & {profileName?: string}) | null; // Allow profileName
+  currentMeasurements: (MeasurementFormValues & {profileName?: string}) | null; 
 }
 
 interface OrderWorkflowContextType extends OrderWorkflowState {
@@ -28,7 +28,12 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
   const [workflowState, setWorkflowState] = useState<OrderWorkflowState>(initialState);
 
   const setCustomer = useCallback((customer: Customer | null) => {
-    setWorkflowState(prevState => ({ ...prevState, currentCustomer: customer, currentMeasurements: customer?.measurements || null }));
+    setWorkflowState(prevState => ({ 
+      ...prevState, 
+      currentCustomer: customer, 
+      // If customer exists and has measurements, load them. Otherwise, null.
+      currentMeasurements: customer?.measurements || null 
+    }));
   }, []);
 
   const setMeasurements = useCallback((measurements: (MeasurementFormValues & {profileName?: string}) | null) => {

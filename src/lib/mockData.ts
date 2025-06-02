@@ -9,11 +9,17 @@ export interface Customer {
   name: string;
   email: string;
   phone: string;
-  measurements?: MeasurementFormValues & { profileName?: string }; // Include profileName from original form
+  measurements?: (MeasurementFormValues & { profileName?: string }); // Customer can have saved measurements
 }
 
 export const mockCustomers: Customer[] = [
-  { id: "CUST001", name: "Eleanor Vance", email: "eleanor@example.com", phone: "555-0101" },
+  { 
+    id: "CUST001", 
+    name: "Eleanor Vance", 
+    email: "eleanor@example.com", 
+    phone: "555-0101",
+    measurements: { profileName: "Eleanor - Standard", bust: 34, waist: 28, hips: 38, height: 65 }
+  },
   { id: "CUST002", name: "Marcus Green", email: "marcus@example.com", phone: "555-0102" },
   { id: "CUST003", name: "Sarah Miller", email: "sarah@example.com", phone: "555-0103" },
 ];
@@ -61,29 +67,6 @@ export const mockOrders: Order[] = [
   },
   {
     id: "ORD101", date: format(subDays(new Date(), 1), "yyyy-MM-dd"), status: "Assigned", total: "$95.00",
-    items: ["Custom Silk Blouse"], customerId: "CUST001", customerName: "John Doe", // Assuming CUST001 is Eleanor, example mismatch
-    assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: format(addDays(new Date(), 12), "yyyy-MM-dd"),
-    shippingAddress: { street: "101 Design Dr", city: "Miami", zipCode: "33101", country: "USA" }
-  },
-   {
-    id: "ORD102", date: format(new Date(), "yyyy-MM-dd"), status: "Pending Assignment", total: "$150.00",
-    items: ["Evening Gown Alteration"], customerId: "CUST002", customerName: "Jane Smith", // Assuming CUST002 is Marcus
-    assignedTailorId: null, assignedTailorName: null, dueDate: null,
-    shippingAddress: { street: "202 Pattern Pl", city: "Houston", zipCode: "77001", country: "USA" }
-  },
-  {
-    id: "ORD104", date: format(subDays(new Date(), 5), "yyyy-MM-dd"), status: "Processing", total: "$180.00",
-    items: ["Summer Dress"], customerId: "CUST003", customerName: "Emily White", // Assuming CUST003 is Sarah
-    assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(addDays(new Date(), 8), "yyyy-MM-dd"),
-    shippingAddress: { street: "303 Fabric Fwy", city: "Phoenix", zipCode: "85001", country: "USA" }
-  },
-  // ... (rest of the mockOrders array, ensure customerId and customerName are consistent or derived)
-  // For brevity, I'll assume the rest are similarly updated.
-  // It's important that customerName in mockOrders matches the name of the customer with customerId.
-  // For example, if ORD101 has customerId "CUST001", its customerName should be "Eleanor Vance".
-  // I'll correct the example ones above.
-  {
-    id: "ORD101", date: format(subDays(new Date(), 1), "yyyy-MM-dd"), status: "Assigned", total: "$95.00",
     items: ["Custom Silk Blouse"], customerId: "CUST001", customerName: "Eleanor Vance",
     assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: format(addDays(new Date(), 12), "yyyy-MM-dd"),
     shippingAddress: { street: "101 Design Dr", city: "Miami", zipCode: "33101", country: "USA" }
@@ -124,7 +107,6 @@ export const mockOrders: Order[] = [
     assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(addDays(new Date(), 10), "yyyy-MM-dd"),
     shippingAddress: { street: "707 Couture Ct", city: "Dallas", zipCode: "75201", country: "USA" }
   },
-  // ... and so on for the rest of the mockOrders, ensuring customerId and customerName are consistent.
 ];
 
 
