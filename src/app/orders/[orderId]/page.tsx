@@ -4,17 +4,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image'; // Import Image
-import { mockOrders, type Order, allOrderStatuses, type OrderStatus } from '@/lib/mockData';
+import Image from 'next/image'; 
+import { mockOrders, type Order, allOrderStatuses, type OrderStatus, mockCustomers, type Customer } from '@/lib/mockData';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Shuffle, ImageIcon } from "lucide-react"; // Added ImageIcon
+import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Shuffle, ImageIcon, Ruler } from "lucide-react"; 
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
+import { useOrderWorkflow } from '@/contexts/order-workflow-context'; // Import workflow context
 
 // Helper to get status badge color
 const getStatusBadgeColor = (status: OrderStatus | undefined) => {
@@ -37,19 +38,23 @@ export default function OrderDetailsPage() {
   const { toast } = useToast();
   const orderId = params.orderId as string;
 
-  const [currentOrder, setCurrentOrder] = useState<Order | null | undefined>(undefined); // undefined initially, null if not found
+  const [currentOrder, setCurrentOrder] = useState<Order | null | undefined>(undefined);
+  const [customerForOrder, setCustomerForOrder] = useState<Customer | null>(null);
+  const { setCustomer, setMeasurements, setWorkflowReturnPath } = useOrderWorkflow();
+
 
   useEffect(() => {
     const foundOrder = mockOrders.find(o => o.id === orderId);
     if (foundOrder) {
       setCurrentOrder(foundOrder);
+      const foundCustomer = mockCustomers.find(c => c.id === foundOrder.customerId);
+      setCustomerForOrder(foundCustomer || null);
     } else {
-      setCurrentOrder(null); // Mark as not found
+      setCurrentOrder(null); 
     }
   }, [orderId]);
 
   if (currentOrder === undefined) {
-    // Still loading or orderId not processed yet
     return <div className="container mx-auto py-8 text-center">Loading order details...</div>;
   }
 
@@ -62,15 +67,29 @@ export default function OrderDetailsPage() {
 
     const orderIndex = mockOrders.findIndex(o => o.id === currentOrder.id);
     if (orderIndex !== -1) {
-      // Create a new object for the updated order to ensure React state updates correctly
       const updatedOrder = { ...mockOrders[orderIndex], status: newStatus };
-      mockOrders[orderIndex] = updatedOrder; // Update the mock data array
-      setCurrentOrder(updatedOrder); // Update local state to re-render
+      mockOrders[orderIndex] = updatedOrder; 
+      setCurrentOrder(updatedOrder);
 
       toast({
         title: "Order Status Updated",
         description: `Order #${currentOrder.id} status changed to ${newStatus}.`,
       });
+    }
+  };
+
+  const handleEditMeasurements = () => {
+    if (customerForOrder) {
+      setCustomer(customerForOrder);
+      setMeasurements(customerForOrder.measurements || null);
+      setWorkflowReturnPath(`/orders/${currentOrder.id}`);
+      router.push('/workflow/measurement-step');
+    } else {
+        toast({
+            title: "Customer Not Found",
+            description: "Could not find customer details to edit measurements.",
+            variant: "destructive"
+        });
     }
   };
 
@@ -130,6 +149,28 @@ export default function OrderDetailsPage() {
           </div>
           
           <Separator />
+
+          {customerForOrder?.measurements && (
+            <>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold flex items-center"><Ruler className="mr-2 h-5 w-5 text-primary" />Customer Measurements</h3>
+                    <Button variant="outline" size="sm" onClick={handleEditMeasurements}>
+                        <Edit3 className="mr-2 h-4 w-4" /> Edit Measurements
+                    </Button>
+                </div>
+                <Card className="bg-background/50 p-4 rounded-md text-sm">
+                    <p><strong>Profile:</strong> {customerForOrder.measurements.name || "Default"}</p>
+                    <p><strong>Bust:</strong> {customerForOrder.measurements.bust} inches</p>
+                    <p><strong>Waist:</strong> {customerForOrder.measurements.waist} inches</p>
+                    <p><strong>Hips:</strong> {customerForOrder.measurements.hips} inches</p>
+                    <p><strong>Height:</strong> {customerForOrder.measurements.height} inches</p>
+                </Card>
+              </div>
+              <Separator />
+            </>
+          )}
+
 
           <div>
             <h3 className="text-lg font-semibold mb-2 flex items-center"><Tag className="mr-2 h-5 w-5 text-primary" />Items Ordered</h3>

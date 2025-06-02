@@ -15,7 +15,14 @@ import { ArrowLeft, ArrowRight, Ruler } from 'lucide-react';
 export default function MeasurementStepPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { currentCustomer, currentMeasurements, setMeasurements, setCustomer } = useOrderWorkflow();
+  const { 
+    currentCustomer, 
+    currentMeasurements, 
+    setMeasurements, 
+    setCustomer,
+    workflowReturnPath,
+    setWorkflowReturnPath 
+  } = useOrderWorkflow();
 
   useEffect(() => {
     if (!currentCustomer) {
@@ -28,17 +35,15 @@ export default function MeasurementStepPage() {
     }
   }, [currentCustomer, router, toast]);
 
-  // data is MeasurementFormValues, which includes 'name' for the profile name
   const handleSaveMeasurements = (data: MeasurementFormValues) => { 
-    setMeasurements(data); // data already matches MeasurementFormValues
+    setMeasurements(data); 
 
-    // Mock: Update customer in mockCustomers array
     if (currentCustomer) {
       const customerIndex = mockCustomers.findIndex(c => c.id === currentCustomer.id);
       if (customerIndex !== -1) {
         const updatedCustomer = {
           ...mockCustomers[customerIndex],
-          measurements: data, // Save data (which is MeasurementFormValues) directly
+          measurements: data, 
         };
         mockCustomers[customerIndex] = updatedCustomer;
         setCustomer(updatedCustomer); 
@@ -49,8 +54,13 @@ export default function MeasurementStepPage() {
       title: "Measurements Saved",
       description: `${currentCustomer?.name}'s measurements ${data.name ? "for profile '" + data.name + "'" : ""} have been updated.`,
     });
-    // Navigate to the next step (e.g., design/order step)
-    router.push('/workflow/design-step'); 
+    
+    if (workflowReturnPath) {
+      router.push(workflowReturnPath);
+      setWorkflowReturnPath(null); // Clear the return path after using it
+    } else {
+      router.push('/workflow/design-step'); 
+    }
   };
 
   if (!currentCustomer) {
@@ -61,8 +71,6 @@ export default function MeasurementStepPage() {
     );
   }
   
-  // currentMeasurements or currentCustomer.measurements are of type MeasurementFormValues | null/undefined
-  // MeasurementFormValues includes 'name' for the profile name.
   const initialFormValues: Partial<MeasurementFormValues> = 
     currentMeasurements || 
     currentCustomer?.measurements || 
@@ -78,20 +86,27 @@ export default function MeasurementStepPage() {
           </div>
           <CardDescription>
             Enter or update measurements for <span className="font-semibold text-foreground">{currentCustomer.name}</span>.
-            These will be used for the current order.
+            These will be used for the current order unless edited again from an order.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <MeasurementForm
-            initialValues={initialFormValues} // Pass the correctly structured initial values
+            initialValues={initialFormValues} 
             onSave={handleSaveMeasurements}
           />
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button variant="outline" onClick={() => router.push('/workflow/customer-step')}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customer
+          <Button variant="outline" onClick={() => {
+            if (workflowReturnPath) { // If coming from order details, go back there
+                router.push(workflowReturnPath);
+                setWorkflowReturnPath(null);
+            } else { // Else, go back to customer step in normal workflow
+                router.push('/workflow/customer-step');
+            }
+          }}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
-          {/* The submit button is inside MeasurementForm, text changes to "Save & Continue" via onSave prop */}
+          {/* The submit button "Save & Continue" is inside MeasurementForm */}
         </CardFooter>
       </Card>
     </div>
