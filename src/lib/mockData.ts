@@ -4,12 +4,20 @@ import type { MeasurementFormValues } from '@/lib/schemas';
 
 export type OrderStatus = "Pending Assignment" | "Assigned" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
 
+export interface Address {
+  street: string;
+  city: string;
+  zipCode: string;
+  country: string;
+}
+
 export interface Customer {
   id: string;
   name: string;
   email: string;
   phone: string;
-  measurements?: MeasurementFormValues; // Standardized to use MeasurementFormValues which includes 'name' for profile
+  measurements?: MeasurementFormValues; 
+  address?: Address; // Added address field
 }
 
 export const mockCustomers: Customer[] = [
@@ -18,10 +26,23 @@ export const mockCustomers: Customer[] = [
     name: "Eleanor Vance", 
     email: "eleanor@example.com", 
     phone: "555-0101",
-    measurements: { name: "Eleanor - Standard", bust: 34, waist: 28, hips: 38, height: 65 }
+    measurements: { name: "Eleanor - Standard", bust: 34, waist: 28, hips: 38, height: 65 },
+    address: { street: "123 Fashion Ave", city: "New York", zipCode: "10001", country: "USA" }
   },
-  { id: "CUST002", name: "Marcus Green", email: "marcus@example.com", phone: "555-0102" },
-  { id: "CUST003", name: "Sarah Miller", email: "sarah@example.com", phone: "555-0103" },
+  { 
+    id: "CUST002", 
+    name: "Marcus Green", 
+    email: "marcus@example.com", 
+    phone: "555-0102",
+    address: { street: "456 Style St", city: "Los Angeles", zipCode: "90001", country: "USA" }
+  },
+  { 
+    id: "CUST003", 
+    name: "Sarah Miller", 
+    email: "sarah@example.com", 
+    phone: "555-0103",
+    address: { street: "789 Chic Rd", city: "Chicago", zipCode: "60601", country: "USA" }
+  },
 ];
 
 export interface Order {
@@ -35,14 +56,9 @@ export interface Order {
   assignedTailorId?: string | null;
   assignedTailorName?: string | null;
   dueDate?: string | null;
-  shippingAddress?: {
-    street: string;
-    city: string;
-    zipCode: string;
-    country: string;
-  };
+  shippingAddress?: Address; // Uses Address interface
   notes?: string;
-  referenceImageUrls?: string[]; // Added for storing uploaded image data URLs
+  referenceImageUrls?: string[]; 
 }
 
 export const mockOrders: Order[] = [

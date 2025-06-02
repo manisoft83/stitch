@@ -11,16 +11,20 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-// Removed Select imports as it's being replaced for existing customer selection
 import { useToast } from '@/hooks/use-toast';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
-import { mockCustomers, type Customer } from '@/lib/mockData'; 
-import { UserPlus, Users, Edit3, ArrowRight, Search } from 'lucide-react';
+import { mockCustomers, type Customer, type Address } from '@/lib/mockData'; 
+import { UserPlus, Users, Edit3, ArrowRight, Search, MapPin } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 const customerSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Invalid email address." }),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
+  street: z.string().optional(),
+  city: z.string().optional(),
+  zipCode: z.string().optional(),
+  country: z.string().optional(),
 });
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
@@ -40,7 +44,11 @@ export default function CustomerStepPage() {
     defaultValues: { 
       name: currentCustomer && customerType === 'existing' ? currentCustomer.name : '', 
       email: currentCustomer && customerType === 'existing' ? currentCustomer.email : '', 
-      phone: currentCustomer && customerType === 'existing' ? currentCustomer.phone : '' 
+      phone: currentCustomer && customerType === 'existing' ? currentCustomer.phone : '',
+      street: currentCustomer && customerType === 'existing' ? currentCustomer.address?.street : '',
+      city: currentCustomer && customerType === 'existing' ? currentCustomer.address?.city : '',
+      zipCode: currentCustomer && customerType === 'existing' ? currentCustomer.address?.zipCode : '',
+      country: currentCustomer && customerType === 'existing' ? currentCustomer.address?.country : '',
     },
   });
 
@@ -48,14 +56,22 @@ export default function CustomerStepPage() {
     if (customerType === 'existing' && selectedCustomerId) {
       const customer = mockCustomers.find(c => c.id === selectedCustomerId);
       if (customer) {
-        reset({ name: customer.name, email: customer.email, phone: customer.phone });
+        reset({ 
+          name: customer.name, 
+          email: customer.email, 
+          phone: customer.phone,
+          street: customer.address?.street || '',
+          city: customer.address?.city || '',
+          zipCode: customer.address?.zipCode || '',
+          country: customer.address?.country || '',
+        });
       }
     } else if (customerType === 'new') {
       if(selectedCustomerId !== '' || (currentCustomer && initialCustomerType === 'existing') ) {
-         reset({ name: '', email: '', phone: '' });
+         reset({ name: '', email: '', phone: '', street: '', city: '', zipCode: '', country: '' });
       }
       setSelectedCustomerId(''); 
-      setCustomerSearchTerm(''); // Clear search term when switching to new
+      setCustomerSearchTerm('');
     }
   }, [customerType, selectedCustomerId, reset, currentCustomer, initialCustomerType]);
   
@@ -63,7 +79,15 @@ export default function CustomerStepPage() {
     if (currentCustomer) {
       setCustomerType('existing');
       setSelectedCustomerId(currentCustomer.id);
-      reset({ name: currentCustomer.name, email: currentCustomer.email, phone: currentCustomer.phone });
+      reset({ 
+        name: currentCustomer.name, 
+        email: currentCustomer.email, 
+        phone: currentCustomer.phone,
+        street: currentCustomer.address?.street || '',
+        city: currentCustomer.address?.city || '',
+        zipCode: currentCustomer.address?.zipCode || '',
+        country: currentCustomer.address?.country || '',
+      });
     }
   }, [currentCustomer, reset]);
 
@@ -77,12 +101,19 @@ export default function CustomerStepPage() {
     let customerToSet: Customer | null = null;
     let toastMessage = {};
 
+    const customerAddress: Address | undefined = (data.street && data.city && data.zipCode && data.country)
+      ? { street: data.street, city: data.city, zipCode: data.zipCode, country: data.country }
+      : undefined;
+
     if (customerType === 'existing' && selectedCustomerId) {
       const customerIndex = mockCustomers.findIndex(c => c.id === selectedCustomerId);
       if (customerIndex !== -1) {
         customerToSet = {
           ...mockCustomers[customerIndex],
-          ...data, 
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          address: customerAddress, 
         };
         mockCustomers[customerIndex] = customerToSet;
         toastMessage = { title: "Customer Updated", description: `${customerToSet.name}'s details have been updated.` };
@@ -90,11 +121,14 @@ export default function CustomerStepPage() {
          toast({ title: "Error", description: "Could not find customer to update.", variant: "destructive" });
          return;
       }
-    } else { // New customer
+    } else { 
       const newCustId = `CUST${Date.now().toString().slice(-4)}${Math.floor(Math.random() * 100)}`;
       customerToSet = {
         id: newCustId,
-        ...data,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        address: customerAddress,
       };
       mockCustomers.push(customerToSet); 
       toastMessage = { title: "New Customer Registered", description: `${customerToSet.name} has been registered.` };
@@ -111,7 +145,7 @@ export default function CustomerStepPage() {
     <div className="container mx-auto py-8">
       <Card className="max-w-2xl mx-auto shadow-xl">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary">Customer Details</CardTitle>
+          <CardTitle className="text-2xl font-bold text-primary">Customer Details & Address</CardTitle>
           <CardDescription>
             {customerType === 'new' ? "Register a new customer or " : "Select an existing customer or "}
             {customerType === 'existing' && selectedCustomerId 
@@ -167,7 +201,6 @@ export default function CustomerStepPage() {
                   value={selectedCustomerId}
                   onValueChange={(id) => {
                     setSelectedCustomerId(id);
-                    // Form population for edit is handled by useEffect watching selectedCustomerId
                   }}
                   className="space-y-1 max-h-60 overflow-y-auto border p-3 rounded-md bg-muted/30"
                 >
@@ -215,7 +248,35 @@ export default function CustomerStepPage() {
                 <Input id="phone" type="tel" {...register("phone")} placeholder="e.g., (555) 123-4567" />
                 {errors.phone && <p className="text-sm text-destructive mt-1">{errors.phone.message}</p>}
               </div>
-              <Button type="submit" className="w-full">
+
+              <Separator className="my-6"/>
+              <h3 className="text-lg font-medium text-foreground mb-3 flex items-center">
+                <MapPin className="mr-2 h-5 w-5 text-primary"/> Address (Optional)
+              </h3>
+              <div>
+                <Label htmlFor="street">Street Address</Label>
+                <Input id="street" {...register("street")} placeholder="e.g., 123 Main St" />
+                {errors.street && <p className="text-sm text-destructive mt-1">{errors.street.message}</p>}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input id="city" {...register("city")} placeholder="e.g., Anytown" />
+                    {errors.city && <p className="text-sm text-destructive mt-1">{errors.city.message}</p>}
+                </div>
+                <div>
+                    <Label htmlFor="zipCode">Zip / Postal Code</Label>
+                    <Input id="zipCode" {...register("zipCode")} placeholder="e.g., 12345" />
+                    {errors.zipCode && <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>}
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="country">Country</Label>
+                <Input id="country" {...register("country")} placeholder="e.g., USA" />
+                {errors.country && <p className="text-sm text-destructive mt-1">{errors.country.message}</p>}
+              </div>
+              
+              <Button type="submit" className="w-full mt-6 !mb-2">
                 {customerType === 'existing' && selectedCustomerId ? "Update Details & Proceed" : "Register & Proceed"} 
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>

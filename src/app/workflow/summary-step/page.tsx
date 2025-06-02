@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from 'react'; // Added useState
+import { useEffect, useState } from 'react'; 
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useOrderWorkflow, type DesignDetails } from '@/contexts/order-workflow-context';
@@ -9,9 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { mockOrders, type Order, mockCustomers } from '@/lib/mockData';
+import { mockOrders, type Order, mockCustomers, type Address } from '@/lib/mockData';
 import { format, addDays } from 'date-fns';
-import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon } from 'lucide-react';
+import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon, MapPin } from 'lucide-react';
 
 const fabricOptions = [
   { id: 'cotton', name: 'Cotton' },
@@ -48,10 +48,10 @@ export default function SummaryStepPage() {
     workflowReturnPath 
   } = useOrderWorkflow();
 
-  const [isSubmitted, setIsSubmitted] = useState(false); // Flag to prevent effect on submission
+  const [isSubmitted, setIsSubmitted] = useState(false); 
 
   useEffect(() => {
-    if (isSubmitted) return; // Don't run redirection logic if order was just submitted
+    if (isSubmitted) return; 
 
     if (!currentCustomer) {
       toast({ title: "Missing Customer", description: "Please start from the customer step.", variant: "destructive" });
@@ -76,9 +76,8 @@ export default function SummaryStepPage() {
       return;
     }
 
-    // Capture the return path BEFORE resetting the workflow
     const pathAfterConfirm = workflowReturnPath || '/orders'; 
-    setIsSubmitted(true); // Set submitted flag before resetting and navigating
+    setIsSubmitted(true); 
 
     const itemsOrdered = [
         `${getDetailName(currentDesign.style, styleOptions)} (${getDetailName(currentDesign.fabric, fabricOptions)}, ${getDetailName(currentDesign.color, colorOptions)})`
@@ -91,6 +90,10 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
     if (currentDesign.referenceImages && currentDesign.referenceImages.length > 0) {
         orderNotes += `\nReference Images: ${currentDesign.referenceImages.length} provided.`;
     }
+    
+    const orderShippingAddress: Address | undefined = currentCustomer.address 
+      ? { ...currentCustomer.address }
+      : undefined; // Fallback if customer has no address
 
     if (editingOrderId) {
         const orderIndex = mockOrders.findIndex(o => o.id === editingOrderId);
@@ -100,6 +103,7 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
                 items: itemsOrdered,
                 notes: orderNotes,
                 referenceImageUrls: currentDesign.referenceImages || [],
+                shippingAddress: orderShippingAddress || mockOrders[orderIndex].shippingAddress, // Keep existing if new is undefined
             };
              toast({
                 title: "Order Updated!",
@@ -107,7 +111,7 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
             });
         } else {
             toast({ title: "Error", description: `Could not find order #${editingOrderId} to update.`, variant: "destructive" });
-            setIsSubmitted(false); // Reset submitted flag on error
+            setIsSubmitted(false); 
             return;
         }
     } else {
@@ -125,12 +129,7 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
           assignedTailorId: null,
           assignedTailorName: null,
           dueDate: defaultDueDate,
-          shippingAddress: { 
-            street: "123 Workflow Ln",
-            city: "Context City",
-            zipCode: "98765",
-            country: "USA",
-          },
+          shippingAddress: orderShippingAddress, // Use customer's address
           notes: orderNotes,
           referenceImageUrls: currentDesign.referenceImages || [],
         };
@@ -146,6 +145,7 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
         mockCustomers[customerIndex] = {
             ...mockCustomers[customerIndex],
             measurements: currentMeasurements, 
+            address: currentCustomer.address // Ensure customer address is also up-to-date in mockCustomers
         };
     }
 
@@ -186,6 +186,22 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
               <p><strong>Phone:</strong> {currentCustomer.phone}</p>
             </CardContent>
           </Card>
+
+          {currentCustomer.address && (
+            <>
+              <Separator />
+              <Card className="bg-muted/30">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2"><MapPin className="h-5 w-5 text-primary"/>Shipping Address</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm space-y-1 not-italic">
+                  <p>{currentCustomer.address.street}</p>
+                  <p>{currentCustomer.address.city}, {currentCustomer.address.zipCode}</p>
+                  <p>{currentCustomer.address.country}</p>
+                </CardContent>
+              </Card>
+            </>
+          )}
           
           <Separator />
 
@@ -262,4 +278,3 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
     </div>
   );
 }
-
