@@ -11,14 +11,14 @@ export default function HomePage() {
       icon: <Ruler className="h-10 w-10 text-primary" />,
       title: "Precise Measurements",
       description: "Input your measurements for a perfect fit. Our guides ensure accuracy.",
-      link: "/measurements",
+      link: "/measurements", // Can also be part of the new workflow
       actionText: "Enter Measurements",
     },
     {
       icon: <Palette className="h-10 w-10 text-primary" />,
       title: "Custom Design Studio",
       description: "Unleash your creativity. Choose fabrics, colors, and styles.",
-      link: "/design",
+      link: "/workflow/customer-step", // Changed to new workflow
       actionText: "Design Now",
     },
     {
@@ -54,7 +54,7 @@ export default function HomePage() {
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
                 <Button asChild size="lg" className="shadow-md hover:shadow-lg transition-shadow">
-                  <Link href="/design">Start Designing</Link>
+                  <Link href="/workflow/customer-step">Start Designing</Link>
                 </Button>
                 <Button asChild variant="outline" size="lg" className="shadow-md hover:shadow-lg transition-shadow">
                   <Link href="/recommendations">Get Recommendations</Link>
@@ -123,7 +123,7 @@ export default function HomePage() {
           </div>
           <div className="mx-auto w-full max-w-sm space-y-2">
             <Button asChild size="lg" className="w-full shadow-md hover:shadow-lg transition-shadow">
-              <Link href="/design">Get Started Now</Link>
+              <Link href="/workflow/customer-step">Get Started Now</Link>
             </Button>
           </div>
         </div>

@@ -131,7 +131,7 @@ export default function OrdersPage() {
           <ShoppingCart className="mr-3 h-7 w-7" /> My Orders
         </h1>
         <Button asChild>
-          <Link href="/design">
+          <Link href="/workflow/customer-step">
             <PackagePlus className="mr-2 h-4 w-4" /> Create New Order
           </Link>
         </Button>
@@ -319,7 +319,7 @@ export default function OrdersPage() {
              filteredOrders.length === 0 && ( 
                 <CardContent>
                 <Button asChild size="lg">
-                    <Link href="/design">Design Your First Item</Link>
+                    <Link href="/workflow/customer-step">Design Your First Item</Link>
                 </Button>
                 </CardContent>
             )
@@ -413,4 +413,3 @@ export default function OrdersPage() {
     </div>
   );
 }
-
