@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -89,7 +90,10 @@ export function MeasurementForm() {
                 <FormControl>
                   <Input type="number" placeholder="e.g., 36" {...field} />
                 </FormControl>
-                <FormDescription>Measure around the fullest part of your bust.</FormDescription>
+                <FormDescription>
+                  Measure around the fullest part of your bust, keeping the tape level.
+                  <br />Tip: Wear a non-padded bra for accuracy.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -103,7 +107,10 @@ export function MeasurementForm() {
                 <FormControl>
                   <Input type="number" placeholder="e.g., 28" {...field} />
                 </FormControl>
-                <FormDescription>Measure around the narrowest part of your waistline.</FormDescription>
+                <FormDescription>
+                  Measure around the narrowest part of your natural waistline.
+                  <br />Tip: This is usually an inch or two above your belly button.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -119,7 +126,10 @@ export function MeasurementForm() {
                 <FormControl>
                   <Input type="number" placeholder="e.g., 40" {...field} />
                 </FormControl>
-                <FormDescription>Measure around the fullest part of your hips and bottom.</FormDescription>
+                <FormDescription>
+                  Measure around the fullest part of your hips and bottom, feet together.
+                  <br />Tip: Ensure the tape is parallel to the floor.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -133,7 +143,7 @@ export function MeasurementForm() {
                 <FormControl>
                   <Input type="number" placeholder="e.g., 65" {...field} />
                 </FormControl>
-                <FormDescription>Your total height without shoes.</FormDescription>
+                <FormDescription>Your total height without shoes. Stand straight.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
