@@ -29,7 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input"; // For file input styling
 import { Textarea } from "@/components/ui/textarea"; // For instructions
 import { Calendar as CalendarIcon, CheckCircle, UploadCloud } from "lucide-react";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns"; // Added addDays
 import { cn } from "@/lib/utils";
 import type { Order, Tailor } from '@/app/tailors/page'; 
 
@@ -56,15 +56,23 @@ export function AssignTailorDialog({
   onAssign,
 }: AssignTailorDialogProps) {
   const [selectedTailorId, setSelectedTailorId] = useState<string | undefined>(undefined);
-  const [dueDate, setDueDate] = useState<Date | undefined>(new Date()); 
+  const [dueDate, setDueDate] = useState<Date | undefined>(addDays(new Date(), 5)); 
   const [instructions, setInstructions] = useState<string>("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (order) {
+    if (order && isOpen) {
       setSelectedTailorId(undefined);
-      setDueDate(new Date());
+      setDueDate(addDays(new Date(), 5)); // Default to 5 days from now
+      setInstructions("");
+      setSelectedImage(null);
+      setImagePreviewUrl(null);
+    } else if (!isOpen) {
+      // Optionally clear fields when dialog is closed if not submitted
+      // This part can be adjusted based on desired behavior if dialog is cancelled
+      setSelectedTailorId(undefined);
+      setDueDate(addDays(new Date(), 5)); 
       setInstructions("");
       setSelectedImage(null);
       setImagePreviewUrl(null);
@@ -171,9 +179,9 @@ export function AssignTailorDialog({
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="image-upload">Reference Image (Optional)</Label>
+            <Label htmlFor="image-upload-assign">Reference Image (Optional)</Label> {/* Changed ID to avoid conflict */}
             <Input 
-              id="image-upload" 
+              id="image-upload-assign" 
               type="file" 
               accept="image/*" 
               onChange={handleImageChange} 
@@ -208,3 +216,4 @@ export function AssignTailorDialog({
     </Dialog>
   );
 }
+
