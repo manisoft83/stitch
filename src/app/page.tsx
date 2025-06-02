@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Palette, Ruler, Wand2, ShoppingCart, Users, PackageSearch } from "lucide-react";
@@ -11,24 +12,28 @@ export default function HomePage() {
       title: "Precise Measurements",
       description: "Input your measurements for a perfect fit. Our guides ensure accuracy.",
       link: "/measurements",
+      actionText: "Enter Measurements",
     },
     {
       icon: <Palette className="h-10 w-10 text-primary" />,
       title: "Custom Design Studio",
       description: "Unleash your creativity. Choose fabrics, colors, and styles.",
       link: "/design",
+      actionText: "Design Now",
     },
     {
       icon: <Wand2 className="h-10 w-10 text-primary" />,
       title: "AI Style Advisor",
       description: "Get personalized style recommendations based on your profile.",
       link: "/recommendations",
+      actionText: "Get Style Advice",
     },
     {
       icon: <ShoppingCart className="h-10 w-10 text-primary" />,
       title: "Order Management",
       description: "Track your custom orders from creation to delivery.",
       link: "/orders",
+      actionText: "View Your Orders",
     },
   ];
 
@@ -96,7 +101,7 @@ export default function HomePage() {
                 </CardContent>
                 <CardContent className="mt-auto text-center">
                    <Button asChild variant="link" className="text-primary">
-                     <Link href={feature.link}>Learn More</Link>
+                     <Link href={feature.link}>{feature.actionText}</Link>
                    </Button>
                 </CardContent>
               </Card>
