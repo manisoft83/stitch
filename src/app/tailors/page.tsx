@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState } from 'react';
-import Image from 'next/image'; // Added for displaying assigned image
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +57,8 @@ export default function TailorsPage() {
   const [editingTailor, setEditingTailor] = useState<Tailor | null>(null);
   const [deletingTailorId, setDeletingTailorId] = useState<string | null>(null);
 
+  const [dailyAssignmentCounts, setDailyAssignmentCounts] = useState<Record<string, { date: string, count: number }>>({});
+
 
   const { toast } = useToast();
 
@@ -73,6 +75,22 @@ export default function TailorsPage() {
     instructions?: string,
     imageDataUrl?: string
   ) => {
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const currentAssignmentsForTailorToday = dailyAssignmentCounts[tailorId];
+    let newCount = 1;
+
+    if (currentAssignmentsForTailorToday && currentAssignmentsForTailorToday.date === todayStr) {
+      newCount = currentAssignmentsForTailorToday.count + 1;
+    }
+
+    if (newCount > 15) { 
+      toast({
+        title: "High Assignment Load Warning",
+        description: `Tailor ${tailorName} has now been assigned ${newCount} orders today. This exceeds the recommended 15.`,
+        duration: 7000, 
+      });
+    }
+    
     const orderToAssign = unassignedOrders.find(o => o.id === orderId);
     if (orderToAssign) {
       const updatedOrder: Order = {
@@ -85,6 +103,11 @@ export default function TailorsPage() {
         assignmentImage: imageDataUrl,
       };
       
+      setDailyAssignmentCounts(prevCounts => ({
+        ...prevCounts,
+        [tailorId]: { date: todayStr, count: newCount }
+      }));
+
       setUnassignedOrders(prev => prev.filter(o => o.id !== orderId));
       setAssignedOrders(prev => [...prev, updatedOrder]);
       setTailors(prev => prev.map(t => t.id === tailorId ? {...t, availability: "Busy"} : t));
@@ -307,9 +330,11 @@ export default function TailorsPage() {
         <CardTitle className="text-lg">Assignment Module Notes</CardTitle>
         <CardDescription className="mt-2">
             The assignment and tailor management functionalities above update local state for demonstration. 
-            In a real application, this would involve API calls and database updates.
+            In a real application, this would involve API calls and database updates. 
+            The daily assignment count notification is also session-based.
         </CardDescription>
       </Card>
     </div>
   );
 }
+
