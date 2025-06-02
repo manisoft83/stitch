@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { mockOrders, mockTailors, statusFilterOptions, type Order, type OrderStatus, type StatusFilterValue } from "@/lib/mockData";
 import { useAuth } from "@/hooks/use-auth";
 
+const NO_TAILOR_SELECTED_VALUE = "__NO_TAILOR__";
 
 export default function OrdersPage() {
   const auth = useAuth();
@@ -173,12 +174,17 @@ export default function OrdersPage() {
               {viewMode === 'tailor' && (
                 <div>
                   <label htmlFor="tailorSelect" className="block text-sm font-medium text-muted-foreground mb-1">Select Tailor Profile (Admin)</label>
-                  <Select value={selectedTailorId || ""} onValueChange={(value) => setSelectedTailorId(value || null)}>
+                  <Select 
+                    value={selectedTailorId || ""} // Shows placeholder if selectedTailorId is null
+                    onValueChange={(value) => {
+                      setSelectedTailorId(value === NO_TAILOR_SELECTED_VALUE ? null : value);
+                    }}
+                  >
                     <SelectTrigger id="tailorSelect" className="w-full">
                       <SelectValue placeholder="Select Tailor" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value={NO_TAILOR_SELECTED_VALUE}>None</SelectItem>
                       {mockTailors.map(tailor => (
                         <SelectItem key={tailor.id} value={tailor.id}>{tailor.name}</SelectItem>
                       ))}
