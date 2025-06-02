@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { createContext, useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { Tailor } from '@/lib/mockData'; // Assuming Tailor type is in mockData
+import MainLayout from '@/components/layout/main-layout'; // Import MainLayout
 
 export type UserRole = "admin" | "tailor" | null;
 
@@ -64,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Redirect to login if not authenticated and not on login page
   useEffect(() => {
     if (!isLoading && !authState.role && pathname !== '/login') {
-      router.push('/login');
+      router.replace('/login');
     }
   }, [isLoading, authState.role, pathname, router]);
 
@@ -76,16 +77,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
   };
 
-  if (isLoading && pathname !== '/login') {
-     // You might want a dedicated loading component here for better UX
-    return <div className="flex h-screen w-full items-center justify-center bg-background"><p>Loading authentication...</p></div>;
+  if (isLoading) {
+     // Show a global loading screen while auth state is being determined
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <p>Loading authentication...</p>
+      </div>
+    );
   }
   
-  // If not authenticated and not on login page, MainLayout will handle redirection.
-  // This provider only renders children if loading is done OR if on login page to avoid flicker.
+  // If authenticated or on the login page, proceed to render.
+  // MainLayout will handle its own structure (sidebar or no sidebar for login page).
   return (
     <AuthContext.Provider value={contextValue}>
-      {children}
+      <MainLayout>{children}</MainLayout>
     </AuthContext.Provider>
   );
 }

@@ -14,7 +14,7 @@ import SidebarNav from './sidebar-nav';
 import Link from 'next/link';
 import { Button } from '../ui/button';
 import { useAuth } from '@/hooks/use-auth';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; // Added useRouter
 import { LogOut, UserCircle } from 'lucide-react';
 
 interface MainLayoutProps {
@@ -22,32 +22,32 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
-  const { role, tailorName, logout, isLoading } = useAuth();
-  const router = useRouter();
+  const { role, tailorName, logout, isLoading: authIsLoading } = useAuth(); // isLoading from useAuth
+  const router = useRouter(); // Initialize useRouter
   const pathname = usePathname();
 
-  // If loading auth state, show a generic loading or null to prevent layout shift
-  // The AuthProvider also has a loading check, this is an additional safeguard for MainLayout specifically
-  if (isLoading) {
-    return <div className="flex h-screen w-full items-center justify-center bg-background"><p>Initializing...</p></div>;
+  // AuthProvider handles primary loading and redirection to /login if not authenticated.
+  // This loading check is for MainLayout itself, ensuring auth context is ready.
+  if (authIsLoading) {
+    return <div className="flex h-screen w-full items-center justify-center bg-background"><p>Initializing layout...</p></div>;
   }
 
-  // If not authenticated and not on login page, redirect. AuthProvider also handles this.
-  if (!role && pathname !== '/login') {
-    // This useEffect ensures redirection happens after initial render if needed
-    // but typically AuthProvider handles it earlier.
-    if (typeof window !== 'undefined') {
-        router.replace('/login');
-    }
-    return <div className="flex h-screen w-full items-center justify-center bg-background"><p>Redirecting to login...</p></div>; // Or a loading spinner
-  }
-  
-  // Do not render MainLayout for the login page
+  // If it's the login page, render only the children (login page content) without the layout.
   if (pathname === '/login') {
     return <>{children}</>;
   }
+  
+  // If AuthProvider did its job, 'role' should be populated for any page other than '/login'.
+  // If 'role' is somehow null here for a non-login page, it's an unexpected state.
+  // AuthProvider's useEffect should have redirected. As a fallback, show a loader or error.
+  if (!role && pathname !== '/login') {
+    // This state should ideally be prevented by AuthProvider.
+    // For robustness, can redirect or show a loading/error message.
+    // router.replace('/login'); // This could cause redirect loops if not careful.
+    return <div className="flex h-screen w-full items-center justify-center bg-background"><p>Verifying session...</p></div>;
+  }
 
-
+  // If authenticated and not the login page, render the full layout
   return (
     <SidebarProvider defaultOpen={true} open={true}> {/* Ensure sidebar is open by default on desktop */}
       <Sidebar side="left" variant="sidebar" collapsible="icon" className="border-r">
