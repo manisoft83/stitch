@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { mockOrders, type Order, mockCustomers, type Address } from '@/lib/mockData';
+import { mockOrders, type Order, type Address } from '@/lib/mockData'; // Removed mockCustomers
 import { format, addDays } from 'date-fns';
 import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon, MapPin } from 'lucide-react';
 
@@ -93,7 +93,7 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
     
     const orderShippingAddress: Address | undefined = currentCustomer.address 
       ? { ...currentCustomer.address }
-      : undefined; // Fallback if customer has no address
+      : undefined; 
 
     if (editingOrderId) {
         const orderIndex = mockOrders.findIndex(o => o.id === editingOrderId);
@@ -103,7 +103,7 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
                 items: itemsOrdered,
                 notes: orderNotes,
                 referenceImageUrls: currentDesign.referenceImages || [],
-                shippingAddress: orderShippingAddress || mockOrders[orderIndex].shippingAddress, // Keep existing if new is undefined
+                shippingAddress: orderShippingAddress || mockOrders[orderIndex].shippingAddress, 
             };
              toast({
                 title: "Order Updated!",
@@ -129,7 +129,7 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
           assignedTailorId: null,
           assignedTailorName: null,
           dueDate: defaultDueDate,
-          shippingAddress: orderShippingAddress, // Use customer's address
+          shippingAddress: orderShippingAddress,
           notes: orderNotes,
           referenceImageUrls: currentDesign.referenceImages || [],
         };
@@ -140,14 +140,8 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
         });
     }
 
-    const customerIndex = mockCustomers.findIndex(c => c.id === currentCustomer.id);
-    if (customerIndex !== -1) {
-        mockCustomers[customerIndex] = {
-            ...mockCustomers[customerIndex],
-            measurements: currentMeasurements, 
-            address: currentCustomer.address // Ensure customer address is also up-to-date in mockCustomers
-        };
-    }
+    // Customer data (measurements, address) is already saved to Firestore in previous steps.
+    // No need to update mockCustomers here.
 
     resetWorkflow(); 
     router.push(pathAfterConfirm);
