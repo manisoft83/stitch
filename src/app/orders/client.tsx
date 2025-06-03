@@ -1,3 +1,4 @@
+
 // src/app/orders/client.tsx
 "use client";
 
@@ -13,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format, subDays, startOfDay, endOfDay, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
-import { mockOrders, statusFilterOptions, type Order, type OrderStatus, type StatusFilterValue, type Tailor } from "@/lib/mockData"; // mockTailors removed
+import { mockOrders, statusFilterOptions, type Order, type OrderStatus, type StatusFilterValue, type Tailor } from "@/lib/mockData";
 import { useAuth } from "@/hooks/use-auth";
 
 const NO_TAILOR_SELECTED_VALUE = "__NO_TAILOR__";
@@ -36,7 +37,6 @@ export default function OrdersClientPage({ initialTailors }: OrdersClientPagePro
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 10;
 
-  // Use the initialTailors prop
   const [availableTailors, setAvailableTailors] = useState<Tailor[]>(initialTailors);
   useEffect(() => {
     setAvailableTailors(initialTailors);

@@ -31,7 +31,8 @@ import { Textarea } from "@/components/ui/textarea"; // For instructions
 import { Calendar as CalendarIcon, CheckCircle, UploadCloud } from "lucide-react";
 import { format, addDays } from "date-fns"; // Added addDays
 import { cn } from "@/lib/utils";
-import type { Order, Tailor } from '@/app/tailors/page'; 
+import type { Tailor } from '@/lib/mockData'; 
+import type { ClientPageOrder as Order } from '@/app/tailors/client'; // Use the client page specific order type
 
 interface AssignTailorDialogProps {
   isOpen: boolean;
@@ -216,4 +217,3 @@ export function AssignTailorDialog({
     </Dialog>
   );
 }
-

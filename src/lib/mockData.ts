@@ -2,6 +2,7 @@
 import { format, subDays, addDays } from "date-fns";
 import type { MeasurementFormValues } from '@/lib/schemas';
 
+// Types related to mock data that were moved from dataService.ts
 export type OrderStatus = "Pending Assignment" | "Assigned" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
 
 export interface Address {
@@ -17,9 +18,26 @@ export interface Customer {
   email: string;
   phone: string;
   measurements?: MeasurementFormValues; 
-  address?: Address; // Added address field
+  address?: Address; 
 }
 
+export interface Order {
+  id: string;
+  date: string;
+  status: OrderStatus;
+  total: string;
+  items: string[];
+  customerId: string; 
+  customerName?: string; 
+  assignedTailorId?: string | null;
+  assignedTailorName?: string | null;
+  dueDate?: string | null;
+  shippingAddress?: Address; 
+  notes?: string;
+  referenceImageUrls?: string[]; 
+}
+
+// Mock Data Arrays
 export const mockCustomers: Customer[] = [
   { 
     id: "CUST001", 
@@ -44,22 +62,6 @@ export const mockCustomers: Customer[] = [
     address: { street: "789 Chic Rd", city: "Chicago", zipCode: "60601", country: "USA" }
   },
 ];
-
-export interface Order {
-  id: string;
-  date: string;
-  status: OrderStatus;
-  total: string;
-  items: string[];
-  customerId: string; 
-  customerName?: string; 
-  assignedTailorId?: string | null;
-  assignedTailorName?: string | null;
-  dueDate?: string | null;
-  shippingAddress?: Address; // Uses Address interface
-  notes?: string;
-  referenceImageUrls?: string[]; 
-}
 
 export const mockOrders: Order[] = [
   {
@@ -126,8 +128,8 @@ export const mockOrders: Order[] = [
   },
 ];
 
-// Tailor interface and data are now primarily managed by dataService.ts
-// This is kept for type reference if needed elsewhere, but dataService is the source of truth.
+// Tailor interface and data (now primarily from Firestore via dataService.ts)
+// Kept for type reference in components that might deal with tailor data.
 export interface Tailor {
   id: string;
   name: string;
@@ -144,15 +146,7 @@ export interface TailorFormData {
   expertise: string; // Comma-separated string from form
 }
 
-/*
-// This is now sourced from dataService.ts
-export const mockTailors: Tailor[] = [
-  { id: "T001", name: "Alice Wonderland", mobile: "555-0101", expertise: ["Dresses", "Evening Wear"], availability: "Available", avatar: "https://placehold.co/100x100.png?text=AW", dataAiHint: "woman portrait" },
-  { id: "T002", name: "Bob The Builder", mobile: "555-0102", expertise: ["Suits", "Formal Trousers"], availability: "Busy", avatar: "https://placehold.co/100x100.png?text=BB", dataAiHint: "man portrait" },
-  { id: "T003", name: "Carol Danvers", mobile: "555-0103", expertise: ["Casual Wear", "Alterations"], availability: "Available", avatar: "https://placehold.co/100x100.png?text=CD", dataAiHint: "woman professional" },
-];
-*/
-
+// Order Statuses and Filter Options
 export const allOrderStatuses: OrderStatus[] = ["Pending Assignment", "Assigned", "Processing", "Shipped", "Delivered", "Cancelled"];
 
 export type StatusFilterValue = OrderStatus | "all" | "active_default";

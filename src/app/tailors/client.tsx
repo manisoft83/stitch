@@ -1,3 +1,4 @@
+
 // src/app/tailors/client.tsx
 "use client";
 
@@ -23,11 +24,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { Tailor } from '@/lib/mockData'; 
+import type { Tailor, Order as MockOrderType } from '@/lib/mockData';  // Using MockOrderType to distinguish
 import { Separator } from '@/components/ui/separator';
-import { saveTailorAction, deleteTailorAction } from './actions'; // Import server actions
+import { saveTailorAction, deleteTailorAction } from './actions'; 
 
-export interface Order { 
+// Re-defining Order for this page specific context if it differs from global mock
+// or if it's specifically for unassigned/assigned order display here.
+export interface ClientPageOrder { 
   id: string;
   item: string;
   dueDateRequested: string;
@@ -36,10 +39,10 @@ export interface Order {
   actualDueDate?: string;
   status?: 'Pending Assignment' | 'Assigned' | 'In Progress' | 'Completed';
   assignmentInstructions?: string;
-  assignmentImage?: string; // Data URL of the image
+  assignmentImage?: string; 
 }
 
-const initialUnassignedOrders: Order[] = [
+const initialUnassignedOrders: ClientPageOrder[] = [
     { id: "ORD101", item: "Custom Silk Blouse", dueDateRequested: "2024-08-15", status: "Pending Assignment" },
     { id: "ORD102", item: "Evening Gown Alteration", dueDateRequested: "2024-08-10", status: "Pending Assignment" },
     { id: "ORD103", item: "Wedding Dress Design", dueDateRequested: "2024-09-01", status: "Pending Assignment" },
@@ -51,11 +54,11 @@ interface TailorsClientPageProps {
 
 export default function TailorsClientPage({ initialTailors }: TailorsClientPageProps) {
   const [tailors, setTailors] = useState<Tailor[]>(initialTailors); 
-  const [unassignedOrders, setUnassignedOrders] = useState<Order[]>(initialUnassignedOrders);
-  const [assignedOrders, setAssignedOrders] = useState<Order[]>([]);
+  const [unassignedOrders, setUnassignedOrders] = useState<ClientPageOrder[]>(initialUnassignedOrders);
+  const [assignedOrders, setAssignedOrders] = useState<ClientPageOrder[]>([]);
   
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
-  const [selectedOrderForAssignment, setSelectedOrderForAssignment] = useState<Order | null>(null);
+  const [selectedOrderForAssignment, setSelectedOrderForAssignment] = useState<ClientPageOrder | null>(null);
   
   const [isTailorFormDialogOpen, setIsTailorFormDialogOpen] = useState(false);
   const [editingTailor, setEditingTailor] = useState<Tailor | null>(null);
@@ -66,12 +69,11 @@ export default function TailorsClientPage({ initialTailors }: TailorsClientPageP
 
   const { toast } = useToast();
 
-  // Update local state if initialTailors prop changes (e.g., due to revalidation)
   useEffect(() => {
     setTailors(initialTailors);
   }, [initialTailors]);
 
-  const openAssignDialog = (order: Order) => {
+  const openAssignDialog = (order: ClientPageOrder) => {
     setSelectedOrderForAssignment(order);
     setIsAssignDialogOpen(true);
   };
@@ -102,7 +104,7 @@ export default function TailorsClientPage({ initialTailors }: TailorsClientPageP
     
     const orderToAssign = unassignedOrders.find(o => o.id === orderId);
     if (orderToAssign) {
-      const updatedOrder: Order = {
+      const updatedOrder: ClientPageOrder = {
         ...orderToAssign,
         assignedTailorId: tailorId,
         assignedTailorName: tailorName,
@@ -119,7 +121,6 @@ export default function TailorsClientPage({ initialTailors }: TailorsClientPageP
 
       setUnassignedOrders(prev => prev.filter(o => o.id !== orderId));
       setAssignedOrders(prev => [...prev, updatedOrder]);
-      // Optimistic update of tailor availability. DB would be source of truth.
       setTailors(prev => prev.map(t => t.id === tailorId ? {...t, availability: "Busy"} : t));
       
       toast({
@@ -143,18 +144,16 @@ export default function TailorsClientPage({ initialTailors }: TailorsClientPageP
   const handleDeleteTailor = async (tailorId: string) => {
     const success = await deleteTailorAction(tailorId);
     if (success) {
-      // Optimistic update on the client
       setTailors(prev => prev.filter(t => t.id !== tailorId));
       setAssignedOrders(prev => prev.map(o => 
           o.assignedTailorId === tailorId 
-          ? { ...o, assignedTailorId: undefined, assignedTailorName: undefined, status: "Pending Assignment" as Order['status'] } 
+          ? { ...o, assignedTailorId: undefined, assignedTailorName: undefined, status: "Pending Assignment" as ClientPageOrder['status'] } 
           : o
       ));
       toast({
         title: "Tailor Deleted",
         description: `Tailor (ID: ${tailorId}) has been removed.`,
       });
-      // TODO: Consider re-fetching tailors list here if not relying on revalidatePath from server action
     } else {
       toast({
         title: "Error Deleting Tailor",
@@ -170,15 +169,12 @@ export default function TailorsClientPage({ initialTailors }: TailorsClientPageP
 
     if (result) {
       if (editingTailor) { 
-        // Optimistic update
         setTailors(prev => prev.map(t => t.id === editingTailor.id ? result : t));
         toast({ title: "Tailor Updated", description: `${result.name}'s details have been updated.` });
       } else { 
-        // Optimistic update
         setTailors(prev => [...prev, result]);
         toast({ title: "Tailor Added", description: `${result.name} has been added to the roster.` });
       }
-      // TODO: Consider re-fetching tailors list here or ensure revalidatePath effectively updates 'initialTailors' prop
     } else {
        toast({ title: "Error Saving Tailor", description: "Could not save tailor details.", variant: "destructive" });
     }

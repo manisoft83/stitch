@@ -1,9 +1,10 @@
+
 // src/app/login/client.tsx
 "use client";
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import type { Tailor } from '@/lib/mockData'; // mockTailors removed
+import type { Tailor } from '@/lib/mockData'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -20,7 +21,6 @@ export default function LoginClientPage({ initialTailors }: LoginClientPageProps
   const [selectedRole, setSelectedRole] = useState<"admin" | "tailor">("admin");
   const [selectedTailorId, setSelectedTailorId] = useState<string>("");
 
-  // Use the initialTailors prop
   const [availableTailors, setAvailableTailors] = useState<Tailor[]>(initialTailors);
   useEffect(() => {
     setAvailableTailors(initialTailors);

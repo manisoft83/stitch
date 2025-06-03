@@ -17,7 +17,7 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription, // Added missing import
+  FormDescription, 
   FormField,
   FormItem,
   FormLabel,
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { Tailor } from '@/app/tailors/page'; // Assuming types are exported
+import type { Tailor, TailorFormData as MockTailorFormData } from '@/lib/mockData'; // Using MockTailorFormData for form specific structure
 
 const tailorFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -33,6 +33,7 @@ const tailorFormSchema = z.object({
   expertise: z.string().min(1, "Please list at least one expertise (comma-separated)."),
 });
 
+// This type alias might be redundant if MockTailorFormData is identical, but good for clarity
 export type TailorFormData = z.infer<typeof tailorFormSchema>;
 
 interface TailorFormDialogProps {
@@ -71,7 +72,7 @@ export function TailorFormDialog({
         expertise: '',
       });
     }
-  }, [tailorToEdit, form, isOpen]); // re-populate form when dialog opens or tailorToEdit changes
+  }, [tailorToEdit, form, isOpen]); 
 
   const onSubmit = (data: TailorFormData) => {
     onSave(data);
@@ -145,5 +146,3 @@ export function TailorFormDialog({
     </Dialog>
   );
 }
-
-    
