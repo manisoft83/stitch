@@ -9,8 +9,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { MeasurementFormValues } from '@/lib/schemas';
-import { mockCustomers } from '@/lib/mockData'; 
-import { ArrowLeft, ArrowRight, Ruler } from 'lucide-react';
+// import { mockCustomers } from '@/lib/mockData'; // No longer directly modifying mockCustomers
+import { updateCustomerMeasurements } from '@/lib/server/dataService'; // To save measurements to Firestore
+import { ArrowLeft, Ruler } from 'lucide-react';
 
 export default function MeasurementStepPage() {
   const router = useRouter();
@@ -18,8 +19,8 @@ export default function MeasurementStepPage() {
   const { 
     currentCustomer, 
     currentMeasurements, 
-    setMeasurements, 
-    setCustomer,
+    setMeasurements: setWorkflowMeasurements, // Renamed for clarity
+    setCustomer: setWorkflowCustomer, // To update customer in context after DB update
     workflowReturnPath,
     setWorkflowReturnPath 
   } = useOrderWorkflow();
@@ -35,31 +36,38 @@ export default function MeasurementStepPage() {
     }
   }, [currentCustomer, router, toast]);
 
-  const handleSaveMeasurements = (data: MeasurementFormValues) => { 
-    setMeasurements(data); 
-
-    if (currentCustomer) {
-      const customerIndex = mockCustomers.findIndex(c => c.id === currentCustomer.id);
-      if (customerIndex !== -1) {
-        const updatedCustomer = {
-          ...mockCustomers[customerIndex],
-          measurements: data, 
-        };
-        mockCustomers[customerIndex] = updatedCustomer;
-        setCustomer(updatedCustomer); 
-      }
+  const handleSaveMeasurements = async (data: MeasurementFormValues) => { 
+    if (!currentCustomer || !currentCustomer.id) {
+        toast({ title: "Error", description: "No customer selected to save measurements for.", variant: "destructive" });
+        return;
     }
 
-    toast({
-      title: "Measurements Saved",
-      description: `${currentCustomer?.name}'s measurements ${data.name ? "for profile '" + data.name + "'" : ""} have been updated.`,
-    });
-    
-    if (workflowReturnPath) {
-      router.push(workflowReturnPath);
-      setWorkflowReturnPath(null); // Clear the return path after using it
+    const success = await updateCustomerMeasurements(currentCustomer.id, data); 
+
+    if (success) {
+        setWorkflowMeasurements(data); // Update measurements in workflow context
+
+        // Update customer in context with new measurements
+        const updatedCustomer = { ...currentCustomer, measurements: data };
+        setWorkflowCustomer(updatedCustomer);
+
+        toast({
+          title: "Measurements Saved",
+          description: `${currentCustomer?.name}'s measurements ${data.name ? "for profile '" + data.name + "'" : ""} have been updated in Firestore.`,
+        });
+        
+        if (workflowReturnPath) {
+          router.push(workflowReturnPath);
+          setWorkflowReturnPath(null); 
+        } else {
+          router.push('/workflow/design-step'); 
+        }
     } else {
-      router.push('/workflow/design-step'); 
+        toast({
+            title: "Error Saving Measurements",
+            description: "Could not save measurements to the database. Please try again.",
+            variant: "destructive",
+        });
     }
   };
 
@@ -72,9 +80,9 @@ export default function MeasurementStepPage() {
   }
   
   const initialFormValues: Partial<MeasurementFormValues> = 
-    currentMeasurements || 
-    currentCustomer?.measurements || 
-    { name: '', bust: undefined, waist: undefined, hips: undefined, height: undefined };
+    currentMeasurements || //优先使用工作流中的当前测量值
+    currentCustomer?.measurements || //其次使用客户对象上的测量值
+    { name: '', bust: undefined, waist: undefined, hips: undefined, height: undefined };//最后的默认值
 
   return (
     <div className="container mx-auto py-8">
@@ -86,7 +94,7 @@ export default function MeasurementStepPage() {
           </div>
           <CardDescription>
             Enter or update measurements for <span className="font-semibold text-foreground">{currentCustomer.name}</span>.
-            These will be used for the current order unless edited again from an order.
+            These will be saved to Firestore and used for the current order.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -97,16 +105,15 @@ export default function MeasurementStepPage() {
         </CardContent>
         <CardFooter className="flex justify-between">
           <Button variant="outline" onClick={() => {
-            if (workflowReturnPath) { // If coming from order details, go back there
+            if (workflowReturnPath) { 
                 router.push(workflowReturnPath);
                 setWorkflowReturnPath(null);
-            } else { // Else, go back to customer step in normal workflow
+            } else { 
                 router.push('/workflow/customer-step');
             }
           }}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
-          {/* The submit button "Save & Continue" is inside MeasurementForm */}
         </CardFooter>
       </Card>
     </div>

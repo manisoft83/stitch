@@ -4,18 +4,21 @@
 import { useState, useEffect } from 'react';
 import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image'; 
-import { mockOrders, type Order, allOrderStatuses, type OrderStatus, mockCustomers, type Customer } from '@/lib/mockData';
+import Image from 'next/image';
+// Removed mockCustomers from this import
+import { mockOrders, type Order, allOrderStatuses, type OrderStatus, type Customer } from '@/lib/mockData';
+import { getCustomerById } from '@/lib/server/dataService'; // Import Firestore fetch function
+
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Shuffle, ImageIcon, Ruler, Palette } from "lucide-react"; 
+import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Shuffle, ImageIcon, Ruler, Palette } from "lucide-react";
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
-import { useOrderWorkflow, type DesignDetails } from '@/contexts/order-workflow-context'; 
+import { useOrderWorkflow, type DesignDetails } from '@/contexts/order-workflow-context';
 
 // Helper to get status badge color
 const getStatusBadgeColor = (status: OrderStatus | undefined) => {
@@ -40,23 +43,31 @@ export default function OrderDetailsPage() {
 
   const [currentOrder, setCurrentOrder] = useState<Order | null | undefined>(undefined);
   const [customerForOrder, setCustomerForOrder] = useState<Customer | null>(null);
-  const { 
-    setCustomer, 
-    setMeasurements, 
-    setDesign, 
-    setWorkflowReturnPath, 
-    setEditingOrderId 
+  const {
+    setCustomer,
+    setMeasurements,
+    setDesign,
+    setWorkflowReturnPath,
+    setEditingOrderId
   } = useOrderWorkflow();
 
 
   useEffect(() => {
-    const foundOrder = mockOrders.find(o => o.id === orderId);
+    const foundOrder = mockOrders.find(o => o.id === orderId); // Orders are still mock
     if (foundOrder) {
       setCurrentOrder(foundOrder);
-      const foundCustomer = mockCustomers.find(c => c.id === foundOrder.customerId);
-      setCustomerForOrder(foundCustomer || null);
+      if (foundOrder.customerId) {
+        // Fetch customer from Firestore
+        const fetchCustomer = async () => {
+          const customer = await getCustomerById(foundOrder.customerId);
+          setCustomerForOrder(customer);
+        };
+        fetchCustomer();
+      } else {
+        setCustomerForOrder(null);
+      }
     } else {
-      setCurrentOrder(null); 
+      setCurrentOrder(null);
     }
   }, [orderId]);
 
@@ -65,16 +76,16 @@ export default function OrderDetailsPage() {
   }
 
   if (!currentOrder) {
-    notFound(); 
+    notFound();
   }
-  
+
   const handleStatusChange = (newStatus: OrderStatus) => {
     if (!currentOrder) return;
 
     const orderIndex = mockOrders.findIndex(o => o.id === currentOrder.id);
     if (orderIndex !== -1) {
       const updatedOrder = { ...mockOrders[orderIndex], status: newStatus };
-      mockOrders[orderIndex] = updatedOrder; 
+      mockOrders[orderIndex] = updatedOrder;
       setCurrentOrder(updatedOrder);
 
       toast({
@@ -88,7 +99,7 @@ export default function OrderDetailsPage() {
     if (customerForOrder && currentOrder) {
       setCustomer(customerForOrder);
       setMeasurements(customerForOrder.measurements || null);
-      setEditingOrderId(null); // Not editing an order's design, just customer measurements
+      setEditingOrderId(null);
       setWorkflowReturnPath(`/orders/${currentOrder.id}`);
       router.push('/workflow/measurement-step');
     } else {
@@ -104,8 +115,7 @@ export default function OrderDetailsPage() {
     if (customerForOrder && currentOrder) {
       setCustomer(customerForOrder);
       setMeasurements(customerForOrder.measurements || null);
-      
-      // Pre-fill design context
+
       let designNotes = '';
       if (currentOrder.notes) {
         const notesMatch = currentOrder.notes.match(/Design Notes: ([\s\S]*?)(?=\nMeasurements Profile:|$)/);
@@ -115,7 +125,7 @@ export default function OrderDetailsPage() {
       }
 
       const designToEdit: DesignDetails = {
-        fabric: null, // Style, fabric, color will be re-selected in DesignTool
+        fabric: null,
         color: null,
         style: null,
         notes: designNotes,
@@ -178,7 +188,9 @@ export default function OrderDetailsPage() {
                 <div className="space-y-2 text-sm">
                     <p className="flex items-center"><CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" /><strong>Order Date:</strong> <span className="ml-2">{format(new Date(currentOrder.date), "PPPp")}</span></p>
                     <p className="flex items-center"><DollarSign className="mr-2 h-4 w-4 text-muted-foreground" /><strong>Total Amount:</strong> <span className="ml-2">{currentOrder.total}</span></p>
-                    {currentOrder.customerName && <p className="flex items-center"><User className="mr-2 h-4 w-4 text-muted-foreground" /><strong>Customer:</strong> <span className="ml-2">{currentOrder.customerName}</span></p>}
+                    {/* Use customerForOrder from state for customer name */}
+                    {customerForOrder && <p className="flex items-center"><User className="mr-2 h-4 w-4 text-muted-foreground" /><strong>Customer:</strong> <span className="ml-2">{customerForOrder.name}</span></p>}
+                    {!customerForOrder && currentOrder.customerName && <p className="flex items-center"><User className="mr-2 h-4 w-4 text-muted-foreground" /><strong>Customer:</strong> <span className="ml-2">{currentOrder.customerName} (Loading details...)</span></p>}
                 </div>
             </Card>
             <Card className="bg-muted/30 dark:bg-muted/20 p-4 rounded-lg">
@@ -193,6 +205,7 @@ export default function OrderDetailsPage() {
           
           <Separator />
 
+          {/* Use customerForOrder for measurements */}
           {customerForOrder?.measurements && (
             <>
               <div>
@@ -235,7 +248,6 @@ export default function OrderDetailsPage() {
               <div>
                  <div className="flex justify-between items-center mb-2">
                     <h3 className="text-lg font-semibold flex items-center"><ImageIcon className="mr-2 h-5 w-5 text-primary" />Reference Images</h3>
-                    {/* The "Edit Design / Items" button above also covers editing images */}
                  </div>
                 <div className="flex flex-wrap gap-3 mt-2">
                     {currentOrder.referenceImageUrls.map((src, index) => (
@@ -254,20 +266,21 @@ export default function OrderDetailsPage() {
             </>
           )}
 
-
-          {currentOrder.shippingAddress && (
+          {/* Use customerForOrder for shipping address */}
+          {customerForOrder?.address && (
             <>
               <Separator />
               <div>
                 <h3 className="text-lg font-semibold mb-2 flex items-center"><MapPinIcon className="mr-2 h-5 w-5 text-primary" />Shipping Address</h3>
                 <address className="text-sm not-italic text-muted-foreground">
-                  {currentOrder.shippingAddress.street}<br />
-                  {currentOrder.shippingAddress.city}, {currentOrder.shippingAddress.zipCode}<br />
-                  {currentOrder.shippingAddress.country}
+                  {customerForOrder.address.street}<br />
+                  {customerForOrder.address.city}, {customerForOrder.address.zipCode}<br />
+                  {customerForOrder.address.country}
                 </address>
               </div>
             </>
           )}
+
 
           {currentOrder.notes && (
              <>
@@ -294,3 +307,4 @@ export default function OrderDetailsPage() {
     </div>
   );
 }
+

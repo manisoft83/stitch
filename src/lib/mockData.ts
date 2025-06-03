@@ -19,11 +19,14 @@ export interface Customer {
   phone: string;
   measurements?: MeasurementFormValues; 
   address?: Address; 
+  // Optional: Timestamps if you want to track them on the client, though often managed by Firestore serverTimestamp
+  // createdAt?: any; // Could be Firestore Timestamp or string/Date
+  // updatedAt?: any;
 }
 
 export interface Order {
   id: string;
-  date: string;
+  date: string; // Should be string like "yyyy-MM-dd" for client, Firestore uses Timestamp
   status: OrderStatus;
   total: string;
   items: string[];
@@ -31,105 +34,62 @@ export interface Order {
   customerName?: string; 
   assignedTailorId?: string | null;
   assignedTailorName?: string | null;
-  dueDate?: string | null;
+  dueDate?: string | null; // Should be string like "yyyy-MM-dd" for client
   shippingAddress?: Address; 
   notes?: string;
   referenceImageUrls?: string[]; 
+  // Optional: Timestamps
+  // createdAt?: any;
+  // updatedAt?: any;
 }
 
 // Mock Data Arrays
-export const mockCustomers: Customer[] = [
-  { 
-    id: "CUST001", 
-    name: "Eleanor Vance", 
-    email: "eleanor@example.com", 
-    phone: "555-0101",
-    measurements: { name: "Eleanor - Standard", bust: 34, waist: 28, hips: 38, height: 65 },
-    address: { street: "123 Fashion Ave", city: "New York", zipCode: "10001", country: "USA" }
-  },
-  { 
-    id: "CUST002", 
-    name: "Marcus Green", 
-    email: "marcus@example.com", 
-    phone: "555-0102",
-    address: { street: "456 Style St", city: "Los Angeles", zipCode: "90001", country: "USA" }
-  },
-  { 
-    id: "CUST003", 
-    name: "Sarah Miller", 
-    email: "sarah@example.com", 
-    phone: "555-0103",
-    address: { street: "789 Chic Rd", city: "Chicago", zipCode: "60601", country: "USA" }
-  },
-];
+// export const mockCustomers: Customer[] = [
+//   { 
+//     id: "CUST001", 
+//     name: "Eleanor Vance", 
+//     email: "eleanor@example.com", 
+//     phone: "555-0101",
+//     measurements: { name: "Eleanor - Standard", bust: 34, waist: 28, hips: 38, height: 65 },
+//     address: { street: "123 Fashion Ave", city: "New York", zipCode: "10001", country: "USA" }
+//   },
+//   { 
+//     id: "CUST002", 
+//     name: "Marcus Green", 
+//     email: "marcus@example.com", 
+//     phone: "555-0102",
+//     address: { street: "456 Style St", city: "Los Angeles", zipCode: "90001", country: "USA" }
+//   },
+//   { 
+//     id: "CUST003", 
+//     name: "Sarah Miller", 
+//     email: "sarah@example.com", 
+//     phone: "555-0103",
+//     address: { street: "789 Chic Rd", city: "Chicago", zipCode: "60601", country: "USA" }
+//   },
+// ];
+// Customer data is now fetched from Firestore via src/lib/server/dataService.ts
 
 export const mockOrders: Order[] = [
   {
     id: "ORD001", date: format(subDays(new Date(), 2), "yyyy-MM-dd"), status: "Processing", total: "$125.00",
-    items: ["Custom A-Line Dress", "Silk Scarf"], customerId: "CUST001", customerName: "Eleanor Vance",
+    items: ["Custom A-Line Dress", "Silk Scarf"], customerId: "CUST001", customerName: "Eleanor Vance", // Ensure customerId matches a Firestore customer
     assignedTailorId: "T001", assignedTailorName: "Alice Wonderland", dueDate: format(addDays(new Date(), 5), "yyyy-MM-dd"),
     shippingAddress: { street: "123 Fashion Ave", city: "New York", zipCode: "10001", country: "USA" },
     notes: "Customer requested expedited processing if possible."
   },
   {
     id: "ORD002", date: format(subDays(new Date(), 20), "yyyy-MM-dd"), status: "Shipped", total: "$75.00",
-    items: ["Fitted Blouse"], customerId: "CUST002", customerName: "Marcus Green",
+    items: ["Fitted Blouse"], customerId: "CUST002", customerName: "Marcus Green", // Ensure customerId matches a Firestore customer
     assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: format(subDays(new Date(), 10), "yyyy-MM-dd"),
     shippingAddress: { street: "456 Style St", city: "Los Angeles", zipCode: "90001", country: "USA" },
     notes: "Standard shipping."
   },
-  {
-    id: "ORD003", date: format(subDays(new Date(), 30), "yyyy-MM-dd"), status: "Delivered", total: "$210.00",
-    items: ["Wide-Leg Trousers", "Linen Shirt"], customerId: "CUST003", customerName: "Sarah Miller",
-    assignedTailorId: "T001", assignedTailorName: "Alice Wonderland", dueDate: format(subDays(new Date(), 25), "yyyy-MM-dd"),
-    shippingAddress: { street: "789 Chic Rd", city: "Chicago", zipCode: "60601", country: "USA" }
-  },
-  {
-    id: "ORD101", date: format(subDays(new Date(), 1), "yyyy-MM-dd"), status: "Assigned", total: "$95.00",
-    items: ["Custom Silk Blouse"], customerId: "CUST001", customerName: "Eleanor Vance",
-    assignedTailorId: "T003", assignedTailorName: "Carol Danvers", dueDate: format(addDays(new Date(), 12), "yyyy-MM-dd"),
-    shippingAddress: { street: "101 Design Dr", city: "Miami", zipCode: "33101", country: "USA" }
-  },
-   {
-    id: "ORD102", date: format(new Date(), "yyyy-MM-dd"), status: "Pending Assignment", total: "$150.00",
-    items: ["Evening Gown Alteration"], customerId: "CUST002", customerName: "Marcus Green",
-    assignedTailorId: null, assignedTailorName: null, dueDate: null,
-    shippingAddress: { street: "202 Pattern Pl", city: "Houston", zipCode: "77001", country: "USA" }
-  },
-  {
-    id: "ORD104", date: format(subDays(new Date(), 5), "yyyy-MM-dd"), status: "Processing", total: "$180.00",
-    items: ["Summer Dress"], customerId: "CUST003", customerName: "Sarah Miller",
-    assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(addDays(new Date(), 8), "yyyy-MM-dd"),
-    shippingAddress: { street: "303 Fabric Fwy", city: "Phoenix", zipCode: "85001", country: "USA" }
-  },
-  {
-    id: "ORD105", date: format(subDays(new Date(), 1), "yyyy-MM-dd"), status: "Pending Assignment", total: "$250.00",
-    items: ["Formal Suit"], customerId: "CUST_NEW_RBrown", customerName: "Robert Brown", 
-    assignedTailorId: null, assignedTailorName: null, dueDate: null,
-    shippingAddress: { street: "404 Thread TRL", city: "Philadelphia", zipCode: "19101", country: "USA" }
-  },
-  {
-    id: "ORD106", date: format(subDays(new Date(), 60), "yyyy-MM-dd"), status: "Delivered", total: "$80.00",
-    items: ["Skirt Alteration"], customerId: "CUST_NEW_LDavis", customerName: "Linda Davis",
-    assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(subDays(new Date(), 50), "yyyy-MM-dd"),
-    shippingAddress: { street: "505 Stitch St", city: "San Antonio", zipCode: "78201", country: "USA" }
-  },
-  {
-    id: "ORD201", date: format(subDays(new Date(), 3), "yyyy-MM-dd"), status: "Processing", total: "$110.00",
-    items: ["Casual Shirt"], customerId: "CUST001", customerName: "Eleanor Vance",
-    assignedTailorId: "T001", assignedTailorName: "Alice Wonderland", dueDate: format(addDays(new Date(), 7), "yyyy-MM-dd"),
-    shippingAddress: { street: "606 Garment Grv", city: "San Diego", zipCode: "92101", country: "USA" }
-  },
-  {
-    id: "ORD202", date: format(subDays(new Date(), 4), "yyyy-MM-dd"), status: "Assigned", total: "$220.00",
-    items: ["Bespoke Jacket"], customerId: "CUST002", customerName: "Marcus Green",
-    assignedTailorId: "T002", assignedTailorName: "Bob The Builder", dueDate: format(addDays(new Date(), 10), "yyyy-MM-dd"),
-    shippingAddress: { street: "707 Couture Ct", city: "Dallas", zipCode: "75201", country: "USA" }
-  },
+  // ... other mock orders, ensure their customerId fields are valid if you test with them.
 ];
+// Order data is still mocked for now. Firestore integration for orders is pending.
 
-// Tailor interface and data (now primarily from Firestore via dataService.ts)
-// Kept for type reference in components that might deal with tailor data.
+
 export interface Tailor {
   id: string;
   name: string;
