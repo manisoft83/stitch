@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form'; // Removed Controller as not directly used for RadioGroup
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -13,13 +13,12 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
-import type { Customer, Address } from '@/lib/mockData'; 
-import { getCustomers as fetchAllCustomers, type CustomerFormInput } from '@/lib/server/dataService'; // Fetch all customers for existing list
-import { saveCustomerAction } from '@/app/customers/actions'; // Server Action for saving
+import type { Customer } from '@/lib/mockData'; 
+import { getCustomers as fetchAllCustomers, type CustomerFormInput } from '@/lib/server/dataService';
+import { saveCustomerAction, type SaveCustomerActionResult } from '@/app/customers/actions';
 import { UserPlus, Users, Edit3, ArrowRight, Search, MapPin } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
-// Schema matches CustomerFormInput in dataService
 const customerFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Invalid email address." }),
@@ -30,20 +29,19 @@ const customerFormSchema = z.object({
   country: z.string().optional(),
 });
 
-type CustomerFormValues = z.infer<typeof customerFormSchema>; // This is CustomerFormInput
+type CustomerFormValues = z.infer<typeof customerFormSchema>;
 
 export default function CustomerStepPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { currentCustomer, setCustomer: setWorkflowCustomer, resetWorkflow } = useOrderWorkflow(); // Renamed setCustomer to avoid conflict
+  const { currentCustomer, setCustomer: setWorkflowCustomer, resetWorkflow } = useOrderWorkflow();
   
   const initialCustomerType = currentCustomer ? 'existing' : 'new';
   const [customerType, setCustomerType] = useState<'new' | 'existing'>(initialCustomerType);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(currentCustomer?.id || '');
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
-  const [allCustomers, setAllCustomers] = useState<Customer[]>([]); // To store fetched customers
+  const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
-
 
   const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<CustomerFormValues>({
     resolver: zodResolver(customerFormSchema),
@@ -61,11 +59,10 @@ export default function CustomerStepPage() {
   });
 
   useEffect(() => {
-    // Fetch all customers when 'existing' tab is selected or component mounts for initial check
     const loadCustomers = async () => {
       setIsLoadingCustomers(true);
       try {
-        const fetchedCustomers = await fetchAllCustomers(); // This should call your Firestore getCustomers
+        const fetchedCustomers = await fetchAllCustomers();
         setAllCustomers(fetchedCustomers);
       } catch (error) {
         console.error("Failed to fetch customers:", error);
@@ -74,10 +71,10 @@ export default function CustomerStepPage() {
       setIsLoadingCustomers(false);
     };
 
-    if (customerType === 'existing') {
+    if (customerType === 'existing' || !currentCustomer) { // Load if 'existing' or if starting fresh
       loadCustomers();
     }
-    // If currentCustomer is set (e.g., from edit flow), pre-fill form
+    
     if (currentCustomer) {
         setCustomerType('existing');
         setSelectedCustomerId(currentCustomer.id);
@@ -91,17 +88,18 @@ export default function CustomerStepPage() {
             country: currentCustomer.address?.country || '',
         });
         if (customerType === 'existing' && !allCustomers.find(c => c.id === currentCustomer.id)) {
-            loadCustomers(); // Ensure current customer is in the list if editing
+            // This condition ensures that if we're editing a customer,
+            // the customer list is loaded/refreshed.
+            if (!isLoadingCustomers) loadCustomers(); 
         }
     } else {
-        // Switched to new or no current customer, clear form
         if (customerType === 'new' && (selectedCustomerId !== '' || initialCustomerType === 'existing')) {
           reset({ name: '', email: '', phone: '', street: '', city: '', zipCode: '', country: '' });
         }
         setSelectedCustomerId(''); 
     }
-
-  }, [customerType, currentCustomer, reset, toast, initialCustomerType]); // Removed selectedCustomerId and allCustomers from deps to avoid loops, rely on currentCustomer
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerType, currentCustomer, reset, toast, initialCustomerType]);
 
  useEffect(() => {
     if (customerType === 'existing' && selectedCustomerId) {
@@ -120,7 +118,6 @@ export default function CustomerStepPage() {
     }
   }, [selectedCustomerId, customerType, allCustomers, reset]);
 
-
   const filteredCustomers = allCustomers.filter(customer =>
     customer.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
     customer.email.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
@@ -129,33 +126,32 @@ export default function CustomerStepPage() {
 
   const handleFormSubmit = async (data: CustomerFormValues) => {
     let customerToSetInWorkflow: Customer | null = null;
-    let toastMessage = {};
-
+    
     const customerIdToUpdate = customerType === 'existing' ? selectedCustomerId : undefined;
 
     try {
-      const savedCustomer = await saveCustomerAction(data, customerIdToUpdate);
+      const actionResult: SaveCustomerActionResult = await saveCustomerAction(data, customerIdToUpdate);
 
-      if (savedCustomer) {
-        customerToSetInWorkflow = savedCustomer;
-        toastMessage = { 
+      if (actionResult.success && actionResult.customer) {
+        customerToSetInWorkflow = actionResult.customer;
+        toast({ 
           title: customerIdToUpdate ? "Customer Updated" : "New Customer Registered", 
-          description: `${savedCustomer.name}'s details have been ${customerIdToUpdate ? 'updated' : 'registered'} in Firestore.` 
-        };
+          description: `${actionResult.customer.name}'s details have been ${customerIdToUpdate ? 'updated' : 'registered'} in Firestore.` 
+        });
+        setWorkflowCustomer(customerToSetInWorkflow);
+        router.push('/workflow/measurement-step');
       } else {
-        throw new Error("Failed to save customer details.");
+        // This error will be thrown if actionResult.success is false
+        console.error("Client: saveCustomerAction failed.", actionResult.error);
+        toast({ title: "Error", description: actionResult.error || "Failed to save customer details. Check server logs.", variant: "destructive" });
+        // No longer throwing client-side error here, relying on toast to inform user.
+        // throw new Error(actionResult.error || "Failed to save customer details.");
       }
     } catch (error) {
-      console.error("Error saving customer:", error);
-      toast({ title: "Error", description: (error as Error).message || "Could not save customer details.", variant: "destructive" });
-      return;
-    }
-    
-
-    if (customerToSetInWorkflow) {
-      setWorkflowCustomer(customerToSetInWorkflow); // Update context with potentially new/updated customer from DB
-      toast(toastMessage);
-      router.push('/workflow/measurement-step');
+      // This catch block is for unexpected errors during the client-side execution of handleFormSubmit
+      // or if saveCustomerAction itself throws an unhandled exception (which it shouldn't with the new structure).
+      console.error("Client: Error in handleFormSubmit:", error);
+      toast({ title: "Client Error", description: (error instanceof Error ? error.message : "An unexpected error occurred while trying to save."), variant: "destructive" });
     }
   };
   
@@ -172,9 +168,14 @@ export default function CustomerStepPage() {
           <RadioGroup
             value={customerType}
             onValueChange={(value: 'new' | 'existing') => {
-              resetWorkflow(); // Clear workflow when switching customer type to ensure fresh state
+              if (customerType !== value) { // Only reset if the type actually changes
+                resetWorkflow(); 
+              }
               setCustomerType(value);
-              if (value === 'new') setSelectedCustomerId(''); // Clear selection if switching to new
+              if (value === 'new') {
+                setSelectedCustomerId(''); 
+                reset({ name: '', email: '', phone: '', street: '', city: '', zipCode: '', country: '' });
+              }
             }}
             className="grid grid-cols-2 gap-4"
           >
@@ -219,7 +220,6 @@ export default function CustomerStepPage() {
                   value={selectedCustomerId}
                   onValueChange={(id) => {
                     setSelectedCustomerId(id);
-                    // setWorkflowCustomer(allCustomers.find(c => c.id === id) || null); // Also update context
                   }}
                   className="space-y-1 max-h-60 overflow-y-auto border p-3 rounded-md bg-muted/30"
                 >
@@ -295,7 +295,7 @@ export default function CustomerStepPage() {
                 {errors.country && <p className="text-sm text-destructive mt-1">{errors.country.message}</p>}
               </div>
               
-              <Button type="submit" className="w-full mt-6 !mb-2" disabled={customerType === 'existing' && !selectedCustomerId}>
+              <Button type="submit" className="w-full mt-6 !mb-2" disabled={(customerType === 'existing' && !selectedCustomerId) || formState.isSubmitting}>
                 {customerType === 'existing' && selectedCustomerId ? "Update Details & Proceed" : "Register & Proceed"} 
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -311,3 +311,4 @@ export default function CustomerStepPage() {
     </div>
   );
 }
+
