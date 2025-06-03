@@ -126,7 +126,8 @@ export const mockOrders: Order[] = [
   },
 ];
 
-
+// Tailor interface and data are now primarily managed by dataService.ts
+// This is kept for type reference if needed elsewhere, but dataService is the source of truth.
 export interface Tailor {
   id: string;
   name: string;
@@ -137,11 +138,20 @@ export interface Tailor {
   dataAiHint: string;
 }
 
+export interface TailorFormData {
+  name: string;
+  mobile: string;
+  expertise: string; // Comma-separated string from form
+}
+
+/*
+// This is now sourced from dataService.ts
 export const mockTailors: Tailor[] = [
   { id: "T001", name: "Alice Wonderland", mobile: "555-0101", expertise: ["Dresses", "Evening Wear"], availability: "Available", avatar: "https://placehold.co/100x100.png?text=AW", dataAiHint: "woman portrait" },
   { id: "T002", name: "Bob The Builder", mobile: "555-0102", expertise: ["Suits", "Formal Trousers"], availability: "Busy", avatar: "https://placehold.co/100x100.png?text=BB", dataAiHint: "man portrait" },
   { id: "T003", name: "Carol Danvers", mobile: "555-0103", expertise: ["Casual Wear", "Alterations"], availability: "Available", avatar: "https://placehold.co/100x100.png?text=CD", dataAiHint: "woman professional" },
 ];
+*/
 
 export const allOrderStatuses: OrderStatus[] = ["Pending Assignment", "Assigned", "Processing", "Shipped", "Delivered", "Cancelled"];
 
