@@ -28,10 +28,11 @@ export default function SummaryStepPage() {
   } = useOrderWorkflow();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isNavigatingAfterSuccess, setIsNavigatingAfterSuccess] = useState(false);
 
   useEffect(() => {
-    if (isSubmitting) {
-      return; // Don't redirect if currently submitting
+    if (isNavigatingAfterSuccess || isSubmitting) {
+      return; 
     }
 
     let message = '';
@@ -51,8 +52,9 @@ export default function SummaryStepPage() {
     if (redirectTo) {
       toast({ title: "Workflow Incomplete", description: message, variant: "destructive" });
       router.replace(redirectTo);
+      return; 
     }
-  }, [currentCustomer, currentMeasurements, currentDesign, router, toast, isSubmitting]);
+  }, [currentCustomer, currentMeasurements, currentDesign, router, toast, isSubmitting, workflowReturnPath, isNavigatingAfterSuccess]);
 
 
   const handleConfirmOrder = async () => {
@@ -67,7 +69,7 @@ export default function SummaryStepPage() {
     const designColorName = currentDesign.color ? getDetailNameById(currentDesign.color, colorOptionsForDisplay) : 'N/A';
 
     const itemsOrdered: string[] = [`${designStyleName} (${designFabricName}, ${designColorName})`];
-
+    
     const measurementsSummaryText: string = `Profile: ${currentMeasurements.name || "Default"}. Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${currentMeasurements.hips}, Height: ${currentMeasurements.height}`;
 
     let orderNotesForSave: string = currentDesign.notes || '';
@@ -83,7 +85,7 @@ export default function SummaryStepPage() {
                                       ? currentDesign.dueDate 
                                       : format(addDays(new Date(), 7), "yyyy-MM-dd");
 
-    const orderDesignDetailsToSave = {
+    const orderDesignDetailsToSave: Order['designDetails'] = {
         fabric: currentDesign.fabric,
         color: currentDesign.color,
         style: currentDesign.style,
@@ -91,7 +93,7 @@ export default function SummaryStepPage() {
         referenceImageUrls: currentDesign.referenceImages || [],
     };
 
-    const orderDataForSave = {
+    const orderDataForSave: Omit<Order, 'id' | 'createdAt' | 'updatedAt'> = {
       date: newOrderDate,
       status: orderStatusToSet,
       total: "$0.00", 
@@ -111,6 +113,7 @@ export default function SummaryStepPage() {
       const result: SaveOrderActionResult = await saveOrderAction(orderDataForSave as Order, editingOrderId || undefined);
 
       if (result.success && result.order) {
+        setIsNavigatingAfterSuccess(true); // Set flag before navigation
         toast({
           title: editingOrderId ? "Order Updated!" : "Order Placed!",
           description: `Order #${result.order.id} has been successfully ${editingOrderId ? 'updated' : 'submitted'}.`,
@@ -133,15 +136,12 @@ export default function SummaryStepPage() {
       });
     } finally {
       setIsSubmitting(false);
+      // Do not reset isNavigatingAfterSuccess here, let it persist until unmount or new interaction
     }
   }; 
 
-  // This early return handles cases where essential data is missing,
-  // preventing the main JSX from rendering until data is ready or redirected.
-  if (!currentCustomer || !currentMeasurements || !currentDesign) {
-    // The useEffect hook should handle redirection.
-    // This return is a safeguard if the component tries to render before redirection.
-    if (!isSubmitting) { // Only render loading/redirecting if not in the middle of a submission
+  if (!isSubmitting && !isNavigatingAfterSuccess) {
+    if (!currentCustomer || !currentMeasurements || !currentDesign) {
         return (
             <div className="container mx-auto py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
                 <p className="text-muted-foreground">Loading workflow state or redirecting...</p>
@@ -149,8 +149,7 @@ export default function SummaryStepPage() {
         );
     }
   }
-  // All JavaScript logic before this point must be syntactically correct.
-  // The error "Unexpected token div" indicates a JS syntax error above.
+  
   return (
     <div className="container mx-auto py-8">
       <Card className="max-w-3xl mx-auto shadow-xl">
@@ -264,13 +263,13 @@ export default function SummaryStepPage() {
            </Card>
         </CardContent>
         <CardFooter className="flex flex-col sm:flex-row justify-between gap-3">
-          <Button variant="outline" onClick={() => router.push('/workflow/design-step')} className="w-full sm:w-auto" disabled={isSubmitting}>
+          <Button variant="outline" onClick={() => router.push('/workflow/design-step')} className="w-full sm:w-auto" disabled={isSubmitting || isNavigatingAfterSuccess}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Design
           </Button>
           <Button 
             onClick={handleConfirmOrder} 
             className="w-full sm:w-auto shadow-md hover:shadow-lg" 
-            disabled={isSubmitting || !currentCustomer || !currentMeasurements || !currentDesign}
+            disabled={isSubmitting || isNavigatingAfterSuccess || !currentCustomer || !currentMeasurements || !currentDesign}
           >
             {isSubmitting ? (editingOrderId ? "Updating..." : "Placing Order...") : (
               <>
@@ -284,5 +283,3 @@ export default function SummaryStepPage() {
     </div>
   );
 }
-
-    
