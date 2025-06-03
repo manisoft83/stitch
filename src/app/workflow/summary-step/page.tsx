@@ -4,36 +4,16 @@
 import { useEffect, useState } from 'react'; 
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useOrderWorkflow, type DesignDetails } from '@/contexts/order-workflow-context';
+import { useOrderWorkflow } from '@/contexts/order-workflow-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { mockOrders, type Order, type Address } from '@/lib/mockData'; // Removed mockCustomers
-import { format, addDays } from 'date-fns';
+import type { Order, Address } from '@/lib/mockData'; 
+import { format, addDays, parseISO } from 'date-fns';
 import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon, MapPin } from 'lucide-react';
-
-const fabricOptions = [
-  { id: 'cotton', name: 'Cotton' },
-  { id: 'silk', name: 'Silk' },
-  { id: 'linen', name: 'Linen' },
-  { id: 'wool', name: 'Wool' },
-];
-
-const colorOptions = [
-  { id: 'red', name: 'Red', hex: '#FF0000' },
-  { id: 'blue', name: 'Blue', hex: '#0000FF' },
-  { id: 'green', name: 'Green', hex: '#00FF00' },
-  { id: 'black', name: 'Black', hex: '#000000' },
-  { id: 'white', name: 'White', hex: '#FFFFFF' },
-];
-
-const styleOptions = [
-  { id: 'a-line-dress', name: 'A-Line Dress' },
-  { id: 'fitted-blouse', name: 'Fitted Blouse' },
-  { id: 'wide-leg-trousers', name: 'Wide-Leg Trousers' },
-  { id: 'pencil-skirt', name: 'Pencil Skirt' },
-];
+import { saveOrderAction, type SaveOrderActionResult } from '@/app/orders/actions';
+import { getDetailNameById, fabricOptionsForDisplay, colorOptionsForDisplay, styleOptionsForDisplay } from '@/lib/mockData';
 
 
 export default function SummaryStepPage() {
@@ -45,13 +25,15 @@ export default function SummaryStepPage() {
     currentDesign, 
     resetWorkflow,
     editingOrderId, 
-    workflowReturnPath 
+    workflowReturnPath,
+    setWorkflowReturnPath, 
+    setEditingOrderId
   } = useOrderWorkflow();
 
-  const [isSubmitted, setIsSubmitted] = useState(false); 
+  const [isSubmitting, setIsSubmitting] = useState(false); 
 
   useEffect(() => {
-    if (isSubmitted) return; 
+    if (isSubmitting) return; 
 
     if (!currentCustomer) {
       toast({ title: "Missing Customer", description: "Please start from the customer step.", variant: "destructive" });
@@ -63,88 +45,68 @@ export default function SummaryStepPage() {
       toast({ title: "Missing Design", description: "Please complete the design step.", variant: "destructive" });
       router.replace('/workflow/design-step');
     }
-  }, [currentCustomer, currentMeasurements, currentDesign, router, toast, isSubmitted]);
+  }, [currentCustomer, currentMeasurements, currentDesign, router, toast, isSubmitting]);
 
-  const getDetailName = (id: string | null, options: Array<{id: string, name: string}>): string => {
-    if (!id) return 'Not selected';
-    return options.find(opt => opt.id === id)?.name || 'Unknown';
-  };
-
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = async () => {
     if (!currentCustomer || !currentMeasurements || !currentDesign) {
       toast({ title: "Error", description: "Missing order information.", variant: "destructive" });
       return;
     }
-
-    const pathAfterConfirm = workflowReturnPath || '/orders'; 
-    setIsSubmitted(true); 
+    setIsSubmitting(true);
 
     const itemsOrdered = [
-        `${getDetailName(currentDesign.style, styleOptions)} (${getDetailName(currentDesign.fabric, fabricOptions)}, ${getDetailName(currentDesign.color, colorOptions)})`
+        `${getDetailNameById(currentDesign.style, styleOptionsForDisplay)} (${getDetailNameById(currentDesign.fabric, fabricOptionsForDisplay)}, ${getDetailNameById(currentDesign.color, colorOptionsForDisplay)})`
     ];
     
-    let orderNotes = `Design Notes: ${currentDesign.notes || 'N/A'}
-Measurements Profile: ${currentMeasurements.name || 'Default'}
-Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${currentMeasurements.hips}, Height: ${currentMeasurements.height}`;
+    const measurementsSummaryText = `Profile: ${currentMeasurements.name || "Default"}. Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${currentMeasurements.hips}, Height: ${currentMeasurements.height}`;
 
-    if (currentDesign.referenceImages && currentDesign.referenceImages.length > 0) {
-        orderNotes += `\nReference Images: ${currentDesign.referenceImages.length} provided.`;
-    }
-    
-    const orderShippingAddress: Address | undefined = currentCustomer.address 
-      ? { ...currentCustomer.address }
-      : undefined; 
+    const orderToSave: Omit<Order, 'id' | 'createdAt' | 'updatedAt'> = { // Omit fields Firestore will generate/manage
+      date: format(new Date(), "yyyy-MM-dd"), // Or parseISO if you expect ISO from somewhere
+      status: editingOrderId ? currentDesign.status || "Pending Assignment" : "Pending Assignment", // Preserve status if editing, else default
+      total: "$0.00", // Placeholder, pricing logic to be added
+      items: itemsOrdered,
+      customerId: currentCustomer.id,
+      customerName: currentCustomer.name,
+      measurementsSummary: measurementsSummaryText,
+      designDetails: { // Storing design details structured
+        fabric: currentDesign.fabric,
+        color: currentDesign.color,
+        style: currentDesign.style,
+        notes: currentDesign.notes || '',
+        // TODO: Refactor referenceImageUrls to store Firebase Storage URLs instead of Data URLs
+        referenceImageUrls: currentDesign.referenceImages || [],
+      },
+      assignedTailorId: null, // To be assigned later
+      assignedTailorName: null,
+      dueDate: format(addDays(new Date(), 7), "yyyy-MM-dd"), // Default due date
+      shippingAddress: currentCustomer.address || undefined,
+      notes: currentDesign.notes || `Order for ${currentCustomer.name}. Style: ${getDetailNameById(currentDesign.style, styleOptionsForDisplay)}. Fabric: ${getDetailNameById(currentDesign.fabric, fabricOptionsForDisplay)}. Color: ${getDetailNameById(currentDesign.color, colorOptionsForDisplay)}.`,
+    };
 
     if (editingOrderId) {
-        const orderIndex = mockOrders.findIndex(o => o.id === editingOrderId);
-        if (orderIndex !== -1) {
-            mockOrders[orderIndex] = {
-                ...mockOrders[orderIndex],
-                items: itemsOrdered,
-                notes: orderNotes,
-                referenceImageUrls: currentDesign.referenceImages || [],
-                shippingAddress: orderShippingAddress || mockOrders[orderIndex].shippingAddress, 
-            };
-             toast({
-                title: "Order Updated!",
-                description: `Order #${editingOrderId} has been successfully updated.`,
-            });
-        } else {
-            toast({ title: "Error", description: `Could not find order #${editingOrderId} to update.`, variant: "destructive" });
-            setIsSubmitted(false); 
-            return;
-        }
-    } else {
-        const newOrderId = `ORD${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 100)}`;
-        const defaultDueDate = format(addDays(new Date(), 5), "yyyy-MM-dd");
-
-        const newOrder: Order = {
-          id: newOrderId,
-          date: format(new Date(), "yyyy-MM-dd"),
-          status: "Pending Assignment",
-          total: "$0.00", 
-          items: itemsOrdered,
-          customerId: currentCustomer.id,
-          customerName: currentCustomer.name,
-          assignedTailorId: null,
-          assignedTailorName: null,
-          dueDate: defaultDueDate,
-          shippingAddress: orderShippingAddress,
-          notes: orderNotes,
-          referenceImageUrls: currentDesign.referenceImages || [],
-        };
-        mockOrders.unshift(newOrder);
-        toast({
-            title: "Order Placed!",
-            description: `Your order #${newOrderId} has been successfully submitted.`,
-        });
+      // If editing, we need to fetch the original order to preserve fields not covered by the workflow.
+      // This is simplified here; a real app might merge more carefully or fetch original order.
+      // For now, we assume the orderToSave structure is what we want to update.
     }
+    
+    const result: SaveOrderActionResult = await saveOrderAction(orderToSave as Order, editingOrderId || undefined);
 
-    // Customer data (measurements, address) is already saved to Firestore in previous steps.
-    // No need to update mockCustomers here.
-
-    resetWorkflow(); 
-    router.push(pathAfterConfirm);
+    if (result.success && result.order) {
+      toast({
+        title: editingOrderId ? "Order Updated!" : "Order Placed!",
+        description: `Order #${result.order.id} has been successfully ${editingOrderId ? 'updated' : 'submitted'}.`,
+      });
+      const pathAfterConfirm = workflowReturnPath || `/orders/${result.order.id}`;
+      resetWorkflow();
+      router.push(pathAfterConfirm);
+    } else {
+      toast({
+        title: "Error",
+        description: result.error || `Failed to ${editingOrderId ? 'update' : 'place'} order.`,
+        variant: "destructive",
+      });
+    }
+    setIsSubmitting(false);
   };
 
   if (!currentCustomer || !currentMeasurements || !currentDesign) {
@@ -187,7 +149,7 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
               <Card className="bg-muted/30">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2"><MapPin className="h-5 w-5 text-primary"/>Shipping Address</CardTitle>
-                </CardHeader>
+                </Header>
                 <CardContent className="text-sm space-y-1 not-italic">
                   <p>{currentCustomer.address.street}</p>
                   <p>{currentCustomer.address.city}, {currentCustomer.address.zipCode}</p>
@@ -218,9 +180,9 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
               <CardTitle className="text-lg flex items-center gap-2"><Palette className="h-5 w-5 text-primary"/>Design Specifications</CardTitle>
             </CardHeader>
             <CardContent className="text-sm space-y-2">
-              <p><strong>Style:</strong> {getDetailName(currentDesign.style, styleOptions)}</p>
-              <p><strong>Fabric:</strong> {getDetailName(currentDesign.fabric, fabricOptions)}</p>
-              <p><strong>Color:</strong> {getDetailName(currentDesign.color, colorOptions)}</p>
+              <p><strong>Style:</strong> {getDetailNameById(currentDesign.style, styleOptionsForDisplay)}</p>
+              <p><strong>Fabric:</strong> {getDetailNameById(currentDesign.fabric, fabricOptionsForDisplay)}</p>
+              <p><strong>Color:</strong> {getDetailNameById(currentDesign.color, colorOptionsForDisplay)}</p>
               {currentDesign.notes && <p><strong>Notes:</strong> <span className="whitespace-pre-wrap">{currentDesign.notes}</span></p>}
               
               {currentDesign.referenceImages && currentDesign.referenceImages.length > 0 && (
@@ -239,6 +201,8 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
                       />
                     ))}
                   </div>
+                   {/* TODO: Note about Data URLs */}
+                  <p className="text-xs text-muted-foreground mt-1">Note: Images are stored as Data URLs. For production, use Firebase Storage.</p>
                 </div>
               )}
             </CardContent>
@@ -251,21 +215,25 @@ Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${
              </CardHeader>
              <CardContent className="text-sm">
                 <p>
-                  Upon confirmation, your order will be {editingOrderId ? "updated" : "submitted and will appear in 'My Orders'"}.
+                  Upon confirmation, your order will be {editingOrderId ? "updated" : "submitted to Firestore and will appear in 'My Orders'"}.
                   {editingOrderId ? "" : " It will then await assignment to one of our skilled tailors."} You can track its progress from there.
-                  {!editingOrderId && currentDesign && <span className="block mt-1">The estimated due date will be {format(addDays(new Date(), 5), "PPP")}.</span>}
+                  {!editingOrderId && currentDesign && <span className="block mt-1">The estimated due date will be {format(addDays(new Date(), 7), "PPP")}.</span>}
                 </p>
-                <p className="mt-2 text-xs text-muted-foreground">Note: This is a prototype. Order {editingOrderId ? "updates are" : "placement is"} simulated and payment is not processed.</p>
+                <p className="mt-2 text-xs text-muted-foreground">Order {editingOrderId ? "updates are" : "placement is"} now saved to Firestore.</p>
              </CardContent>
            </Card>
         </CardContent>
         <CardFooter className="flex flex-col sm:flex-row justify-between gap-3">
-          <Button variant="outline" onClick={() => router.push('/workflow/design-step')} className="w-full sm:w-auto">
+          <Button variant="outline" onClick={() => router.push('/workflow/design-step')} className="w-full sm:w-auto" disabled={isSubmitting}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Design
           </Button>
-          <Button onClick={handleConfirmOrder} className="w-full sm:w-auto shadow-md hover:shadow-lg">
-            <CheckCircle className="mr-2 h-4 w-4" /> 
-            {editingOrderId ? "Confirm & Update Order" : "Confirm & Place Order"}
+          <Button onClick={handleConfirmOrder} className="w-full sm:w-auto shadow-md hover:shadow-lg" disabled={isSubmitting}>
+            {isSubmitting ? (editingOrderId ? "Updating..." : "Placing Order...") : (
+              <>
+                <CheckCircle className="mr-2 h-4 w-4" /> 
+                {editingOrderId ? "Confirm & Update Order" : "Confirm & Place Order"}
+              </>
+            )}
           </Button>
         </CardFooter>
       </Card>

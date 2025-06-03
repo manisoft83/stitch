@@ -3,14 +3,55 @@
 'use server';
 
 import { db } from '@/lib/firebase/config';
-import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, Timestamp, query, where, getDoc, updateDoc, FieldValue, deleteField } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, Timestamp, query, where, getDoc, updateDoc, FieldValue, deleteField, orderBy, limit } from 'firebase/firestore';
 import type { TailorFormData } from '@/lib/mockData'; // Using TailorFormData specifically for the form
 import type { Tailor, Customer, Address, Order, OrderStatus } from '@/lib/mockData'; // Keep general types
 import type { MeasurementFormValues } from '@/lib/schemas';
+import { format, parseISO } from 'date-fns';
+
 
 const TAILORS_COLLECTION = 'tailors';
 const CUSTOMERS_COLLECTION = 'customers';
-// const ORDERS_COLLECTION = 'orders'; // Will be used later
+const ORDERS_COLLECTION = 'orders';
+
+// --- Timestamp Converters ---
+// Converts Firestore Timestamps to ISO strings for client, and specific fields from data
+const fromFirestoreTimestamp = (timestamp: Timestamp | undefined | null): string | undefined => {
+  return timestamp ? timestamp.toDate().toISOString() : undefined;
+};
+const dateStringToISO = (dateStr: string | null | undefined): string | undefined => {
+    if (!dateStr) return undefined;
+    try {
+        // Handles "yyyy-MM-dd" by parsing and reformatting to ISO
+        return parseISO(dateStr).toISOString();
+    } catch (e) { // If already ISO or other format, try to return as is or handle error
+        return dateStr; // Or throw error / return undefined
+    }
+}
+
+const orderFromDoc = (docSnap: ReturnType<typeof docSnapshot.data> | undefined, id: string): Order | null => {
+    if (!docSnap) return null;
+    const data = docSnap;
+    return {
+        id: id,
+        date: data.date ? (data.date instanceof Timestamp ? format(data.date.toDate(), "yyyy-MM-dd") : data.date) : format(new Date(), "yyyy-MM-dd"),
+        status: data.status || 'Pending Assignment',
+        total: data.total || '$0.00',
+        items: Array.isArray(data.items) ? data.items : [],
+        customerId: data.customerId || '',
+        customerName: data.customerName || '',
+        measurementsSummary: data.measurementsSummary || '',
+        designDetails: data.designDetails || undefined,
+        assignedTailorId: data.assignedTailorId || null,
+        assignedTailorName: data.assignedTailorName || null,
+        dueDate: data.dueDate ? (data.dueDate instanceof Timestamp ? format(data.dueDate.toDate(), "yyyy-MM-dd") : data.dueDate) : null,
+        shippingAddress: data.shippingAddress || undefined,
+        notes: data.notes || '',
+        createdAt: data.createdAt ? fromFirestoreTimestamp(data.createdAt as Timestamp) : undefined,
+        updatedAt: data.updatedAt ? fromFirestoreTimestamp(data.updatedAt as Timestamp) : undefined,
+    } as Order;
+};
+
 
 // --- Tailor Functions ---
 export async function getTailors(): Promise<Tailor[]> {
@@ -194,8 +235,8 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
       phone: string;
       updatedAt: FieldValue;
       createdAt?: FieldValue;
-      address?: Address | FieldValue; // Allows Address object or deleteField()
-      measurements?: MeasurementFormValues; // Measurements are handled by a separate function for updates
+      address?: Address | FieldValue; 
+      measurements?: MeasurementFormValues; 
   } = {
       name,
       email,
@@ -203,9 +244,7 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
       updatedAt: serverTimestamp(),
   };
 
-  // Address handling
   const allAddressFieldsPresentAndNonEmpty = street && city && zipCode && country;
-  // Check if the intent is to clear the address by submitting all address fields as empty strings.
   const intentToClearAddress =
     (customerFormInput.hasOwnProperty('street') && street === '') &&
     (customerFormInput.hasOwnProperty('city') && city === '') &&
@@ -219,9 +258,6 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
     customerDataForDb.address = deleteField();
     console.log(`DataService: All address fields submitted as empty for update. Deleting address field.`);
   }
-  // If it's a new customer and address is not complete, customerDataForDb.address remains undefined, so no address field is created.
-  // If it's an update, and the address is not complete AND it's not an intentToClearAddress,
-  // customerDataForDb.address remains undefined, so the existing address field in Firestore is not touched by updateDoc.
 
   try {
     if (existingCustomerId) {
@@ -233,11 +269,10 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
           console.error(`DataService: Customer document ${existingCustomerId} does not exist. Cannot update.`);
           return null;
       }
-      // Note: measurements are not set here; they are updated by updateCustomerMeasurements
       await updateDoc(customerRef, customerDataForDb);
       console.log(`DataService: Successfully called updateDoc for customer ${existingCustomerId}`);
 
-      const updatedDocSnap = await getDoc(customerRef); // Re-fetch to get the latest state including server timestamps
+      const updatedDocSnap = await getDoc(customerRef); 
       if (!updatedDocSnap.exists()) {
         console.error(`DataService: Customer document ${existingCustomerId} not found after update attempt.`);
         return null;
@@ -249,15 +284,13 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
         name: updatedData.name || '',
         email: updatedData.email || '',
         phone: updatedData.phone || '',
-        address: updatedData.address || undefined, // Will be undefined if deletedField() was used and field removed
+        address: updatedData.address || undefined, 
         measurements: updatedData.measurements || undefined,
       };
     } else {
       console.log(`DataService: Attempting to add new customer`);
       customerDataForDb.createdAt = serverTimestamp();
-      // New customers don't have measurements by default from this form; set explicitly if needed
-      // customerDataForDb.measurements = undefined; // Or some default empty MeasurementFormValues
-
+      
       const docRef = await addDoc(collection(db, CUSTOMERS_COLLECTION), customerDataForDb);
       console.log(`DataService: Successfully called addDoc, new customer ID: ${docRef.id}`);
 
@@ -273,7 +306,7 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
         name: savedData.name || '',
         email: savedData.email || '',
         phone: savedData.phone || '',
-        address: savedData.address || undefined, // Will be undefined if not set during creation
+        address: savedData.address || undefined, 
         measurements: savedData.measurements || undefined,
       };
     }
@@ -317,47 +350,91 @@ export async function deleteCustomerById(customerId: string): Promise<boolean> {
   }
 }
 
-// --- Order Functions (Still using mock data) ---
-import { mockOrders as MOCK_ORDERS_DB } from '@/lib/mockData'; 
+// --- Order Functions ---
 
-export async function getOrders(): Promise<Order[]> {
-  console.log("DataService: Fetching orders (using mock data)");
-  await new Promise(resolve => setTimeout(resolve, 50)); // Simulate async
-  return Promise.resolve([...MOCK_ORDERS_DB]);
-}
+export async function saveOrderToDb(orderData: Order, existingOrderId?: string): Promise<Order | null> {
+  console.log(`DataService: Saving order to Firestore. Order ID: ${existingOrderId || 'NEW'}, Data:`, JSON.stringify(orderData).substring(0, 200) + "...");
+  
+  // Prepare data for Firestore (convert date strings to Timestamps if needed, or store as ISO strings)
+  // For simplicity and consistency with how mock data was structured, we'll store dates as "yyyy-MM-dd" strings.
+  // Firestore can query string dates, though Timestamp objects offer more flexibility.
+  const dataToSave = {
+    ...orderData,
+    date: orderData.date ? format(parseISO(orderData.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+    dueDate: orderData.dueDate ? format(parseISO(orderData.dueDate), "yyyy-MM-dd") : null,
+    updatedAt: serverTimestamp(),
+  };
+  // Remove id from data to save as it's the document ID
+  delete (dataToSave as any).id; 
+  delete (dataToSave as any).createdAt; // Will be set only on creation
 
-export async function getOrderById(orderId: string): Promise<Order | null> {
-  console.log(`DataService: Fetching order by ID ${orderId} (using mock data)`);
-  await new Promise(resolve => setTimeout(resolve, 50)); // Simulate async
-  const order = MOCK_ORDERS_DB.find(o => o.id === orderId);
-  return Promise.resolve(order || null);
-}
-
-export async function saveOrder(orderData: Order, existingOrderId?: string): Promise<Order | null> {
-  console.log(`DataService: Saving order ${existingOrderId || 'new'} (using mock data)`);
-  await new Promise(resolve => setTimeout(resolve, 50)); // Simulate async
-  if (existingOrderId) {
-    const index = MOCK_ORDERS_DB.findIndex(o => o.id === existingOrderId);
-    if (index !== -1) {
-      MOCK_ORDERS_DB[index] = { ...MOCK_ORDERS_DB[index], ...orderData, id: existingOrderId };
-      return Promise.resolve(MOCK_ORDERS_DB[index]);
+  try {
+    if (existingOrderId) {
+      const orderRef = doc(db, ORDERS_COLLECTION, existingOrderId);
+      await updateDoc(orderRef, dataToSave);
+      console.log(`DataService: Successfully updated order ${existingOrderId}`);
+      const updatedDocSnap = await getDoc(orderRef);
+      return orderFromDoc(updatedDocSnap.data(), existingOrderId);
+    } else {
+      const orderWithCreationTimestamp = {
+        ...dataToSave,
+        createdAt: serverTimestamp(),
+      };
+      const docRef = await addDoc(collection(db, ORDERS_COLLECTION), orderWithCreationTimestamp);
+      console.log(`DataService: Successfully created new order with ID ${docRef.id}`);
+      const newDocSnap = await getDoc(docRef);
+      return orderFromDoc(newDocSnap.data(), docRef.id);
     }
-    return Promise.resolve(null);
-  } else {
-    const newOrder = { ...orderData, id: `ORD_MOCK_${Date.now()}` }; 
-    MOCK_ORDERS_DB.unshift(newOrder);
-    return Promise.resolve(newOrder);
+  } catch (error) {
+    console.error(`DataService: Error saving order ${existingOrderId || 'NEW'} to Firestore:`, error);
+    return null;
   }
 }
 
-export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<boolean> {
-    console.log(`DataService: Updating order status for ${orderId} to ${status} (using mock data)`);
-    await new Promise(resolve => setTimeout(resolve, 50)); // Simulate async
-    const orderIndex = MOCK_ORDERS_DB.findIndex(o => o.id === orderId);
-    if (orderIndex !== -1) {
-        MOCK_ORDERS_DB[orderIndex].status = status;
-        return Promise.resolve(true);
-    }
-    return Promise.resolve(false);
+export async function getOrdersFromDb(limitCount: number = 20): Promise<Order[]> {
+  console.log("DataService: Fetching orders from Firestore");
+  try {
+    const ordersQuery = query(collection(db, ORDERS_COLLECTION), orderBy("createdAt", "desc"), limit(limitCount));
+    const orderSnapshot = await getDocs(ordersQuery);
+    const ordersList = orderSnapshot.docs.map(docSnap => orderFromDoc(docSnap.data(), docSnap.id) as Order).filter(o => o !== null);
+    console.log(`DataService: Successfully fetched ${ordersList.length} orders.`);
+    return ordersList;
+  } catch (error) {
+    console.error("DataService: Error fetching orders from Firestore:", error);
+    return [];
+  }
 }
 
+export async function getOrderByIdFromDb(orderId: string): Promise<Order | null> {
+  console.log(`DataService: Fetching order by ID ${orderId} from Firestore`);
+  try {
+    const orderRef = doc(db, ORDERS_COLLECTION, orderId);
+    const docSnap = await getDoc(orderRef);
+    if (docSnap.exists()) {
+      console.log(`DataService: Successfully fetched order ${orderId}.`);
+      return orderFromDoc(docSnap.data(), orderId);
+    } else {
+      console.log(`DataService: Order with ID ${orderId} not found.`);
+      return null;
+    }
+  } catch (error) {
+    console.error(`DataService: Error fetching order ${orderId} from Firestore:`, error);
+    return null;
+  }
+}
+
+export async function updateOrderStatusInDb(orderId: string, status: OrderStatus): Promise<boolean> {
+  console.log(`DataService: Updating status for order ID ${orderId} to ${status}`);
+  try {
+    const orderRef = doc(db, ORDERS_COLLECTION, orderId);
+    await updateDoc(orderRef, {
+      status: status,
+      updatedAt: serverTimestamp(),
+    });
+    console.log(`DataService: Successfully updated status for order ${orderId}`);
+    return true;
+  } catch (error) {
+    console.error(`DataService: Error updating status for order ${orderId}:`, error);
+    return false;
+  }
+}

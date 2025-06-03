@@ -1,18 +1,19 @@
+
+import { getOrdersFromDb } from '@/lib/server/dataService'; // Updated to fetch from DB
 import { getTailors } from '@/lib/server/dataService';
 import OrdersClientPage from './client';
 import type { Metadata } from 'next';
-import type { Tailor } from '@/lib/mockData';
+import type { Order, Tailor } from '@/lib/mockData';
 
 export const metadata: Metadata = {
   title: 'My Orders - StitchStyle',
   description: 'View and manage your orders with StitchStyle.',
 };
 
-// This is now a Server Component
 export default async function OrdersPage() {
   // Fetch initial data on the server
   const serverFetchedTailors: Tailor[] = await getTailors();
+  const serverFetchedOrders: Order[] = await getOrdersFromDb(); // Fetch orders from Firestore
   
-  // Pass the fetched data to the Client Component
-  return <OrdersClientPage initialTailors={serverFetchedTailors} />;
+  return <OrdersClientPage initialTailors={serverFetchedTailors} initialOrders={serverFetchedOrders} />;
 }

@@ -2,7 +2,7 @@
 // src/app/orders/client.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react"; // Added useMemo
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -12,22 +12,24 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, subDays, startOfDay, endOfDay, addDays } from "date-fns";
+import { format, subDays, startOfDay, endOfDay, parseISO } from "date-fns"; // Added parseISO
 import { cn } from "@/lib/utils";
-import { mockOrders, statusFilterOptions, type Order, type OrderStatus, type StatusFilterValue, type Tailor } from "@/lib/mockData";
+import { statusFilterOptions, type Order, type OrderStatus, type StatusFilterValue, type Tailor } from "@/lib/mockData"; // Removed mockOrders
 import { useAuth } from "@/hooks/use-auth";
 
 const NO_TAILOR_SELECTED_VALUE = "__NO_TAILOR__";
 
 interface OrdersClientPageProps {
   initialTailors: Tailor[];
+  initialOrders: Order[]; // Added initialOrders prop
 }
 
-export default function OrdersClientPage({ initialTailors }: OrdersClientPageProps) {
+export default function OrdersClientPage({ initialTailors, initialOrders }: OrdersClientPageProps) {
   const auth = useAuth();
   const [viewMode, setViewMode] = useState<"admin" | "tailor">("admin"); 
   const [selectedTailorId, setSelectedTailorId] = useState<string | null>(null); 
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]); 
+  
+  const [orders, setOrders] = useState<Order[]>(initialOrders); // Initialize with prop
 
   const [adminTailorFilterId, setAdminTailorFilterId] = useState<string | "all">("all"); 
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("active_default");
@@ -38,14 +40,18 @@ export default function OrdersClientPage({ initialTailors }: OrdersClientPagePro
   const ordersPerPage = 10;
 
   const [availableTailors, setAvailableTailors] = useState<Tailor[]>(initialTailors);
+  
   useEffect(() => {
     setAvailableTailors(initialTailors);
   }, [initialTailors]);
 
+  useEffect(() => { // Effect to update local orders state if initialOrders prop changes (e.g., due to revalidation)
+    setOrders(initialOrders);
+  }, [initialOrders]);
 
-  useEffect(() => {
+  const filteredOrders = useMemo(() => {
+    let tempOrders = [...orders]; // Use local 'orders' state for filtering
     const { role, tailorId: loggedInUserTailorId } = auth;
-    let tempOrders = [...mockOrders];
 
     if (role === 'tailor' && loggedInUserTailorId) {
       tempOrders = tempOrders.filter(order => order.assignedTailorId === loggedInUserTailorId);
@@ -84,26 +90,26 @@ export default function OrdersClientPage({ initialTailors }: OrdersClientPagePro
       const rangeEnd = dateRange.to ? endOfDay(dateRange.to) : endOfDay(new Date()); 
 
       tempOrders = tempOrders.filter(order => {
-        const orderDate = startOfDay(new Date(order.date));
+        if (!order.date) return false;
+        const orderDate = startOfDay(parseISO(order.date)); // Parse ISO string date from Firestore
         return orderDate >= rangeStart && orderDate <= rangeEnd;
       });
     } else if (!dateRange.from && !dateRange.to && statusFilter === "active_default") { 
       const fifteenDaysAgo = startOfDay(subDays(new Date(), 15));
       const today = endOfDay(new Date());
       tempOrders = tempOrders.filter(order => {
-        const orderDate = startOfDay(new Date(order.date));
+        if (!order.date) return false;
+        const orderDate = startOfDay(parseISO(order.date)); // Parse ISO string date
         return orderDate >= fifteenDaysAgo && orderDate <= today;
       });
     }
+    return tempOrders;
+  }, [orders, auth, viewMode, selectedTailorId, adminTailorFilterId, statusFilter, customerNameFilter, dateRange]);
 
-    const previousFilteredOrdersCount = filteredOrders.length;
-    setFilteredOrders(tempOrders);
-
-    if (tempOrders.length !== previousFilteredOrdersCount || currentPage > Math.ceil(tempOrders.length / ordersPerPage)) {
-        setCurrentPage(1);
-    }
-
-  }, [auth, viewMode, selectedTailorId, adminTailorFilterId, statusFilter, customerNameFilter, dateRange, currentPage, ordersPerPage, filteredOrders.length]);
+  // Reset page if filtered orders change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredOrders.length]);
 
 
   const getStatusBadgeColor = (status: OrderStatus) => {
@@ -120,7 +126,7 @@ export default function OrdersClientPage({ initialTailors }: OrdersClientPagePro
 
   const indexOfLastOrder = currentPage * ordersPerPage;
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
-  const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
+  const currentOrdersToDisplay = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
   
   return (
@@ -302,7 +308,7 @@ export default function OrdersClientPage({ initialTailors }: OrdersClientPagePro
         </CardContent>
       </Card>
 
-      {currentOrders.length === 0 ? (
+      {currentOrdersToDisplay.length === 0 ? (
         <Card className="text-center py-12 shadow-lg">
           <CardHeader>
             <CardTitle>
@@ -319,7 +325,7 @@ export default function OrdersClientPage({ initialTailors }: OrdersClientPagePro
             </CardDescription>
           </CardHeader>
           { (auth.role === 'admin' || (auth.role === 'tailor' && auth.tailorId)) && (
-             filteredOrders.length === 0 && ( 
+             filteredOrders.length === 0 && orders.length === 0 && ( // Show CTA if no orders *at all* and filters are clear
                 <CardContent>
                 <Button asChild size="lg">
                     <Link href="/workflow/customer-step">Design Your First Item</Link>
@@ -331,13 +337,13 @@ export default function OrdersClientPage({ initialTailors }: OrdersClientPagePro
       ) : (
         <>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentOrders.map(order => (
+            {currentOrdersToDisplay.map(order => (
               <Card key={order.id} className="shadow-lg hover:shadow-xl transition-shadow flex flex-col">
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-lg text-primary">Order #{order.id}</CardTitle>
-                      <CardDescription>Date: {format(new Date(order.date), "PPP")} | Total: {order.total}</CardDescription>
+                      <CardDescription>Date: {order.date ? format(parseISO(order.date), "PPP") : "N/A"} | Total: {order.total}</CardDescription>
                       {order.customerName && <CardDescription>Customer: {order.customerName}</CardDescription>}
                     </div>
                     <Badge className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(order.status)}`}>
@@ -349,7 +355,7 @@ export default function OrdersClientPage({ initialTailors }: OrdersClientPagePro
                   <div>
                     <p className="font-medium mb-1 text-sm text-muted-foreground flex items-center"><Tag className="mr-1 h-4 w-4"/>Items:</p>
                     <ul className="list-disc list-inside text-sm text-foreground/90">
-                      {order.items.map(item => <li key={item}>{item}</li>)}
+                      {order.items.map((item, index) => <li key={index}>{item}</li>)}
                     </ul>
                   </div>
                   {order.assignedTailorName && (
@@ -359,7 +365,7 @@ export default function OrdersClientPage({ initialTailors }: OrdersClientPagePro
                   )}
                   {order.dueDate && (
                     <p className="text-sm text-muted-foreground flex items-center">
-                       <CalendarClock className="mr-1 h-4 w-4 text-primary/70"/> Due: <span className="font-medium text-foreground/80 ml-1">{format(new Date(order.dueDate), "PPP")}</span>
+                       <CalendarClock className="mr-1 h-4 w-4 text-primary/70"/> Due: <span className="font-medium text-foreground/80 ml-1">{format(parseISO(order.dueDate), "PPP")}</span>
                     </p>
                   )}
                 </CardContent>
@@ -391,7 +397,7 @@ export default function OrdersClientPage({ initialTailors }: OrdersClientPagePro
                 Previous
               </Button>
               <span className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
+                Page {currentPage} of {totalPages} ({filteredOrders.length} orders)
               </span>
               <Button
                 variant="outline"
@@ -409,7 +415,7 @@ export default function OrdersClientPage({ initialTailors }: OrdersClientPagePro
        <Card className="mt-8 p-6 text-center bg-secondary/30 dark:bg-secondary/20">
         <CardTitle className="text-lg">Secure Payments &amp; Order System</CardTitle>
         <CardDescription className="mt-2">
-            All transactions are processed securely. Order data displayed is currently mock data.
+            All transactions are processed securely. Order data is now sourced from Firestore.
             Tailor assignment and status updates here reflect a simulated system.
         </CardDescription>
       </Card>
