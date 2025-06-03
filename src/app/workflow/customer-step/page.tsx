@@ -43,7 +43,7 @@ export default function CustomerStepPage() {
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
 
-  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<CustomerFormValues>({
+  const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue } = useForm<CustomerFormValues>({
     resolver: zodResolver(customerFormSchema),
     defaultValues: currentCustomer 
       ? { 
@@ -126,7 +126,6 @@ export default function CustomerStepPage() {
 
   const handleFormSubmit = async (data: CustomerFormValues) => {
     let customerToSetInWorkflow: Customer | null = null;
-    
     const customerIdToUpdate = customerType === 'existing' ? selectedCustomerId : undefined;
 
     try {
@@ -134,24 +133,27 @@ export default function CustomerStepPage() {
 
       if (actionResult.success && actionResult.customer) {
         customerToSetInWorkflow = actionResult.customer;
-        toast({ 
-          title: customerIdToUpdate ? "Customer Updated" : "New Customer Registered", 
-          description: `${actionResult.customer.name}'s details have been ${customerIdToUpdate ? 'updated' : 'registered'} in Firestore.` 
+        toast({
+          title: customerIdToUpdate ? "Customer Updated" : "New Customer Registered",
+          description: `${actionResult.customer.name}'s details have been ${customerIdToUpdate ? 'updated' : 'registered'} in Firestore.`
         });
         setWorkflowCustomer(customerToSetInWorkflow);
         router.push('/workflow/measurement-step');
       } else {
-        // This error will be thrown if actionResult.success is false
         console.error("Client: saveCustomerAction failed.", actionResult.error);
-        toast({ title: "Error", description: actionResult.error || "Failed to save customer details. Check server logs.", variant: "destructive" });
-        // No longer throwing client-side error here, relying on toast to inform user.
-        // throw new Error(actionResult.error || "Failed to save customer details.");
+        toast({
+          title: "Error Saving Customer",
+          description: actionResult.error || "Failed to save customer details. Check server logs.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
-      // This catch block is for unexpected errors during the client-side execution of handleFormSubmit
-      // or if saveCustomerAction itself throws an unhandled exception (which it shouldn't with the new structure).
       console.error("Client: Error in handleFormSubmit:", error);
-      toast({ title: "Client Error", description: (error instanceof Error ? error.message : "An unexpected error occurred while trying to save."), variant: "destructive" });
+      toast({
+        title: "Client Error",
+        description: (error instanceof Error ? error.message : "An unexpected error occurred while trying to save."),
+        variant: "destructive"
+      });
     }
   };
   
@@ -295,7 +297,7 @@ export default function CustomerStepPage() {
                 {errors.country && <p className="text-sm text-destructive mt-1">{errors.country.message}</p>}
               </div>
               
-              <Button type="submit" className="w-full mt-6 !mb-2" disabled={(customerType === 'existing' && !selectedCustomerId) || formState.isSubmitting}>
+              <Button type="submit" className="w-full mt-6 !mb-2" disabled={(customerType === 'existing' && !selectedCustomerId) || isSubmitting}>
                 {customerType === 'existing' && selectedCustomerId ? "Update Details & Proceed" : "Register & Proceed"} 
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
