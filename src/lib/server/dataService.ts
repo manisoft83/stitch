@@ -5,8 +5,8 @@
 import { db } from '@/lib/firebase/config';
 import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, Timestamp, query, where, getDoc, updateDoc } from 'firebase/firestore';
 import type { TailorFormData } from '@/lib/mockData';
-import type { Tailor, Customer, Order, OrderStatus, Address } from '@/lib/mockData'; // Added Customer, Order, OrderStatus, Address
-import type { MeasurementFormValues } from '@/lib/schemas'; // For Customer's measurements
+import type { Tailor, Customer, Address } from '@/lib/mockData'; // Removed Order, OrderStatus for this file
+import type { MeasurementFormValues } from '@/lib/schemas';
 
 const TAILORS_COLLECTION = 'tailors';
 const CUSTOMERS_COLLECTION = 'customers';
@@ -42,7 +42,7 @@ export async function saveTailor(formData: TailorFormData, existingTailorId?: st
   try {
     const expertiseArray = formData.expertise.split(',').map(e => e.trim()).filter(e => e);
     
-    const tailorData = {
+    const tailorDataForDb = {
       name: formData.name,
       mobile: formData.mobile,
       expertise: expertiseArray,
@@ -51,39 +51,47 @@ export async function saveTailor(formData: TailorFormData, existingTailorId?: st
 
     if (existingTailorId) {
       const tailorRef = doc(db, TAILORS_COLLECTION, existingTailorId);
-      // For update, we might want to merge to not overwrite fields like avatar, availability, createdAt
-      await setDoc(tailorRef, tailorData, { merge: true });
+      await setDoc(tailorRef, tailorDataForDb, { merge: true });
       
       const updatedDocSnap = await getDoc(tailorRef);
       if (!updatedDocSnap.exists()) return null;
       const updatedData = updatedDocSnap.data();
+      // Explicitly map to Tailor type, excluding any raw Timestamps
       return {
         id: existingTailorId,
-        name: updatedData.name,
-        mobile: updatedData.mobile,
-        expertise: updatedData.expertise,
+        name: updatedData.name || '',
+        mobile: updatedData.mobile || '',
+        expertise: Array.isArray(updatedData.expertise) ? updatedData.expertise : [],
         availability: updatedData.availability || 'Available', 
         avatar: updatedData.avatar || `https://placehold.co/100x100.png?text=${(updatedData.name || 'N/A').substring(0,2).toUpperCase()}`,
         dataAiHint: updatedData.dataAiHint || "person portrait",
       };
 
     } else {
-      const newTailorPayload: Omit<Tailor, 'id'> & { createdAt: Timestamp, updatedAt: Timestamp } = {
+      const newTailorPayloadForDb = {
         name: formData.name,
         mobile: formData.mobile,
         expertise: expertiseArray,
-        availability: 'Available', // Default for new tailors
+        availability: 'Available',
         avatar: `https://placehold.co/100x100.png?text=${formData.name.substring(0,2).toUpperCase()}`,
-        dataAiHint: "person portrait", // Default hint
-        createdAt: serverTimestamp() as Timestamp, // Cast because serverTimestamp() is a sentinel
-        updatedAt: serverTimestamp() as Timestamp,
+        dataAiHint: "person portrait",
+        createdAt: serverTimestamp(), 
+        updatedAt: serverTimestamp(),
       };
-      const docRef = await addDoc(collection(db, TAILORS_COLLECTION), newTailorPayload);
+      const docRef = await addDoc(collection(db, TAILORS_COLLECTION), newTailorPayloadForDb);
+      const newDocSnap = await getDoc(docRef);
+      if (!newDocSnap.exists()) return null;
+      const savedData = newDocSnap.data();
+      // Explicitly map to Tailor type from savedData
       return {
         id: docRef.id,
-        ...newTailorPayload,
-        // Convert server timestamps to something if needed, or ensure Tailor type expects sentinel/Timestamp
-      } as Tailor;
+        name: savedData.name || '',
+        mobile: savedData.mobile || '',
+        expertise: Array.isArray(savedData.expertise) ? savedData.expertise : [],
+        availability: savedData.availability || 'Available',
+        avatar: savedData.avatar || `https://placehold.co/100x100.png?text=${(savedData.name || 'N/A').substring(0,2).toUpperCase()}`,
+        dataAiHint: savedData.dataAiHint || "person portrait",
+      };
     }
   } catch (error) {
     console.error("Error saving tailor to Firestore:", error);
@@ -116,8 +124,8 @@ export async function getCustomers(): Promise<Customer[]> {
         name: data.name || '',
         email: data.email || '',
         phone: data.phone || '',
-        address: data.address || undefined, // Ensure address is optional
-        measurements: data.measurements || undefined, // Ensure measurements are optional
+        address: data.address || undefined, 
+        measurements: data.measurements || undefined, 
       } as Customer;
     });
     return customersList;
@@ -152,7 +160,6 @@ export async function getCustomerById(customerId: string): Promise<Customer | nu
   }
 }
 
-// This is the type for data coming from the customer form in customer-step
 export interface CustomerFormInput {
   name: string;
   email: string;
@@ -170,50 +177,49 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
       ? { street: customerFormInput.street, city: customerFormInput.city, zipCode: customerFormInput.zipCode, country: customerFormInput.country }
       : undefined;
 
-    const customerDataToSave = {
+    const customerDataForDb = {
       name: customerFormInput.name,
       email: customerFormInput.email,
       phone: customerFormInput.phone,
-      address: address, // This will be undefined if address fields are not filled
+      address: address, 
       updatedAt: serverTimestamp(),
     };
 
     if (existingCustomerId) {
       const customerRef = doc(db, CUSTOMERS_COLLECTION, existingCustomerId);
-      // Using updateDoc to only change specified fields and not overwrite e.g. measurements if they exist
-      await updateDoc(customerRef, customerDataToSave);
+      await updateDoc(customerRef, customerDataForDb);
       
-      const updatedDocSnap = await getDoc(customerRef); // Re-fetch to get merged data
+      const updatedDocSnap = await getDoc(customerRef); 
       if (!updatedDocSnap.exists()) return null;
       const updatedData = updatedDocSnap.data();
+      // Explicitly map to Customer type
       return {
         id: existingCustomerId,
-        name: updatedData.name,
-        email: updatedData.email,
-        phone: updatedData.phone,
-        address: updatedData.address,
-        measurements: updatedData.measurements, // Preserve existing measurements
-      } as Customer;
+        name: updatedData.name || '',
+        email: updatedData.email || '',
+        phone: updatedData.phone || '',
+        address: updatedData.address || undefined,
+        measurements: updatedData.measurements || undefined, 
+      };
     } else {
-      const newCustomerPayload = {
-        ...customerDataToSave,
-        measurements: undefined, // New customers don't have measurements from this form
+      const newCustomerPayloadForDb = {
+        ...customerDataForDb,
+        measurements: undefined, 
         createdAt: serverTimestamp(),
       };
-      const docRef = await addDoc(collection(db, CUSTOMERS_COLLECTION), newCustomerPayload);
-      // Fetch the newly created document to get its data including server-generated timestamps
+      const docRef = await addDoc(collection(db, CUSTOMERS_COLLECTION), newCustomerPayloadForDb);
       const newDocSnap = await getDoc(docRef);
       if (!newDocSnap.exists()) return null;
       const savedData = newDocSnap.data();
+      // Explicitly map to Customer type
       return {
         id: docRef.id,
-        name: savedData.name,
-        email: savedData.email,
-        phone: savedData.phone,
-        address: savedData.address,
-        measurements: savedData.measurements,
-        // Timestamps are part of savedData if needed by Customer type explicitly
-      } as Customer;
+        name: savedData.name || '',
+        email: savedData.email || '',
+        phone: savedData.phone || '',
+        address: savedData.address || undefined,
+        measurements: savedData.measurements || undefined,
+      };
     }
   } catch (error) {
     console.error("Error saving customer to Firestore:", error);
@@ -221,7 +227,6 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
   }
 }
 
-// Note: When saving measurements in measurement-step, we'll need a separate function like updateCustomerMeasurements
 export async function updateCustomerMeasurements(customerId: string, measurements: MeasurementFormValues): Promise<boolean> {
   console.log(`DataService: Updating measurements for customer ID ${customerId}`, measurements);
   try {
@@ -237,14 +242,11 @@ export async function updateCustomerMeasurements(customerId: string, measurement
   }
 }
 
-
 export async function deleteCustomerById(customerId: string): Promise<boolean> {
   console.log(`DataService: Deleting customer from Firestore: ID ${customerId}`);
   try {
     const customerRef = doc(db, CUSTOMERS_COLLECTION, customerId);
     await deleteDoc(customerRef);
-    // Consider implications: what happens to orders associated with this customer?
-    // For now, we just delete the customer.
     return true;
   } catch (error) {
     console.error("Error deleting customer from Firestore:", error);
@@ -252,14 +254,12 @@ export async function deleteCustomerById(customerId: string): Promise<boolean> {
   }
 }
 
-
 // --- Order Functions (Placeholders for now, to be implemented with Firestore) ---
-// Using mock data for orders temporarily until Firestore integration for orders
-import { mockOrders as MOCK_ORDERS_DB } from '@/lib/mockData'; // Keep this for now for Orders
+// Re-importing Order and OrderStatus specifically for mock data usage below
+import { type Order, type OrderStatus, mockOrders as MOCK_ORDERS_DB } from '@/lib/mockData'; 
 
 export async function getOrders(): Promise<Order[]> {
   console.log("DataService: Fetching orders (using mock data)");
-  // Simulate async
   await new Promise(resolve => setTimeout(resolve, 50));
   return Promise.resolve([...MOCK_ORDERS_DB]);
 }
@@ -282,7 +282,7 @@ export async function saveOrder(orderData: Order, existingOrderId?: string): Pro
     }
     return Promise.resolve(null);
   } else {
-    const newOrder = { ...orderData, id: `ORD_MOCK_${Date.now()}` }; // Ensure ID is unique for mock
+    const newOrder = { ...orderData, id: `ORD_MOCK_${Date.now()}` }; 
     MOCK_ORDERS_DB.unshift(newOrder);
     return Promise.resolve(newOrder);
   }
@@ -298,4 +298,3 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
     }
     return Promise.resolve(false);
 }
-// End of mock data section for Orders
