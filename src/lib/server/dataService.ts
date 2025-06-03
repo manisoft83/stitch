@@ -28,7 +28,6 @@ export async function getTailors(): Promise<Tailor[]> {
         availability: data.availability || 'Available',
         avatar: data.avatar || `https://placehold.co/100x100.png?text=${(data.name || 'N/A').substring(0,2).toUpperCase()}`,
         dataAiHint: data.dataAiHint || 'person portrait',
-        // Timestamps are not part of the Tailor type, so not mapped here
       } as Tailor;
     });
     console.log(`DataService: Successfully fetched ${tailorsList.length} tailors.`);
@@ -54,7 +53,7 @@ export async function saveTailor(formData: TailorFormData, existingTailorId?: st
     if (existingTailorId) {
       console.log(`DataService: Attempting to update tailor ${existingTailorId}`);
       const tailorRef = doc(db, TAILORS_COLLECTION, existingTailorId);
-      await updateDoc(tailorRef, tailorDataForDb); // Use updateDoc for existing, setDoc with merge for create/update
+      await updateDoc(tailorRef, tailorDataForDb);
       console.log(`DataService: Successfully called updateDoc for tailor ${existingTailorId}`);
       
       const updatedDocSnap = await getDoc(tailorRef);
@@ -63,10 +62,6 @@ export async function saveTailor(formData: TailorFormData, existingTailorId?: st
         return null;
       }
       const updatedData = updatedDocSnap.data();
-      if (!updatedData) {
-        console.error(`DataService: No data in tailor document ${existingTailorId} after update.`);
-         return null;
-      }
       console.log(`DataService: Successfully fetched updated tailor data for ${existingTailorId}`);
       return {
         id: existingTailorId,
@@ -93,10 +88,6 @@ export async function saveTailor(formData: TailorFormData, existingTailorId?: st
         return null;
       }
       const savedData = newDocSnap.data();
-      if (!savedData) {
-        console.error(`DataService: No data in newly created tailor document ${docRef.id}.`);
-        return null;
-      }
        console.log(`DataService: Successfully fetched new tailor data for ${docRef.id}`);
       return {
         id: docRef.id,
@@ -193,36 +184,46 @@ export interface CustomerFormInput {
 }
 
 export async function saveCustomer(customerFormInput: CustomerFormInput, existingCustomerId?: string): Promise<Customer | null> {
-  console.log(`DataService: Saving customer to Firestore. Input: ${JSON.stringify(customerFormInput)}, ExistingID: ${existingCustomerId}`);
-  try {
-    const address: Address | undefined = (customerFormInput.street && customerFormInput.city && customerFormInput.zipCode && customerFormInput.country)
-      ? { street: customerFormInput.street, city: customerFormInput.city, zipCode: customerFormInput.zipCode, country: customerFormInput.country }
-      : undefined;
+  console.log(`DataService: Saving customer. Input: ${JSON.stringify(customerFormInput)}, ExistingID: ${existingCustomerId}`);
+  
+  const { name, email, phone, street, city, zipCode, country } = customerFormInput;
 
-    const customerDataForDb: { name: string; email: string; phone: string; address?: Address; updatedAt: FieldValue; measurements?: MeasurementFormValues, createdAt?: FieldValue } = {
-      name: customerFormInput.name,
-      email: customerFormInput.email,
-      phone: customerFormInput.phone,
+  const customerDataForDb: {
+      name: string;
+      email: string;
+      phone: string;
+      updatedAt: FieldValue;
+      createdAt?: FieldValue;
+      address?: Address | FieldValue; // Allows Address object or deleteField()
+      measurements?: MeasurementFormValues; // Measurements are handled by a separate function for updates
+  } = {
+      name,
+      email,
+      phone,
       updatedAt: serverTimestamp(),
-    };
-    
-    if (address) {
-      customerDataForDb.address = address;
-    } else {
-      // If address is undefined, and we are updating, we might want to remove the field
-      if (existingCustomerId) {
-        // To remove a field, you use deleteField().
-        // customerDataForDb.address = deleteField() as unknown as undefined; // Casting because type expects Address | undefined
-        // For now, if address is not provided, it will just not be part of the update for that field.
-        // If it was present and now it's not, it will remain unless explicitly deleted.
-        // Let's assume for now that if no address is given on update, we don't change it unless it's an empty string scenario meaning clear.
-        // The current logic implicitly sets customerDataForDb.address = undefined if address is not formed.
-        // This is fine for addDoc. For updateDoc, it means 'address' won't be in the update payload unless it's a defined object.
-        // This means existing address won't be cleared if no new address details are passed. This is probably desired.
-        customerDataForDb.address = address; // This will be undefined if no address details
-      }
-    }
+  };
 
+  // Address handling
+  const allAddressFieldsPresentAndNonEmpty = street && city && zipCode && country;
+  // Check if the intent is to clear the address by submitting all address fields as empty strings.
+  const intentToClearAddress =
+    (customerFormInput.hasOwnProperty('street') && street === '') &&
+    (customerFormInput.hasOwnProperty('city') && city === '') &&
+    (customerFormInput.hasOwnProperty('zipCode') && zipCode === '') &&
+    (customerFormInput.hasOwnProperty('country') && country === '');
+
+  if (allAddressFieldsPresentAndNonEmpty) {
+    customerDataForDb.address = { street, city, zipCode, country };
+    console.log(`DataService: Complete address provided. Setting/updating address field.`);
+  } else if (existingCustomerId && intentToClearAddress) {
+    customerDataForDb.address = deleteField();
+    console.log(`DataService: All address fields submitted as empty for update. Deleting address field.`);
+  }
+  // If it's a new customer and address is not complete, customerDataForDb.address remains undefined, so no address field is created.
+  // If it's an update, and the address is not complete AND it's not an intentToClearAddress,
+  // customerDataForDb.address remains undefined, so the existing address field in Firestore is not touched by updateDoc.
+
+  try {
     if (existingCustomerId) {
       console.log(`DataService: Attempting to update customer ${existingCustomerId}`);
       const customerRef = doc(db, CUSTOMERS_COLLECTION, existingCustomerId);
@@ -232,39 +233,30 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
           console.error(`DataService: Customer document ${existingCustomerId} does not exist. Cannot update.`);
           return null;
       }
-      
-      // For updates, we don't want to overwrite measurements unless they are explicitly part of this save operation (which they are not here)
-      // So, customerDataForDb should not include 'measurements' field when updating general customer info.
-      // 'measurements' are handled by updateCustomerMeasurements.
-      // The definition of customerDataForDb already omits measurements for update, which is correct.
-
+      // Note: measurements are not set here; they are updated by updateCustomerMeasurements
       await updateDoc(customerRef, customerDataForDb);
       console.log(`DataService: Successfully called updateDoc for customer ${existingCustomerId}`);
 
-      const updatedDocSnap = await getDoc(customerRef);
+      const updatedDocSnap = await getDoc(customerRef); // Re-fetch to get the latest state including server timestamps
       if (!updatedDocSnap.exists()) {
         console.error(`DataService: Customer document ${existingCustomerId} not found after update attempt.`);
         return null;
       }
       const updatedData = updatedDocSnap.data();
-      if (!updatedData) {
-        console.error(`DataService: No data in customer document ${existingCustomerId} after update.`);
-         return null;
-      }
       console.log(`DataService: Successfully fetched updated customer data for ${existingCustomerId}`);
       return {
         id: existingCustomerId,
         name: updatedData.name || '',
         email: updatedData.email || '',
         phone: updatedData.phone || '',
-        address: updatedData.address || undefined,
+        address: updatedData.address || undefined, // Will be undefined if deletedField() was used and field removed
         measurements: updatedData.measurements || undefined,
       };
     } else {
       console.log(`DataService: Attempting to add new customer`);
       customerDataForDb.createdAt = serverTimestamp();
-      // New customers don't have measurements by default from this form.
-      customerDataForDb.measurements = undefined; 
+      // New customers don't have measurements by default from this form; set explicitly if needed
+      // customerDataForDb.measurements = undefined; // Or some default empty MeasurementFormValues
 
       const docRef = await addDoc(collection(db, CUSTOMERS_COLLECTION), customerDataForDb);
       console.log(`DataService: Successfully called addDoc, new customer ID: ${docRef.id}`);
@@ -275,25 +267,20 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
         return null;
       }
       const savedData = newDocSnap.data();
-      if (!savedData) {
-        console.error(`DataService: No data in newly created customer document ${docRef.id}.`);
-        return null;
-      }
       console.log(`DataService: Successfully fetched new customer data for ${docRef.id}`);
       return {
         id: docRef.id,
         name: savedData.name || '',
         email: savedData.email || '',
         phone: savedData.phone || '',
-        address: savedData.address || undefined,
+        address: savedData.address || undefined, // Will be undefined if not set during creation
         measurements: savedData.measurements || undefined,
       };
     }
   } catch (error) {
     console.error("DataService: Error saving customer to Firestore:", error);
     if (error instanceof Error) {
-        console.error("Error name:", error.name);
-        console.error("Error message:", error.message);
+        console.error("Error name:", error.name, "Message:", error.message, "Stack:", error.stack);
     }
     return null;
   }
@@ -305,7 +292,7 @@ export async function updateCustomerMeasurements(customerId: string, measurement
   try {
     const customerRef = doc(db, CUSTOMERS_COLLECTION, customerId);
     await updateDoc(customerRef, {
-      measurements: measurements, // measurements should be an object
+      measurements: measurements, 
       updatedAt: serverTimestamp(),
     });
     console.log(`DataService: Successfully updated measurements for customer ${customerId}`);
@@ -331,7 +318,6 @@ export async function deleteCustomerById(customerId: string): Promise<boolean> {
 }
 
 // --- Order Functions (Still using mock data) ---
-// For orders, we'll keep using the mock data logic for now as it's more complex.
 import { mockOrders as MOCK_ORDERS_DB } from '@/lib/mockData'; 
 
 export async function getOrders(): Promise<Order[]> {
@@ -374,3 +360,4 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
     }
     return Promise.resolve(false);
 }
+
