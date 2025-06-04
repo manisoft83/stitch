@@ -96,8 +96,7 @@ export function MeasurementForm({ initialValues, onSave }: MeasurementFormProps)
                   <Input type="number" placeholder="e.g., 36" {...field} />
                 </FormControl>
                 <FormDescription>
-                  Measure around the fullest part of your bust, keeping the tape level.
-                  <br />Tip: Wear a non-padded bra for accuracy.
+                  Measure around the fullest part of your bust, keeping the tape level.                  
                 </FormDescription>
                 <FormMessage />
               </FormItem>
