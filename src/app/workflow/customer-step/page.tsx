@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
-import type { Customer } from '@/lib/mockData'; 
+import type { Customer } from '@/lib/mockData';
 import { getCustomers as fetchAllCustomers, type CustomerFormInput } from '@/lib/server/dataService';
 import { saveCustomerAction, type SaveCustomerActionResult } from '@/app/customers/actions';
 import { UserPlus, Users, Edit3, ArrowRight, Search, MapPin } from 'lucide-react';
@@ -34,9 +34,15 @@ type CustomerFormValues = z.infer<typeof customerFormSchema>;
 export default function CustomerStepPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { currentCustomer, setCustomer: setWorkflowCustomer, resetWorkflow } = useOrderWorkflow();
+  const { 
+    currentCustomer, 
+    setCustomer: setWorkflowCustomer, 
+    resetWorkflow, 
+    editingOrderId // Get editingOrderId from context
+  } = useOrderWorkflow();
   
-  const initialCustomerType = currentCustomer ? 'existing' : 'new';
+  // If currentCustomer exists AND we are editing an order, default to 'existing'
+  const initialCustomerType = currentCustomer && editingOrderId ? 'existing' : (currentCustomer ? 'existing' : 'new');
   const [customerType, setCustomerType] = useState<'new' | 'existing'>(initialCustomerType);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(currentCustomer?.id || '');
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
@@ -71,12 +77,17 @@ export default function CustomerStepPage() {
       setIsLoadingCustomers(false);
     };
 
-    if (customerType === 'existing' || !currentCustomer) { // Load if 'existing' or if starting fresh
+    if (customerType === 'existing' || (!currentCustomer && !editingOrderId) ) { 
       loadCustomers();
     }
     
     if (currentCustomer) {
-        setCustomerType('existing');
+        // If editingOrderId is present, this implies we are in an edit flow.
+        // The customerType should already be 'existing' if currentCustomer came from loadOrderForEditing.
+        // If it was 'new' and currentCustomer just got set (e.g. after creating one), then switch to 'existing'.
+        if (customerType === 'new' || (editingOrderId && customerType !== 'existing')) {
+            setCustomerType('existing');
+        }
         setSelectedCustomerId(currentCustomer.id);
         reset({
             name: currentCustomer.name,
@@ -88,18 +99,16 @@ export default function CustomerStepPage() {
             country: currentCustomer.address?.country || '',
         });
         if (customerType === 'existing' && !allCustomers.find(c => c.id === currentCustomer.id)) {
-            // This condition ensures that if we're editing a customer,
-            // the customer list is loaded/refreshed.
             if (!isLoadingCustomers) loadCustomers(); 
         }
-    } else {
+    } else if (!editingOrderId) { // Only fully reset to new if not editing an order
         if (customerType === 'new' && (selectedCustomerId !== '' || initialCustomerType === 'existing')) {
           reset({ name: '', email: '', phone: '', street: '', city: '', zipCode: '', country: '' });
         }
         setSelectedCustomerId(''); 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerType, currentCustomer, reset, toast, initialCustomerType]);
+  }, [customerType, currentCustomer, reset, toast, initialCustomerType, editingOrderId]); // Added editingOrderId
 
  useEffect(() => {
     if (customerType === 'existing' && selectedCustomerId) {
@@ -126,7 +135,12 @@ export default function CustomerStepPage() {
 
   const handleFormSubmit = async (data: CustomerFormValues) => {
     let customerToSetInWorkflow: Customer | null = null;
-    const customerIdToUpdate = customerType === 'existing' ? selectedCustomerId : undefined;
+    // If editing an order, customerIdToUpdate should be the currentCustomer's ID from the workflow context,
+    // unless the user has explicitly chosen to create a new customer or selected a *different* existing one.
+    // For simplicity, if `editingOrderId` is set, we assume the `saveCustomerAction` is for the `currentCustomer.id`.
+    // If the user wants to change the customer FOR an existing order, that's a more complex flow.
+    // Here, `selectedCustomerId` will be set to `currentCustomer.id` if editing.
+    const customerIdToUpdate = (customerType === 'existing' && selectedCustomerId) ? selectedCustomerId : undefined;
 
     try {
       const actionResult: SaveCustomerActionResult = await saveCustomerAction(data, customerIdToUpdate);
@@ -137,7 +151,7 @@ export default function CustomerStepPage() {
           title: customerIdToUpdate ? "Customer Updated" : "New Customer Registered",
           description: `${actionResult.customer.name}'s details have been ${customerIdToUpdate ? 'updated' : 'registered'} in Firestore.`
         });
-        setWorkflowCustomer(customerToSetInWorkflow);
+        setWorkflowCustomer(customerToSetInWorkflow); // This will update currentCustomer and currentMeasurements
         router.push('/workflow/measurement-step');
       } else {
         console.error("Client: saveCustomerAction failed.", actionResult.error);
@@ -163,6 +177,7 @@ export default function CustomerStepPage() {
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-primary">Customer Details & Address</CardTitle>
           <CardDescription>
+            {editingOrderId ? `Editing order for ${currentCustomer?.name || 'customer'}. ` : ""}
             Manage customer information. Data is stored in Firestore.
           </CardDescription>
         </CardHeader>
@@ -170,13 +185,21 @@ export default function CustomerStepPage() {
           <RadioGroup
             value={customerType}
             onValueChange={(value: 'new' | 'existing') => {
-              if (customerType !== value) { // Only reset if the type actually changes
+              if (customerType !== value && !editingOrderId) { // Only reset workflow if NOT editing an existing order
                 resetWorkflow(); 
               }
               setCustomerType(value);
               if (value === 'new') {
                 setSelectedCustomerId(''); 
                 reset({ name: '', email: '', phone: '', street: '', city: '', zipCode: '', country: '' });
+                // If not editing an order, also clear the customer from the workflow context.
+                // If editing, keep the original customer in context for now.
+                if(!editingOrderId) {
+                  setWorkflowCustomer(null); 
+                }
+              } else if (value === 'existing' && editingOrderId && currentCustomer) {
+                // If switching back to existing while editing, re-select the original customer.
+                setSelectedCustomerId(currentCustomer.id);
               }
             }}
             className="grid grid-cols-2 gap-4"
@@ -222,6 +245,20 @@ export default function CustomerStepPage() {
                   value={selectedCustomerId}
                   onValueChange={(id) => {
                     setSelectedCustomerId(id);
+                    const customer = allCustomers.find(c => c.id === id);
+                    if (customer && !editingOrderId) { // If not editing, set customer in workflow
+                        setWorkflowCustomer(customer);
+                    } else if (customer && editingOrderId && currentCustomer && customer.id !== currentCustomer.id) {
+                        // If editing an order and selecting a *different* customer.
+                        // This is a more complex scenario. For now, we'll update the form,
+                        // and the save action will associate the order with this new customer.
+                        // The OrderWorkflow context might need adjustment if this becomes a primary use case.
+                        // For now, setting the workflow customer here will change currentMeasurements etc.
+                         setWorkflowCustomer(customer);
+                    } else if (customer && editingOrderId && currentCustomer && customer.id === currentCustomer.id) {
+                        // Re-selecting the same customer, ensure workflow reflects this.
+                        setWorkflowCustomer(customer);
+                    }
                   }}
                   className="space-y-1 max-h-60 overflow-y-auto border p-3 rounded-md bg-muted/30"
                 >
@@ -249,7 +286,7 @@ export default function CustomerStepPage() {
             <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 border-t pt-6 mt-6 border-dashed">
               <h3 className="text-lg font-medium text-foreground mb-3 flex items-center">
                 {customerType === 'existing' && selectedCustomerId ? (
-                  <><Edit3 className="mr-2 h-5 w-5"/>Edit Details for {allCustomers.find(c=>c.id===selectedCustomerId)?.name || 'Selected Customer'}</>
+                  <><Edit3 className="mr-2 h-5 w-5"/>Edit Details for {allCustomers.find(c=>c.id===selectedCustomerId)?.name || currentCustomer?.name || 'Selected Customer'}</>
                 ) : (
                   <><UserPlus className="mr-2 h-5 w-5"/>Register New Customer</>
                 )}
@@ -297,8 +334,12 @@ export default function CustomerStepPage() {
                 {errors.country && <p className="text-sm text-destructive mt-1">{errors.country.message}</p>}
               </div>
               
-              <Button type="submit" className="w-full mt-6 !mb-2" disabled={(customerType === 'existing' && !selectedCustomerId) || isSubmitting}>
-                {customerType === 'existing' && selectedCustomerId ? "Update Details & Proceed" : "Register & Proceed"} 
+              <Button 
+                type="submit" 
+                className="w-full mt-6 !mb-2" 
+                disabled={ (customerType === 'existing' && !selectedCustomerId && !currentCustomer ) || isSubmitting}
+              >
+                {(customerType === 'existing' && selectedCustomerId) || (editingOrderId && currentCustomer) ? "Update Details & Proceed" : "Register & Proceed"} 
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
@@ -306,7 +347,7 @@ export default function CustomerStepPage() {
         </CardContent>
          <CardFooter>
             <p className="text-xs text-muted-foreground text-center w-full">
-                Customer data is stored in Firestore.
+                Customer data is stored in Firestore. {editingOrderId ? "Order context is preserved." : ""}
             </p>
         </CardFooter>
       </Card>
@@ -314,3 +355,4 @@ export default function CustomerStepPage() {
   );
 }
 
+    
