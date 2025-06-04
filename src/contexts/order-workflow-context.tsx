@@ -3,26 +3,29 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useState, useContext, useCallback } from 'react';
-import type { Customer, OrderStatus } from '@/lib/mockData';
+import type { Customer, OrderStatus, Order as FullOrderType } from '@/lib/mockData'; // Renamed Order to FullOrderType
 import type { MeasurementFormValues } from '@/lib/schemas';
 
-// Define the structure for design details
+// Define the structure for design details of a single item
 export interface DesignDetails {
   fabric: string | null;
   color: string | null;
   style: string | null;
   notes: string;
-  referenceImages?: string[]; // Array of Data URLs for images
-  status?: OrderStatus; // Used if editing an existing order to preserve its status
+  referenceImages?: string[]; 
+  // Fields below are more for overall order context during editing, might be moved
+  status?: OrderStatus; 
   assignedTailorId?: string | null;
   assignedTailorName?: string | null;
-  dueDate?: string | null; // Stored as "yyyy-MM-dd" string
+  dueDate?: string | null; 
 }
 
 interface OrderWorkflowState {
   currentCustomer: Customer | null;
   currentMeasurements: MeasurementFormValues | null;
-  currentDesign: DesignDetails | null;
+  activeDesign: DesignDetails | null; // Design for the item currently being configured
+  orderItems: DesignDetails[]; // Array of designs for items added to the order
+  editingItemIndex: number | null; // Index of the item being edited from orderItems
   workflowReturnPath: string | null; 
   editingOrderId: string | null; 
 }
@@ -30,16 +33,20 @@ interface OrderWorkflowState {
 interface OrderWorkflowContextType extends OrderWorkflowState {
   setCustomer: (customer: Customer | null) => void;
   setMeasurements: (measurements: MeasurementFormValues | null) => void;
-  setDesign: (design: DesignDetails | null) => void;
+  setActiveDesign: (design: DesignDetails | null) => void; // To set the design tool's current state
+  addOrUpdateItemInOrder: (design: DesignDetails) => void;
+  removeOrderItem: (index: number) => void;
+  startEditingOrderItem: (index: number) => void;
+  clearActiveDesign: () => void; // To reset design tool for a new item
   setWorkflowReturnPath: (path: string | null) => void;
   setEditingOrderId: (orderId: string | null) => void;
   resetWorkflow: () => void;
-  loadOrderForEditing: (order: import('@/lib/mockData').Order, customer: Customer) => void;
+  loadOrderForEditing: (order: FullOrderType, customer: Customer) => void; // Use FullOrderType
 }
 
 const OrderWorkflowContext = createContext<OrderWorkflowContextType | undefined>(undefined);
 
-const initialDesignState: DesignDetails = {
+export const initialSingleDesignState: DesignDetails = {
   fabric: null,
   color: null,
   style: null,
@@ -54,7 +61,9 @@ const initialDesignState: DesignDetails = {
 const initialState: OrderWorkflowState = {
   currentCustomer: null,
   currentMeasurements: null,
-  currentDesign: { ...initialDesignState }, // Ensure initialDesignState is fully populated
+  activeDesign: null, 
+  orderItems: [],
+  editingItemIndex: null,
   workflowReturnPath: null,
   editingOrderId: null,
 };
@@ -64,14 +73,12 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
 
   const setCustomer = useCallback((customer: Customer | null) => {
     setWorkflowState(prevState => ({
-      ...prevState,
+      ...initialState, // Reset most of the workflow when customer changes, unless editing existing order
       currentCustomer: customer,
-      currentMeasurements: customer?.id === prevState.currentCustomer?.id 
-                            ? prevState.currentMeasurements 
-                            : (customer?.measurements || null),
-      currentDesign: prevState.editingOrderId && customer?.id === prevState.currentCustomer?.id
-                            ? prevState.currentDesign // Keep existing design if same customer while editing
-                            : { ...initialDesignState }, // Reset design for new customer or if not editing
+      currentMeasurements: customer?.measurements || null,
+      // If editing an order, customer change shouldn't wipe items yet, handle in calling component
+      editingOrderId: customer?.id === prevState.currentCustomer?.id ? prevState.editingOrderId : null,
+      workflowReturnPath: customer?.id === prevState.currentCustomer?.id ? prevState.workflowReturnPath : null,
     }));
   }, []);
 
@@ -79,8 +86,44 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
     setWorkflowState(prevState => ({ ...prevState, currentMeasurements: measurements }));
   }, []);
 
-  const setDesign = useCallback((design: DesignDetails | null) => {
-    setWorkflowState(prevState => ({ ...prevState, currentDesign: design ? { ...prevState.currentDesign, ...design } : { ...initialDesignState } }));
+  const setActiveDesign = useCallback((design: DesignDetails | null) => {
+    setWorkflowState(prevState => ({ ...prevState, activeDesign: design, editingItemIndex: null }));
+  }, []);
+
+  const clearActiveDesign = useCallback(() => {
+    setWorkflowState(prevState => ({ ...prevState, activeDesign: { ...initialSingleDesignState }, editingItemIndex: null }));
+  }, []);
+  
+  const addOrUpdateItemInOrder = useCallback((design: DesignDetails) => {
+    setWorkflowState(prevState => {
+      const newOrderItems = [...prevState.orderItems];
+      if (prevState.editingItemIndex !== null) {
+        newOrderItems[prevState.editingItemIndex] = design;
+      } else {
+        newOrderItems.push(design);
+      }
+      return {
+        ...prevState,
+        orderItems: newOrderItems,
+        activeDesign: null, // Clear active design after adding/updating
+        editingItemIndex: null,
+      };
+    });
+  }, []);
+
+  const removeOrderItem = useCallback((index: number) => {
+    setWorkflowState(prevState => ({
+      ...prevState,
+      orderItems: prevState.orderItems.filter((_, i) => i !== index),
+    }));
+  }, []);
+
+  const startEditingOrderItem = useCallback((index: number) => {
+    setWorkflowState(prevState => ({
+      ...prevState,
+      activeDesign: { ...prevState.orderItems[index] },
+      editingItemIndex: index,
+    }));
   }, []);
 
   const setWorkflowReturnPath = useCallback((path: string | null) => {
@@ -91,7 +134,12 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
     setWorkflowState(prevState => ({ 
       ...prevState, 
       editingOrderId: orderId,
-      ...(orderId === null ? {...initialState} : {}) 
+      ...(orderId === null && !prevState.currentCustomer ? {...initialState} : {}), // Full reset only if no customer
+      ...(orderId === null && prevState.currentCustomer ? { // Partial reset if customer exists
+          ...initialState, 
+          currentCustomer: prevState.currentCustomer, 
+          currentMeasurements: prevState.currentMeasurements
+        } : {}) 
     }));
   }, []);
 
@@ -99,21 +147,13 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
     setWorkflowState({...initialState});
   }, []);
 
-  const loadOrderForEditing = useCallback((order: import('@/lib/mockData').Order, customer: Customer) => {
+  const loadOrderForEditing = useCallback((order: FullOrderType, customer: Customer) => { // Use FullOrderType
     setWorkflowState({
       currentCustomer: customer,
       currentMeasurements: customer.measurements || null,
-      currentDesign: { // Populate all relevant fields from the order
-        fabric: order.designDetails?.fabric || null,
-        color: order.designDetails?.color || null,
-        style: order.designDetails?.style || null,
-        notes: order.designDetails?.notes || '',
-        referenceImages: order.designDetails?.referenceImageUrls || [],
-        status: order.status,
-        assignedTailorId: order.assignedTailorId || null,
-        assignedTailorName: order.assignedTailorName || null,
-        dueDate: order.dueDate || null, // Ensure dueDate is a "yyyy-MM-dd" string or null
-      },
+      orderItems: order.detailedItems || [], 
+      activeDesign: null, // No active design initially when loading an order for edit
+      editingItemIndex: null,
       editingOrderId: order.id,
       workflowReturnPath: `/orders/${order.id}`, 
     });
@@ -124,7 +164,11 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
     ...workflowState,
     setCustomer,
     setMeasurements,
-    setDesign,
+    setActiveDesign,
+    clearActiveDesign,
+    addOrUpdateItemInOrder,
+    removeOrderItem,
+    startEditingOrderItem,
     setWorkflowReturnPath,
     setEditingOrderId,
     resetWorkflow,

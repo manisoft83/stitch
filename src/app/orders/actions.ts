@@ -12,7 +12,8 @@ export interface SaveOrderActionResult {
   error?: string;
 }
 
-export async function saveOrderAction(orderData: Order, existingOrderId?: string): Promise<SaveOrderActionResult> {
+// The orderData here now expects detailedItems for multi-item orders
+export async function saveOrderAction(orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>, existingOrderId?: string): Promise<SaveOrderActionResult> {
   console.log(`Server Action: saveOrderAction for ${existingOrderId ? 'updating order ' + existingOrderId : 'adding new order'}`);
   try {
     const result = await saveOrderToDb(orderData, existingOrderId);
@@ -20,7 +21,7 @@ export async function saveOrderAction(orderData: Order, existingOrderId?: string
       console.log("Server Action: Order saved/updated successfully in DB. ID:", result.id);
       revalidatePath('/orders');
       revalidatePath(`/orders/${result.id}`);
-      if(existingOrderId) revalidatePath(`/orders/${existingOrderId}`); // revalidate old path if id changed in theory
+      if(existingOrderId && existingOrderId !== result.id) revalidatePath(`/orders/${existingOrderId}`);
       revalidatePath('/tracking');
       return { success: true, order: result };
     } else {
@@ -55,7 +56,6 @@ export async function updateOrderStatusAction(orderId: string, status: OrderStat
   }
 }
 
-// Action to fetch a single order, useful for client components needing server-fetched data
 export async function getOrderDetailsAction(orderId: string): Promise<{order: Order | null, error?: string}> {
     console.log(`Server Action: getOrderDetailsAction for order ID ${orderId}`);
     try {

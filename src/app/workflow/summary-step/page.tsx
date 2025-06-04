@@ -4,16 +4,17 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useOrderWorkflow, type DesignDetails } from '@/contexts/order-workflow-context';
+import { useOrderWorkflow, type DesignDetails, initialSingleDesignState } from '@/contexts/order-workflow-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import type { Order } from '@/lib/mockData';
+import type { Order as FullOrderType } from '@/lib/mockData'; // Renamed Order to FullOrderType
 import { format, addDays } from 'date-fns';
-import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon, MapPin } from 'lucide-react';
+import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon, MapPin, PackagePlus, Shirt } from 'lucide-react';
 import { saveOrderAction, type SaveOrderActionResult } from '@/app/orders/actions';
-import { getDetailNameById, fabricOptionsForDisplay, colorOptionsForDisplay, styleOptionsForDisplay } from '@/lib/mockData';
+import { getDetailNameById, fabricOptionsForDisplay, colorOptionsForDisplay, styleOptionsForDisplay, generateDesignSummary } from '@/lib/mockData';
+
 
 export default function SummaryStepPage() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function SummaryStepPage() {
   const {
     currentCustomer,
     currentMeasurements,
-    currentDesign,
+    orderItems, // Changed from currentDesign to orderItems
     resetWorkflow,
     editingOrderId,
     workflowReturnPath,
@@ -44,8 +45,8 @@ export default function SummaryStepPage() {
     } else if (!currentMeasurements) {
       message = "Missing Measurements. Please complete the measurement step.";
       redirectTo = '/workflow/measurement-step';
-    } else if (!currentDesign) {
-      message = "Missing Design. Please complete the design step.";
+    } else if (!orderItems || orderItems.length === 0) { // Check orderItems
+      message = "No items in order. Please add items in the design step.";
       redirectTo = '/workflow/design-step';
     }
 
@@ -54,66 +55,53 @@ export default function SummaryStepPage() {
       router.replace(redirectTo);
       return; 
     }
-  }, [currentCustomer, currentMeasurements, currentDesign, router, toast, isSubmitting, workflowReturnPath, isNavigatingAfterSuccess]);
+  }, [currentCustomer, currentMeasurements, orderItems, router, toast, isSubmitting, workflowReturnPath, isNavigatingAfterSuccess]);
 
 
   const handleConfirmOrder = async () => {
-    if (!currentCustomer || !currentMeasurements || !currentDesign) {
-      toast({ title: "Error", description: "Missing order information to submit.", variant: "destructive" });
+    if (!currentCustomer || !currentMeasurements || !orderItems || orderItems.length === 0) {
+      toast({ title: "Error", description: "Missing order information or no items to submit.", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
 
-    const designStyleName = currentDesign.style ? getDetailNameById(currentDesign.style, styleOptionsForDisplay) : 'N/A';
-    const designFabricName = currentDesign.fabric ? getDetailNameById(currentDesign.fabric, fabricOptionsForDisplay) : 'N/A';
-    const designColorName = currentDesign.color ? getDetailNameById(currentDesign.color, colorOptionsForDisplay) : 'N/A';
-
-    const itemsOrdered: string[] = [`${designStyleName} (${designFabricName}, ${designColorName})`];
+    const itemsSummaryList: string[] = orderItems.map(item => generateDesignSummary(item));
     
     const measurementsSummaryText: string = `Profile: ${currentMeasurements.name || "Default"}. Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${currentMeasurements.hips}, Height: ${currentMeasurements.height}`;
 
-    let orderNotesForSave: string = currentDesign.notes || '';
-    if (orderNotesForSave.trim() === '') {
-        orderNotesForSave = `Custom order for ${currentCustomer.name}. Style: ${designStyleName}. Fabric: ${designFabricName}. Color: ${designColorName}.`;
-    }
-
-    const newOrderDate: string = format(new Date(), "yyyy-MM-dd");
+    // For overall order notes, we might combine notes from all items or have a general note field
+    // For now, let's assume general notes are not part of this specific item design.
+    // If editing an order, some of these might come from the existing order context.
+    const generalOrderNotes = orderItems.map((item, idx) => item.notes ? `Item ${idx+1} Notes: ${item.notes}`: '').filter(Boolean).join('\n') || `Custom order for ${currentCustomer.name}. Includes ${orderItems.length} item(s).`;
     
-    const orderStatusToSet = editingOrderId && currentDesign.status ? currentDesign.status : "Pending Assignment";
-    
-    const orderDueDateToSet: string = editingOrderId && currentDesign.dueDate 
-                                      ? currentDesign.dueDate 
+    // Default status and due date logic for new orders
+    // If editing, these could come from the `activeDesign` or a general order state in context if applicable
+    const orderStatusToSet: FullOrderType['status'] = editingOrderId && orderItems[0]?.status ? orderItems[0].status : "Pending Assignment";
+    const orderDueDateToSet: string = editingOrderId && orderItems[0]?.dueDate 
+                                      ? orderItems[0].dueDate 
                                       : format(addDays(new Date(), 7), "yyyy-MM-dd");
 
-    const orderDesignDetailsToSave: Order['designDetails'] = {
-        fabric: currentDesign.fabric,
-        color: currentDesign.color,
-        style: currentDesign.style,
-        notes: currentDesign.notes || '',
-        referenceImageUrls: currentDesign.referenceImages || [],
-    };
-
-    const orderDataForSave: Omit<Order, 'id' | 'createdAt' | 'updatedAt'> = {
-      date: newOrderDate,
+    const orderDataForSave: Omit<FullOrderType, 'id' | 'createdAt' | 'updatedAt'> = {
+      date: format(new Date(), "yyyy-MM-dd"),
       status: orderStatusToSet,
-      total: "$0.00", 
-      items: itemsOrdered,
+      total: "$0.00", // Placeholder, needs calculation for multiple items
+      items: itemsSummaryList,
       customerId: currentCustomer.id,
       customerName: currentCustomer.name,
       measurementsSummary: measurementsSummaryText,
-      designDetails: orderDesignDetailsToSave,
-      assignedTailorId: editingOrderId && currentDesign.assignedTailorId ? currentDesign.assignedTailorId : null,
-      assignedTailorName: editingOrderId && currentDesign.assignedTailorName ? currentDesign.assignedTailorName : null,
+      detailedItems: orderItems, // Store the array of detailed item designs
+      assignedTailorId: editingOrderId && orderItems[0]?.assignedTailorId ? orderItems[0].assignedTailorId : null,
+      assignedTailorName: editingOrderId && orderItems[0]?.assignedTailorName ? orderItems[0].assignedTailorName : null,
       dueDate: orderDueDateToSet,
       shippingAddress: currentCustomer.address || undefined,
-      notes: orderNotesForSave,
+      notes: generalOrderNotes,
     };
     
     try {
-      const result: SaveOrderActionResult = await saveOrderAction(orderDataForSave as Order, editingOrderId || undefined);
+      const result: SaveOrderActionResult = await saveOrderAction(orderDataForSave as FullOrderType, editingOrderId || undefined);
 
       if (result.success && result.order) {
-        setIsNavigatingAfterSuccess(true); // Set flag before navigation
+        setIsNavigatingAfterSuccess(true); 
         toast({
           title: editingOrderId ? "Order Updated!" : "Order Placed!",
           description: `Order #${result.order.id} has been successfully ${editingOrderId ? 'updated' : 'submitted'}.`,
@@ -136,12 +124,11 @@ export default function SummaryStepPage() {
       });
     } finally {
       setIsSubmitting(false);
-      // Do not reset isNavigatingAfterSuccess here, let it persist until unmount or new interaction
     }
   }; 
 
   if (!isSubmitting && !isNavigatingAfterSuccess) {
-    if (!currentCustomer || !currentMeasurements || !currentDesign) {
+    if (!currentCustomer || !currentMeasurements || !orderItems || orderItems.length === 0) {
         return (
             <div className="container mx-auto py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
                 <p className="text-muted-foreground">Loading workflow state or redirecting...</p>
@@ -162,6 +149,7 @@ export default function SummaryStepPage() {
           </div>
           <CardDescription>
             Please review all details before {editingOrderId ? "updating" : "placing"} your custom order for {currentCustomer?.name || 'the customer'}.
+            This order contains {orderItems.length} item(s).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -212,36 +200,41 @@ export default function SummaryStepPage() {
 
           <Separator />
 
-          {currentDesign && (
+          {orderItems && orderItems.length > 0 && (
             <Card className="bg-muted/30">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2"><Palette className="h-5 w-5 text-primary"/>Design Specifications</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2"><PackagePlus className="h-5 w-5 text-primary"/>Order Items ({orderItems.length})</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm space-y-2">
-                <p><strong>Style:</strong> {currentDesign.style ? getDetailNameById(currentDesign.style, styleOptionsForDisplay) : 'N/A'}</p>
-                <p><strong>Fabric:</strong> {currentDesign.fabric ? getDetailNameById(currentDesign.fabric, fabricOptionsForDisplay) : 'N/A'}</p>
-                <p><strong>Color:</strong> {currentDesign.color ? getDetailNameById(currentDesign.color, colorOptionsForDisplay) : 'N/A'}</p>
-                {currentDesign.notes && <p><strong>Notes:</strong> <span className="whitespace-pre-wrap">{currentDesign.notes}</span></p>}
-
-                {currentDesign.referenceImages && currentDesign.referenceImages.length > 0 && (
-                  <div>
-                    <strong className="flex items-center gap-1"><ImageIcon className="h-4 w-4 text-muted-foreground" />Reference Images:</strong>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {currentDesign.referenceImages.map((src, index) => (
-                        <Image
-                          key={index}
-                          src={src}
-                          alt={`Reference ${index + 1}`}
-                          width={60}
-                          height={60}
-                          className="rounded-md border object-cover shadow-sm"
-                          data-ai-hint="design reference thumbnail"
-                        />
-                      ))}
+              <CardContent className="space-y-4">
+                {orderItems.map((itemDesign, index) => (
+                  <div key={index} className="border-b pb-3 last:border-b-0 last:pb-0">
+                     <h4 className="text-md font-semibold mb-1 flex items-center gap-2"><Shirt className="h-4 w-4 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(itemDesign)}</h4>
+                    <div className="text-xs space-y-0.5 pl-2">
+                        <p><strong>Style:</strong> {itemDesign.style ? getDetailNameById(itemDesign.style, styleOptionsForDisplay) : 'N/A'}</p>
+                        <p><strong>Fabric:</strong> {itemDesign.fabric ? getDetailNameById(itemDesign.fabric, fabricOptionsForDisplay) : 'N/A'}</p>
+                        <p><strong>Color:</strong> {itemDesign.color ? getDetailNameById(itemDesign.color, colorOptionsForDisplay) : 'N/A'}</p>
+                        {itemDesign.notes && <p><strong>Notes:</strong> <span className="whitespace-pre-wrap">{itemDesign.notes}</span></p>}
+                        {itemDesign.referenceImages && itemDesign.referenceImages.length > 0 && (
+                        <div className="mt-1">
+                            <strong className="flex items-center gap-1 text-xs"><ImageIcon className="h-3 w-3" />Ref Images:</strong>
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                            {itemDesign.referenceImages.map((src, imgIdx) => (
+                                <Image
+                                key={imgIdx}
+                                src={src}
+                                alt={`Ref ${index + 1}-${imgIdx + 1}`}
+                                width={30}
+                                height={30}
+                                className="rounded border object-cover shadow-sm"
+                                data-ai-hint="design reference thumbnail"
+                                />
+                            ))}
+                            </div>
+                        </div>
+                        )}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Note: Images are stored as Data URLs. For production, consider Firebase Storage.</p>
                   </div>
-                )}
+                ))}
               </CardContent>
             </Card>
           )}
@@ -269,7 +262,7 @@ export default function SummaryStepPage() {
           <Button 
             onClick={handleConfirmOrder} 
             className="w-full sm:w-auto shadow-md hover:shadow-lg" 
-            disabled={isSubmitting || isNavigatingAfterSuccess || !currentCustomer || !currentMeasurements || !currentDesign}
+            disabled={isSubmitting || isNavigatingAfterSuccess || !currentCustomer || !currentMeasurements || !orderItems || orderItems.length === 0}
           >
             {isSubmitting ? (editingOrderId ? "Updating..." : "Placing Order...") : (
               <>

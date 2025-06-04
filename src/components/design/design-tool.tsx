@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
-import { CheckSquare, Palette, Scissors, Shirt, UploadCloud, XCircle } from 'lucide-react';
+import { CheckSquare, Palette, Scissors, Shirt, UploadCloud, XCircle, Save } from 'lucide-react';
 import type { DesignDetails } from '@/contexts/order-workflow-context';
 
 const fabricOptions = [
@@ -37,15 +37,16 @@ const styleOptions = [
 
 interface DesignToolProps {
   initialDesign?: DesignDetails | null;
-  onSaveDesign?: (design: DesignDetails) => void;
+  onSaveDesign: (design: DesignDetails) => void; // Renamed to onSaveDesign, more generic
+  submitButtonText?: string;
 }
 
-export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
-  const [selectedFabric, setSelectedFabric] = useState<string | null>(initialDesign?.fabric || null);
-  const [selectedColor, setSelectedColor] = useState<string | null>(initialDesign?.color || null);
-  const [selectedStyle, setSelectedStyle] = useState<string | null>(initialDesign?.style || null);
-  const [customNotes, setCustomNotes] = useState(initialDesign?.notes || '');
-  const [referenceImagePreviews, setReferenceImagePreviews] = useState<string[]>(initialDesign?.referenceImages || []);
+export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Save Design" }: DesignToolProps) {
+  const [selectedFabric, setSelectedFabric] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
+  const [customNotes, setCustomNotes] = useState('');
+  const [referenceImagePreviews, setReferenceImagePreviews] = useState<string[]>([]);
 
   useEffect(() => {
     if (initialDesign) {
@@ -54,6 +55,13 @@ export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
       setSelectedStyle(initialDesign.style || null);
       setCustomNotes(initialDesign.notes || '');
       setReferenceImagePreviews(initialDesign.referenceImages || []);
+    } else {
+      // Reset fields if initialDesign is null (e.g. new item)
+      setSelectedFabric(null);
+      setSelectedColor(null);
+      setSelectedStyle(null);
+      setCustomNotes('');
+      setReferenceImagePreviews([]);
     }
   }, [initialDesign]);
 
@@ -66,11 +74,11 @@ export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
         reader.onloadend = () => {
           if (reader.result) {
             newPreviews.push(reader.result as string);
-            // Ensure not to exceed a reasonable limit, e.g., 5 images
             if (newPreviews.length <= 5) {
-              setReferenceImagePreviews([...newPreviews]); // Create new array instance
+              setReferenceImagePreviews([...newPreviews]); 
             } else {
               alert("You can upload a maximum of 5 images.");
+              setReferenceImagePreviews(newPreviews.slice(0,5)); // Truncate to 5
             }
           }
         };
@@ -90,14 +98,13 @@ export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
       style: selectedStyle,
       notes: customNotes,
       referenceImages: referenceImagePreviews,
+      // Other fields like status, tailorId, dueDate are not part of item design itself
+      // They are handled at order level or when editing an existing order context.
     };
-    if (onSaveDesign) {
-      onSaveDesign(designDetails);
-    } else {
-      console.log(designDetails);
-      alert('Design submitted (mock)! Check console for details.');
-    }
+    onSaveDesign(designDetails);
   };
+
+  const isFormValid = selectedFabric && selectedColor && selectedStyle;
 
   return (
     <div className="grid lg:grid-cols-3 gap-8">
@@ -250,7 +257,7 @@ export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
       <div className="lg:col-span-1 space-y-6">
         <Card className="sticky top-20 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-xl">Your Design Summary</CardTitle>
+            <CardTitle className="text-xl">Current Item Design</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -304,9 +311,9 @@ export function DesignTool({ initialDesign, onSaveDesign }: DesignToolProps) {
             <Button
               className="w-full shadow-md hover:shadow-lg transition-shadow"
               onClick={handleSubmitDesign}
-              disabled={!selectedFabric || !selectedColor || !selectedStyle}
+              disabled={!isFormValid}
             >
-              {onSaveDesign ? "Save Design & Proceed to Summary" : "Add to Order & Proceed"}
+              <Save className="mr-2 h-4 w-4"/> {submitButtonText}
             </Button>
           </CardFooter>
         </Card>

@@ -15,11 +15,12 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Shuffle, ImageIcon, Ruler, Palette, FileText } from "lucide-react";
+import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Shuffle, ImageIcon, Ruler, Palette, FileText, Shirt } from "lucide-react"; // Added Shirt
 import { format, parseISO } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
-import { getDetailNameById, fabricOptionsForDisplay, colorOptionsForDisplay, styleOptionsForDisplay } from '@/lib/mockData';
+import { getDetailNameById, fabricOptionsForDisplay, colorOptionsForDisplay, styleOptionsForDisplay, generateDesignSummary } from '@/lib/mockData';
+import type { DesignDetails } from '@/contexts/order-workflow-context';
 
 
 const getStatusBadgeColor = (status: OrderStatus | undefined) => {
@@ -42,17 +43,11 @@ export default function OrderDetailsPage() {
   const { toast } = useToast();
   const orderId = params.orderId as string;
 
-  const [currentOrder, setCurrentOrder] = useState<Order | null | undefined>(undefined); // undefined for loading state
+  const [currentOrder, setCurrentOrder] = useState<Order | null | undefined>(undefined); 
   const [customerForOrder, setCustomerForOrder] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const {
-    setCustomer,
-    setMeasurements,
-    setDesign,
-    setWorkflowReturnPath,
-    setEditingOrderId
-  } = useOrderWorkflow();
+  const { loadOrderForEditing } = useOrderWorkflow();
 
 
   useEffect(() => {
@@ -63,16 +58,18 @@ export default function OrderDetailsPage() {
       
       if (orderError || !fetchedOrder) {
         toast({ title: "Error", description: orderError || "Order not found.", variant: "destructive" });
-        setCurrentOrder(null); // Explicitly set to null on error/not found
+        setCurrentOrder(null); 
         setIsLoading(false);
-        // notFound(); // Could call notFound() here if desired
         return;
       }
       
       setCurrentOrder(fetchedOrder);
 
       if (fetchedOrder.customerId) {
-        const customer = await getCustomerById(fetchedOrder.customerId); // This is a server function, ensure it's callable or use an action
+        // Using server action getCustomerById which is fine for server components,
+        // but for client components, ideally this would also be an action or fetched with order.
+        // For now, assuming getCustomerById can be called if it's a 'use server' utility or we make it an action.
+        const customer = await getCustomerById(fetchedOrder.customerId); 
         setCustomerForOrder(customer);
       } else {
         setCustomerForOrder(null);
@@ -83,12 +80,11 @@ export default function OrderDetailsPage() {
     fetchOrderAndCustomer();
   }, [orderId, toast]);
 
-  if (isLoading || currentOrder === undefined) { // Show loading if isLoading or currentOrder is still undefined
+  if (isLoading || currentOrder === undefined) { 
     return <div className="container mx-auto py-8 text-center">Loading order details...</div>;
   }
 
-  if (!currentOrder) { // If loading is false and currentOrder is null, then it was not found or an error occurred
-    // notFound(); // This will render the not-found.tsx page
+  if (!currentOrder) { 
     return (
         <div className="container mx-auto py-8 text-center">
             <Card>
@@ -123,23 +119,13 @@ export default function OrderDetailsPage() {
   };
 
   const handleEditOrder = () => {
-    if (customerForOrder && currentOrder && currentOrder.designDetails && customerForOrder.measurements) {
-      setCustomer(customerForOrder);
-      setMeasurements(customerForOrder.measurements); // Measurements are on customer
-      setDesign({ // Reconstruct DesignDetails from Order's designDetails
-        fabric: currentOrder.designDetails.fabric,
-        color: currentOrder.designDetails.color,
-        style: currentOrder.designDetails.style,
-        notes: currentOrder.designDetails.notes || '',
-        referenceImages: currentOrder.designDetails.referenceImageUrls || [],
-      });
-      setEditingOrderId(currentOrder.id);
-      setWorkflowReturnPath(`/orders/${currentOrder.id}`);
-      router.push('/workflow/customer-step'); // Start workflow from customer step to allow changes
+    if (customerForOrder && currentOrder && currentOrder.detailedItems && customerForOrder.measurements) {
+      loadOrderForEditing(currentOrder, customerForOrder);
+      router.push('/workflow/customer-step'); 
     } else {
        toast({
             title: "Cannot Edit Order",
-            description: "Missing customer, measurements, or design details to start editing.",
+            description: "Missing customer, measurements, or detailed item designs to start editing.",
             variant: "destructive"
         });
     }
@@ -157,7 +143,7 @@ export default function OrderDetailsPage() {
           <div>
             <CardTitle className="text-2xl font-bold text-primary">Order Details: #{currentOrder.id}</CardTitle>
             <CardDescription>
-              Detailed view of your order from Firestore.
+              Detailed view of your order from Firestore. This order has {currentOrder.detailedItems?.length || 0} item(s).
             </CardDescription>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
@@ -209,7 +195,6 @@ export default function OrderDetailsPage() {
               <div>
                 <div className="flex justify-between items-center mb-2">
                     <h3 className="text-lg font-semibold flex items-center"><Ruler className="mr-2 h-5 w-5 text-primary" />Customer Measurements</h3>
-                    {/* Edit measurements is now part of full order edit */}
                 </div>
                 <Card className="bg-background/50 p-4 rounded-md text-sm">
                     <p><strong>Profile:</strong> {customerForOrder.measurements.name || "Default"}</p>
@@ -224,61 +209,46 @@ export default function OrderDetailsPage() {
           )}
 
 
-          {currentOrder.designDetails && (
+          {currentOrder.detailedItems && currentOrder.detailedItems.length > 0 && (
              <>
                 <div>
                     <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-lg font-semibold flex items-center"><Palette className="mr-2 h-5 w-5 text-primary" />Design Details</h3>
+                        <h3 className="text-lg font-semibold flex items-center"><Palette className="mr-2 h-5 w-5 text-primary" />Ordered Item Designs</h3>
                     </div>
-                     <Card className="bg-background/50 p-4 rounded-md text-sm space-y-1">
-                        <p><strong>Style:</strong> {getDetailNameById(currentOrder.designDetails.style, styleOptionsForDisplay)}</p>
-                        <p><strong>Fabric:</strong> {getDetailNameById(currentOrder.designDetails.fabric, fabricOptionsForDisplay)}</p>
-                        <p><strong>Color:</strong> {getDetailNameById(currentOrder.designDetails.color, colorOptionsForDisplay)}</p>
-                        {currentOrder.designDetails.notes && <p><strong>Notes:</strong> <span className="whitespace-pre-wrap">{currentOrder.designDetails.notes}</span></p>}
-                     </Card>
+                    <div className="space-y-4">
+                        {currentOrder.detailedItems.map((design, index) => (
+                            <Card key={index} className="bg-background/50 p-4 rounded-md text-sm space-y-1">
+                                <h4 className="font-medium text-md flex items-center gap-1.5"><Shirt className="h-4 w-4 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(design)}</h4>
+                                <p><strong>Style:</strong> {getDetailNameById(design.style, styleOptionsForDisplay)}</p>
+                                <p><strong>Fabric:</strong> {getDetailNameById(design.fabric, fabricOptionsForDisplay)}</p>
+                                <p><strong>Color:</strong> {getDetailNameById(design.color, colorOptionsForDisplay)}</p>
+                                {design.notes && <p><strong>Notes:</strong> <span className="whitespace-pre-wrap">{design.notes}</span></p>}
+                                {design.referenceImages && design.referenceImages.length > 0 && (
+                                    <div className="mt-2">
+                                        <strong className="flex items-center gap-1 text-xs"><ImageIcon className="h-3 w-3" />Reference Images:</strong>
+                                        <div className="flex flex-wrap gap-2 mt-1">
+                                        {design.referenceImages.map((src, imgIdx) => (
+                                            <Image
+                                                key={imgIdx}
+                                                src={src}
+                                                alt={`Ref Image ${index + 1}-${imgIdx + 1}`}
+                                                width={60}
+                                                height={60}
+                                                className="rounded border object-cover shadow-sm"
+                                                data-ai-hint="design reference thumbnail"
+                                            />
+                                        ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </Card>
+                        ))}
+                    </div>
                 </div>
              </>
           )}
           
-          {currentOrder.items && currentOrder.items.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <h3 className="text-lg font-semibold flex items-center mb-2"><Tag className="mr-2 h-5 w-5 text-primary" />Items Ordered</h3>
-                <ul className="space-y-1 list-disc list-inside pl-2">
-                  {currentOrder.items.map((item, index) => (
-                    <li key={index} className="text-sm">{item}</li>
-                  ))}
-                </ul>
-              </div>
-            </>
-          )}
           
-          {currentOrder.designDetails?.referenceImageUrls && currentOrder.designDetails.referenceImageUrls.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                 <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-semibold flex items-center"><ImageIcon className="mr-2 h-5 w-5 text-primary" />Reference Images</h3>
-                 </div>
-                <div className="flex flex-wrap gap-3 mt-2">
-                    {currentOrder.designDetails.referenceImageUrls.map((src, index) => (
-                        <Image
-                            key={index}
-                            src={src}
-                            alt={`Reference Image ${index + 1}`}
-                            width={100}
-                            height={100}
-                            className="rounded-md border object-cover shadow-sm"
-                            data-ai-hint="design clothing reference"
-                        />
-                    ))}
-                </div>
-                 <p className="text-xs text-muted-foreground mt-1">Note: Images are currently stored as Data URLs. For production, use Firebase Storage.</p>
-              </div>
-            </>
-          )}
-
           {customerForOrder?.address && (
             <>
               <Separator />
@@ -294,7 +264,7 @@ export default function OrderDetailsPage() {
           )}
 
 
-          {currentOrder.notes && (
+          {currentOrder.notes && ( // General Order notes if any
              <>
               <Separator />
               <div>

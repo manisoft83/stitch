@@ -8,6 +8,7 @@ import type { TailorFormData } from '@/lib/mockData'; // Using TailorFormData sp
 import type { Tailor, Customer, Address, Order, OrderStatus } from '@/lib/mockData'; // Keep general types
 import type { MeasurementFormValues } from '@/lib/schemas';
 import { format, parseISO } from 'date-fns';
+import type { DesignDetails } from '@/contexts/order-workflow-context';
 
 
 const TAILORS_COLLECTION = 'tailors';
@@ -15,33 +16,23 @@ const CUSTOMERS_COLLECTION = 'customers';
 const ORDERS_COLLECTION = 'orders';
 
 // --- Timestamp Converters ---
-// Converts Firestore Timestamps to ISO strings for client, and specific fields from data
 const fromFirestoreTimestamp = (timestamp: Timestamp | undefined | null): string | undefined => {
   return timestamp ? timestamp.toDate().toISOString() : undefined;
 };
-const dateStringToISO = (dateStr: string | null | undefined): string | undefined => {
-    if (!dateStr) return undefined;
-    try {
-        // Handles "yyyy-MM-dd" by parsing and reformatting to ISO
-        return parseISO(dateStr).toISOString();
-    } catch (e) { // If already ISO or other format, try to return as is or handle error
-        return dateStr; // Or throw error / return undefined
-    }
-}
 
-const orderFromDoc = (docSnap: ReturnType<typeof docSnapshot.data> | undefined, id: string): Order | null => {
-    if (!docSnap) return null;
-    const data = docSnap;
+const orderFromDoc = (docData: ReturnType<typeof docSnapshot.data> | undefined, id: string): Order | null => {
+    if (!docData) return null;
+    const data = docData;
     return {
         id: id,
         date: data.date ? (data.date instanceof Timestamp ? format(data.date.toDate(), "yyyy-MM-dd") : data.date) : format(new Date(), "yyyy-MM-dd"),
         status: data.status || 'Pending Assignment',
         total: data.total || '$0.00',
-        items: Array.isArray(data.items) ? data.items : [],
+        items: Array.isArray(data.items) ? data.items : [], // Summary strings
         customerId: data.customerId || '',
         customerName: data.customerName || '',
         measurementsSummary: data.measurementsSummary || '',
-        designDetails: data.designDetails || undefined,
+        detailedItems: Array.isArray(data.detailedItems) ? data.detailedItems as DesignDetails[] : undefined, // Array of DesignDetails
         assignedTailorId: data.assignedTailorId || null,
         assignedTailorName: data.assignedTailorName || null,
         dueDate: data.dueDate ? (data.dueDate instanceof Timestamp ? format(data.dueDate.toDate(), "yyyy-MM-dd") : data.dueDate) : null,
@@ -352,21 +343,16 @@ export async function deleteCustomerById(customerId: string): Promise<boolean> {
 
 // --- Order Functions ---
 
-export async function saveOrderToDb(orderData: Order, existingOrderId?: string): Promise<Order | null> {
-  console.log(`DataService: Saving order to Firestore. Order ID: ${existingOrderId || 'NEW'}, Data:`, JSON.stringify(orderData).substring(0, 200) + "...");
+export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>, existingOrderId?: string): Promise<Order | null> {
+  console.log(`DataService: Saving order to Firestore. Order ID: ${existingOrderId || 'NEW'}, Item count: ${orderData.items.length}`);
   
-  // Prepare data for Firestore (convert date strings to Timestamps if needed, or store as ISO strings)
-  // For simplicity and consistency with how mock data was structured, we'll store dates as "yyyy-MM-dd" strings.
-  // Firestore can query string dates, though Timestamp objects offer more flexibility.
   const dataToSave = {
     ...orderData,
     date: orderData.date ? format(parseISO(orderData.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
     dueDate: orderData.dueDate ? format(parseISO(orderData.dueDate), "yyyy-MM-dd") : null,
+    // detailedItems are already in the correct format (DesignDetails[])
     updatedAt: serverTimestamp(),
   };
-  // Remove id from data to save as it's the document ID
-  delete (dataToSave as any).id; 
-  delete (dataToSave as any).createdAt; // Will be set only on creation
 
   try {
     if (existingOrderId) {
