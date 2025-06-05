@@ -3,7 +3,7 @@
 "use server";
 
 import type { Order, OrderStatus } from '@/lib/mockData';
-import { saveOrderToDb, updateOrderStatusInDb, getOrderByIdFromDb as fetchOrderById } from '@/lib/server/dataService';
+import { saveOrderToDb, updateOrderStatusInDb, getOrderByIdFromDb as fetchOrderById, updateOrderPriceInDb } from '@/lib/server/dataService';
 import { revalidatePath } from 'next/cache';
 
 export interface SaveOrderActionResult {
@@ -70,4 +70,32 @@ export async function getOrderDetailsAction(orderId: string): Promise<{order: Or
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
         return { order: null, error: `Server action error: ${errorMessage}` };
     }
+}
+
+export async function updateOrderPriceAction(orderId: string, newPrice: string): Promise<{success: boolean, error?: string}> {
+  console.log(`Server Action: updateOrderPriceAction for order ID ${orderId} to price ${newPrice}`);
+  // Basic validation for price format (e.g., "$123.45" or "123.45")
+  // More robust validation might be needed depending on requirements
+  if (!/^\$?\d+(\.\d{1,2})?$/.test(newPrice) && newPrice !== "Pricing TBD") {
+    return { success: false, error: "Invalid price format. Use format like $123.45 or 123.45." };
+  }
+  
+  const priceToStore = newPrice.startsWith('$') ? newPrice : `$${newPrice}`;
+
+  try {
+    const success = await updateOrderPriceInDb(orderId, priceToStore);
+    if (success) {
+      console.log("Server Action: Order price updated successfully. Revalidating paths.");
+      revalidatePath('/orders');
+      revalidatePath(`/orders/${orderId}`);
+      return { success: true };
+    } else {
+      console.error("Server Action: updateOrderPriceInDb returned false.");
+      return { success: false, error: "Failed to update order price in database." };
+    }
+  } catch (error) {
+    console.error("Server Action: Unexpected error during updateOrderPriceAction:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    return { success: false, error: `Server action error: ${errorMessage}` };
+  }
 }

@@ -7,7 +7,7 @@ import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, T
 import type { TailorFormData } from '@/lib/mockData'; // Using TailorFormData specifically for the form
 import type { Tailor, Customer, Address, Order, OrderStatus } from '@/lib/mockData'; // Keep general types
 import type { MeasurementFormValues } from '@/lib/schemas';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import type { DesignDetails } from '@/contexts/order-workflow-context';
 
 
@@ -27,12 +27,12 @@ const orderFromDoc = (docData: ReturnType<typeof docSnapshot.data> | undefined, 
         id: id,
         date: data.date ? (data.date instanceof Timestamp ? format(data.date.toDate(), "yyyy-MM-dd") : data.date) : format(new Date(), "yyyy-MM-dd"),
         status: data.status || 'Pending Assignment',
-        total: data.total || 'Pricing TBD', // Updated fallback
-        items: Array.isArray(data.items) ? data.items : [], 
+        total: data.total || "Pricing TBD",
+        items: Array.isArray(data.items) ? data.items : [],
         customerId: data.customerId || '',
         customerName: data.customerName || '',
         measurementsSummary: data.measurementsSummary || '',
-        detailedItems: Array.isArray(data.detailedItems) ? data.detailedItems as DesignDetails[] : undefined, 
+        detailedItems: Array.isArray(data.detailedItems) ? data.detailedItems as DesignDetails[] : undefined,
         assignedTailorId: data.assignedTailorId || null,
         assignedTailorName: data.assignedTailorName || null,
         dueDate: data.dueDate ? (data.dueDate instanceof Timestamp ? format(data.dueDate.toDate(), "yyyy-MM-dd") : data.dueDate) : null,
@@ -74,7 +74,7 @@ export async function saveTailor(formData: TailorFormData, existingTailorId?: st
   console.log(`DataService: Saving tailor to Firestore. Input: ${JSON.stringify(formData)}, ExistingID: ${existingTailorId}`);
   try {
     const expertiseArray = formData.expertise.split(',').map(e => e.trim()).filter(e => e);
-    
+
     const tailorDataForDb: {name: string; mobile: string; expertise: string[]; updatedAt: FieldValue, avatar?: string, dataAiHint?: string, availability?: string, createdAt?: FieldValue} = {
       name: formData.name,
       mobile: formData.mobile,
@@ -87,7 +87,7 @@ export async function saveTailor(formData: TailorFormData, existingTailorId?: st
       const tailorRef = doc(db, TAILORS_COLLECTION, existingTailorId);
       await updateDoc(tailorRef, tailorDataForDb);
       console.log(`DataService: Successfully called updateDoc for tailor ${existingTailorId}`);
-      
+
       const updatedDocSnap = await getDoc(tailorRef);
       if (!updatedDocSnap.exists()) {
         console.error(`DataService: Tailor document ${existingTailorId} not found after update attempt.`);
@@ -100,7 +100,7 @@ export async function saveTailor(formData: TailorFormData, existingTailorId?: st
         name: updatedData.name || '',
         mobile: updatedData.mobile || '',
         expertise: Array.isArray(updatedData.expertise) ? updatedData.expertise : [],
-        availability: updatedData.availability || 'Available', 
+        availability: updatedData.availability || 'Available',
         avatar: updatedData.avatar || `https://placehold.co/100x100.png?text=${(updatedData.name || 'N/A').substring(0,2).toUpperCase()}`,
         dataAiHint: updatedData.dataAiHint || "person portrait",
       };
@@ -111,7 +111,7 @@ export async function saveTailor(formData: TailorFormData, existingTailorId?: st
       tailorDataForDb.avatar = `https://placehold.co/100x100.png?text=${formData.name.substring(0,2).toUpperCase()}`;
       tailorDataForDb.dataAiHint = "person portrait";
       tailorDataForDb.createdAt = serverTimestamp();
-      
+
       const docRef = await addDoc(collection(db, TAILORS_COLLECTION), tailorDataForDb);
       console.log(`DataService: Successfully called addDoc, new tailor ID: ${docRef.id}`);
       const newDocSnap = await getDoc(docRef);
@@ -167,8 +167,8 @@ export async function getCustomers(): Promise<Customer[]> {
         name: data.name || '',
         email: data.email || '',
         phone: data.phone || '',
-        address: data.address || undefined, 
-        measurements: data.measurements || undefined, 
+        address: data.address || undefined,
+        measurements: data.measurements || undefined,
       } as Customer;
     });
     console.log(`DataService: Successfully fetched ${customersList.length} customers.`);
@@ -217,7 +217,7 @@ export interface CustomerFormInput {
 
 export async function saveCustomer(customerFormInput: CustomerFormInput, existingCustomerId?: string): Promise<Customer | null> {
   console.log(`DataService: Saving customer. Input: ${JSON.stringify(customerFormInput)}, ExistingID: ${existingCustomerId}`);
-  
+
   const { name, email, phone, street, city, zipCode, country } = customerFormInput;
 
   const customerDataForDb: {
@@ -226,8 +226,8 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
       phone: string;
       updatedAt: FieldValue;
       createdAt?: FieldValue;
-      address?: Address | FieldValue; 
-      measurements?: MeasurementFormValues; 
+      address?: Address | FieldValue;
+      measurements?: MeasurementFormValues;
   } = {
       name,
       email,
@@ -254,7 +254,7 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
     if (existingCustomerId) {
       console.log(`DataService: Attempting to update customer ${existingCustomerId}`);
       const customerRef = doc(db, CUSTOMERS_COLLECTION, existingCustomerId);
-      
+
       const docToUpdateSnap = await getDoc(customerRef);
       if (!docToUpdateSnap.exists()) {
           console.error(`DataService: Customer document ${existingCustomerId} does not exist. Cannot update.`);
@@ -263,7 +263,7 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
       await updateDoc(customerRef, customerDataForDb);
       console.log(`DataService: Successfully called updateDoc for customer ${existingCustomerId}`);
 
-      const updatedDocSnap = await getDoc(customerRef); 
+      const updatedDocSnap = await getDoc(customerRef);
       if (!updatedDocSnap.exists()) {
         console.error(`DataService: Customer document ${existingCustomerId} not found after update attempt.`);
         return null;
@@ -275,13 +275,13 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
         name: updatedData.name || '',
         email: updatedData.email || '',
         phone: updatedData.phone || '',
-        address: updatedData.address || undefined, 
+        address: updatedData.address || undefined,
         measurements: updatedData.measurements || undefined,
       };
     } else {
       console.log(`DataService: Attempting to add new customer`);
       customerDataForDb.createdAt = serverTimestamp();
-      
+
       const docRef = await addDoc(collection(db, CUSTOMERS_COLLECTION), customerDataForDb);
       console.log(`DataService: Successfully called addDoc, new customer ID: ${docRef.id}`);
 
@@ -297,7 +297,7 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
         name: savedData.name || '',
         email: savedData.email || '',
         phone: savedData.phone || '',
-        address: savedData.address || undefined, 
+        address: savedData.address || undefined,
         measurements: savedData.measurements || undefined,
       };
     }
@@ -316,7 +316,7 @@ export async function updateCustomerMeasurements(customerId: string, measurement
   try {
     const customerRef = doc(db, CUSTOMERS_COLLECTION, customerId);
     await updateDoc(customerRef, {
-      measurements: measurements, 
+      measurements: measurements,
       updatedAt: serverTimestamp(),
     });
     console.log(`DataService: Successfully updated measurements for customer ${customerId}`);
@@ -345,11 +345,11 @@ export async function deleteCustomerById(customerId: string): Promise<boolean> {
 
 export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>, existingOrderId?: string): Promise<Order | null> {
   console.log(`DataService: Saving order to Firestore. Order ID: ${existingOrderId || 'NEW'}, Item count: ${orderData.items.length}`);
-  
+
   const dataToSave = {
     ...orderData,
-    date: orderData.date ? format(parseISO(orderData.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
-    dueDate: orderData.dueDate ? format(parseISO(orderData.dueDate), "yyyy-MM-dd") : null,
+    date: orderData.date ? format(new Date(orderData.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"), // Ensure date is just yyyy-MM-dd
+    dueDate: orderData.dueDate ? format(new Date(orderData.dueDate), "yyyy-MM-dd") : null, // Ensure dueDate is yyyy-MM-dd
     updatedAt: serverTimestamp(),
   };
 
@@ -420,6 +420,22 @@ export async function updateOrderStatusInDb(orderId: string, status: OrderStatus
     return true;
   } catch (error) {
     console.error(`DataService: Error updating status for order ${orderId}:`, error);
+    return false;
+  }
+}
+
+export async function updateOrderPriceInDb(orderId: string, newPrice: string): Promise<boolean> {
+  console.log(`DataService: Updating price for order ID ${orderId} to ${newPrice}`);
+  try {
+    const orderRef = doc(db, ORDERS_COLLECTION, orderId);
+    await updateDoc(orderRef, {
+      total: newPrice,
+      updatedAt: serverTimestamp(),
+    });
+    console.log(`DataService: Successfully updated price for order ${orderId}`);
+    return true;
+  } catch (error) {
+    console.error(`DataService: Error updating price for order ${orderId}:`, error);
     return false;
   }
 }

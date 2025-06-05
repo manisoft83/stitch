@@ -5,20 +5,22 @@ import { useState, useEffect } from 'react';
 import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { type Order, allOrderStatuses, type OrderStatus, type Customer } from '@/lib/mockData'; 
-import { getOrderDetailsAction, updateOrderStatusAction } from '@/app/orders/actions';
-import { getCustomerById } from '@/lib/server/dataService'; 
+import { type Order, allOrderStatuses, type OrderStatus, type Customer } from '@/lib/mockData';
+import { getOrderDetailsAction, updateOrderStatusAction, updateOrderPriceAction } from '@/app/orders/actions';
+import { getCustomerById } from '@/lib/server/dataService';
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Shuffle, ImageIcon, Ruler, Palette, FileText, Shirt } from "lucide-react"; // Added Shirt
+import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Shuffle, ImageIcon, Ruler, Palette, FileText, Shirt, Pencil } from "lucide-react"; // Added Shirt, Pencil
 import { format, parseISO } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
+import { useAuth } from '@/hooks/use-auth'; // Added useAuth
 import { getDetailNameById, fabricOptionsForDisplay, colorOptionsForDisplay, styleOptionsForDisplay, generateDesignSummary } from '@/lib/mockData';
 import type { DesignDetails } from '@/contexts/order-workflow-context';
 
@@ -41,11 +43,13 @@ export default function OrderDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { role } = useAuth(); // Get user role
   const orderId = params.orderId as string;
 
-  const [currentOrder, setCurrentOrder] = useState<Order | null | undefined>(undefined); 
+  const [currentOrder, setCurrentOrder] = useState<Order | null | undefined>(undefined);
   const [customerForOrder, setCustomerForOrder] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [priceInput, setPriceInput] = useState<string>(""); // For admin price input
 
   const { loadOrderForEditing } = useOrderWorkflow();
 
@@ -55,21 +59,19 @@ export default function OrderDetailsPage() {
       if (!orderId) return;
       setIsLoading(true);
       const { order: fetchedOrder, error: orderError } = await getOrderDetailsAction(orderId);
-      
+
       if (orderError || !fetchedOrder) {
         toast({ title: "Error", description: orderError || "Order not found.", variant: "destructive" });
-        setCurrentOrder(null); 
+        setCurrentOrder(null);
         setIsLoading(false);
         return;
       }
-      
+
       setCurrentOrder(fetchedOrder);
+      setPriceInput(fetchedOrder.total === "Pricing TBD" ? "" : fetchedOrder.total.replace('$', '')); // Initialize price input
 
       if (fetchedOrder.customerId) {
-        // Using server action getCustomerById which is fine for server components,
-        // but for client components, ideally this would also be an action or fetched with order.
-        // For now, assuming getCustomerById can be called if it's a 'use server' utility or we make it an action.
-        const customer = await getCustomerById(fetchedOrder.customerId); 
+        const customer = await getCustomerById(fetchedOrder.customerId);
         setCustomerForOrder(customer);
       } else {
         setCustomerForOrder(null);
@@ -80,11 +82,19 @@ export default function OrderDetailsPage() {
     fetchOrderAndCustomer();
   }, [orderId, toast]);
 
-  if (isLoading || currentOrder === undefined) { 
+  useEffect(() => {
+    // Update priceInput if currentOrder.total changes (e.g., after successful update)
+    if (currentOrder) {
+      setPriceInput(currentOrder.total === "Pricing TBD" ? "" : currentOrder.total.replace('$', ''));
+    }
+  }, [currentOrder?.total]);
+
+
+  if (isLoading || currentOrder === undefined) {
     return <div className="container mx-auto py-8 text-center">Loading order details...</div>;
   }
 
-  if (!currentOrder) { 
+  if (!currentOrder) {
     return (
         <div className="container mx-auto py-8 text-center">
             <Card>
@@ -118,10 +128,40 @@ export default function OrderDetailsPage() {
     }
   };
 
+  const handlePriceUpdate = async () => {
+    if (!currentOrder || !priceInput.trim()) {
+      toast({ title: "Invalid Price", description: "Please enter a valid price.", variant: "destructive" });
+      return;
+    }
+    // Basic validation: ensure it's a number (allowing for decimals)
+    if (isNaN(parseFloat(priceInput))) {
+        toast({ title: "Invalid Price", description: "Price must be a valid number.", variant: "destructive" });
+        return;
+    }
+
+    const formattedPrice = priceInput.startsWith('$') ? priceInput : `$${parseFloat(priceInput).toFixed(2)}`;
+
+    const result = await updateOrderPriceAction(currentOrder.id, formattedPrice);
+    if (result.success) {
+      setCurrentOrder(prev => prev ? { ...prev, total: formattedPrice } : null);
+      toast({
+        title: "Order Price Updated",
+        description: `Order #${currentOrder.id} price changed to ${formattedPrice}.`,
+      });
+    } else {
+      toast({
+        title: "Error Updating Price",
+        description: result.error || "Could not update order price.",
+        variant: "destructive"
+      });
+    }
+  };
+
+
   const handleEditOrder = () => {
     if (customerForOrder && currentOrder && currentOrder.detailedItems && customerForOrder.measurements) {
       loadOrderForEditing(currentOrder, customerForOrder);
-      router.push('/workflow/customer-step'); 
+      router.push('/workflow/customer-step');
     } else {
        toast({
             title: "Cannot Edit Order",
@@ -173,9 +213,13 @@ export default function OrderDetailsPage() {
                 <CardTitle className="text-lg mb-2 flex items-center"><Info className="mr-2 h-5 w-5 text-primary" />Order Information</CardTitle>
                 <div className="space-y-2 text-sm">
                     <p className="flex items-center"><CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" /><strong>Order Date:</strong> <span className="ml-2">{currentOrder.date ? format(parseISO(currentOrder.date), "PPPp") : 'N/A'}</span></p>
-                    <p className="flex items-center"><DollarSign className="mr-2 h-4 w-4 text-muted-foreground" /><strong>Total Amount:</strong> <span className="ml-2">{currentOrder.total}</span></p>
+                    <div className="flex items-center gap-2">
+                        <DollarSign className="mr-0 h-4 w-4 text-muted-foreground" />
+                        <strong>Total Amount:</strong>
+                        <span className="ml-1">{currentOrder.total}</span>
+                    </div>
                     {customerForOrder && <p className="flex items-center"><User className="mr-2 h-4 w-4 text-muted-foreground" /><strong>Customer:</strong> <Link href={`/customers?edit=${customerForOrder.id}`} className="ml-2 text-primary hover:underline">{customerForOrder.name}</Link></p>}
-                    {!customerForOrder && currentOrder.customerName && <p className="flex items-center"><User className="mr-2 h-4 w-4 text-muted-foreground" /><strong>Customer:</strong> <span className="ml-2">{currentOrder.customerName} (Loading details...)</span></p>}
+                    {!customerForOrder && currentOrder.customerName && <p className="flex items-center"><User className="mr-2 h-4 w-4 text-muted-foreground" /><strong>Customer:</strong> <span className="ml-2">{currentOrder.customerName} (Details might load separately)</span></p>}
                 </div>
             </Card>
             <Card className="bg-muted/30 dark:bg-muted/20 p-4 rounded-lg">
@@ -187,7 +231,34 @@ export default function OrderDetailsPage() {
                  </div>
             </Card>
           </div>
-          
+
+          {role === 'admin' && (
+            <>
+              <Separator />
+              <Card className="bg-secondary/20 p-4 rounded-lg">
+                <CardTitle className="text-lg mb-3 flex items-center"><Pencil className="mr-2 h-5 w-5 text-primary" />Update Order Price (Admin)</CardTitle>
+                <div className="flex flex-col sm:flex-row gap-3 items-end">
+                  <div className="flex-grow">
+                    <Label htmlFor="order-price" className="text-sm font-medium">Set New Price (e.g., 150.75)</Label>
+                    <div className="relative mt-1">
+                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                        id="order-price"
+                        type="number"
+                        step="0.01"
+                        placeholder="Enter price..."
+                        value={priceInput}
+                        onChange={(e) => setPriceInput(e.target.value)}
+                        className="pl-8 w-full"
+                        />
+                    </div>
+                  </div>
+                  <Button onClick={handlePriceUpdate} className="w-full sm:w-auto shadow-sm">Update Price</Button>
+                </div>
+              </Card>
+            </>
+          )}
+
           <Separator />
 
           {customerForOrder?.measurements && (
@@ -247,8 +318,8 @@ export default function OrderDetailsPage() {
                 </div>
              </>
           )}
-          
-          
+
+
           {customerForOrder?.address && (
             <>
               <Separator />
