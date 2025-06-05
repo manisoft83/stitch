@@ -27,12 +27,12 @@ const orderFromDoc = (docData: ReturnType<typeof docSnapshot.data> | undefined, 
         id: id,
         date: data.date ? (data.date instanceof Timestamp ? format(data.date.toDate(), "yyyy-MM-dd") : data.date) : format(new Date(), "yyyy-MM-dd"),
         status: data.status || 'Pending Assignment',
-        total: data.total || '$0.00',
-        items: Array.isArray(data.items) ? data.items : [], // Summary strings
+        total: data.total || 'Pricing TBD', // Updated fallback
+        items: Array.isArray(data.items) ? data.items : [], 
         customerId: data.customerId || '',
         customerName: data.customerName || '',
         measurementsSummary: data.measurementsSummary || '',
-        detailedItems: Array.isArray(data.detailedItems) ? data.detailedItems as DesignDetails[] : undefined, // Array of DesignDetails
+        detailedItems: Array.isArray(data.detailedItems) ? data.detailedItems as DesignDetails[] : undefined, 
         assignedTailorId: data.assignedTailorId || null,
         assignedTailorName: data.assignedTailorName || null,
         dueDate: data.dueDate ? (data.dueDate instanceof Timestamp ? format(data.dueDate.toDate(), "yyyy-MM-dd") : data.dueDate) : null,
@@ -350,7 +350,6 @@ export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 
     ...orderData,
     date: orderData.date ? format(parseISO(orderData.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
     dueDate: orderData.dueDate ? format(parseISO(orderData.dueDate), "yyyy-MM-dd") : null,
-    // detailedItems are already in the correct format (DesignDetails[])
     updatedAt: serverTimestamp(),
   };
 

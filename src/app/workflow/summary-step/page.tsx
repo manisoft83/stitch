@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import type { Order as FullOrderType } from '@/lib/mockData'; // Renamed Order to FullOrderType
+import type { Order as FullOrderType } from '@/lib/mockData';
 import { format, addDays } from 'date-fns';
 import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon, MapPin, PackagePlus, Shirt } from 'lucide-react';
 import { saveOrderAction, type SaveOrderActionResult } from '@/app/orders/actions';
@@ -22,7 +22,7 @@ export default function SummaryStepPage() {
   const {
     currentCustomer,
     currentMeasurements,
-    orderItems, // Changed from currentDesign to orderItems
+    orderItems,
     resetWorkflow,
     editingOrderId,
     workflowReturnPath,
@@ -33,7 +33,7 @@ export default function SummaryStepPage() {
 
   useEffect(() => {
     if (isNavigatingAfterSuccess || isSubmitting) {
-      return; 
+      return;
     }
 
     let message = '';
@@ -45,7 +45,7 @@ export default function SummaryStepPage() {
     } else if (!currentMeasurements) {
       message = "Missing Measurements. Please complete the measurement step.";
       redirectTo = '/workflow/measurement-step';
-    } else if (!orderItems || orderItems.length === 0) { // Check orderItems
+    } else if (!orderItems || orderItems.length === 0) {
       message = "No items in order. Please add items in the design step.";
       redirectTo = '/workflow/design-step';
     }
@@ -53,7 +53,7 @@ export default function SummaryStepPage() {
     if (redirectTo) {
       toast({ title: "Workflow Incomplete", description: message, variant: "destructive" });
       router.replace(redirectTo);
-      return; 
+      return;
     }
   }, [currentCustomer, currentMeasurements, orderItems, router, toast, isSubmitting, workflowReturnPath, isNavigatingAfterSuccess]);
 
@@ -69,13 +69,8 @@ export default function SummaryStepPage() {
     
     const measurementsSummaryText: string = `Profile: ${currentMeasurements.name || "Default"}. Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${currentMeasurements.hips}, Height: ${currentMeasurements.height}`;
 
-    // For overall order notes, we might combine notes from all items or have a general note field
-    // For now, let's assume general notes are not part of this specific item design.
-    // If editing an order, some of these might come from the existing order context.
     const generalOrderNotes = orderItems.map((item, idx) => item.notes ? `Item ${idx+1} Notes: ${item.notes}`: '').filter(Boolean).join('\n') || `Custom order for ${currentCustomer.name}. Includes ${orderItems.length} item(s).`;
     
-    // Default status and due date logic for new orders
-    // If editing, these could come from the `activeDesign` or a general order state in context if applicable
     const orderStatusToSet: FullOrderType['status'] = editingOrderId && orderItems[0]?.status ? orderItems[0].status : "Pending Assignment";
     const orderDueDateToSet: string = editingOrderId && orderItems[0]?.dueDate 
                                       ? orderItems[0].dueDate 
@@ -84,12 +79,12 @@ export default function SummaryStepPage() {
     const orderDataForSave: Omit<FullOrderType, 'id' | 'createdAt' | 'updatedAt'> = {
       date: format(new Date(), "yyyy-MM-dd"),
       status: orderStatusToSet,
-      total: "$0.00", // Placeholder, needs calculation for multiple items
+      total: "Pricing TBD", // Updated placeholder
       items: itemsSummaryList,
       customerId: currentCustomer.id,
       customerName: currentCustomer.name,
       measurementsSummary: measurementsSummaryText,
-      detailedItems: orderItems, // Store the array of detailed item designs
+      detailedItems: orderItems,
       assignedTailorId: editingOrderId && orderItems[0]?.assignedTailorId ? orderItems[0].assignedTailorId : null,
       assignedTailorName: editingOrderId && orderItems[0]?.assignedTailorName ? orderItems[0].assignedTailorName : null,
       dueDate: orderDueDateToSet,
@@ -251,7 +246,7 @@ export default function SummaryStepPage() {
                   {editingOrderId ? "" : " It will then await assignment to one of our skilled tailors."} You can track its progress from there.
                   {!editingOrderId && <span className="block mt-1">The estimated due date will be {format(addDays(new Date(), 7), "PPP")}.</span>}
                 </p>
-                <p className="mt-2 text-xs text-muted-foreground">Order {editingOrderId ? "updates are" : "placement is"} saved to Firestore.</p>
+                <p className="mt-2 text-xs text-muted-foreground">Order {editingOrderId ? "updates are" : "placement is"} saved to Firestore. The total displayed is currently a placeholder.</p>
              </CardContent>
            </Card>
         </CardContent>
