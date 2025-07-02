@@ -3,7 +3,7 @@
 'use server';
 
 import { db } from '@/lib/firebase/config';
-import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, Timestamp, query, where, getDoc, updateDoc, FieldValue, deleteField, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, Timestamp, query, where, getDoc, updateDoc, FieldValue, deleteField, orderBy, limit, writeBatch } from 'firebase/firestore';
 import type { TailorFormData } from '@/lib/mockData'; // Using TailorFormData specifically for the form
 import type { Tailor, Customer, Address, Order, OrderStatus } from '@/lib/mockData'; // Keep general types
 import type { MeasurementFormValues } from '@/lib/schemas';
@@ -38,6 +38,8 @@ const orderFromDoc = (docData: ReturnType<typeof docSnapshot.data> | undefined, 
         dueDate: data.dueDate ? (data.dueDate instanceof Timestamp ? format(data.dueDate.toDate(), "yyyy-MM-dd") : data.dueDate) : null,
         shippingAddress: data.shippingAddress || undefined,
         notes: data.notes || '',
+        assignmentInstructions: data.assignmentInstructions || '',
+        assignmentImage: data.assignmentImage || '',
         createdAt: data.createdAt ? fromFirestoreTimestamp(data.createdAt as Timestamp) : undefined,
         updatedAt: data.updatedAt ? fromFirestoreTimestamp(data.updatedAt as Timestamp) : undefined,
     } as Order;
@@ -376,7 +378,7 @@ export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 
   }
 }
 
-export async function getOrdersFromDb(limitCount: number = 20): Promise<Order[]> {
+export async function getOrdersFromDb(limitCount: number = 50): Promise<Order[]> {
   console.log("DataService: Fetching orders from Firestore");
   try {
     const ordersQuery = query(collection(db, ORDERS_COLLECTION), orderBy("createdAt", "desc"), limit(limitCount));
@@ -436,6 +438,47 @@ export async function updateOrderPriceInDb(orderId: string, newPrice: string): P
     return true;
   } catch (error) {
     console.error(`DataService: Error updating price for order ${orderId}:`, error);
+    return false;
+  }
+}
+
+export interface AssignmentDetails {
+  tailorId: string;
+  tailorName: string;
+  dueDate: Date;
+  instructions?: string;
+  imageDataUrl?: string;
+}
+
+export async function assignTailorToOrderInDb(orderId: string, details: AssignmentDetails): Promise<boolean> {
+  console.log(`DataService: Assigning tailor ${details.tailorId} to order ${orderId}`);
+  const batch = writeBatch(db);
+
+  // 1. Update the order
+  const orderRef = doc(db, ORDERS_COLLECTION, orderId);
+  batch.update(orderRef, {
+    status: 'Assigned',
+    assignedTailorId: details.tailorId,
+    assignedTailorName: details.tailorName,
+    dueDate: format(details.dueDate, "yyyy-MM-dd"),
+    assignmentInstructions: details.instructions || '',
+    assignmentImage: details.imageDataUrl || '',
+    updatedAt: serverTimestamp(),
+  });
+
+  // 2. Update the tailor's availability
+  const tailorRef = doc(db, TAILORS_COLLECTION, details.tailorId);
+  batch.update(tailorRef, {
+    availability: 'Busy',
+    updatedAt: serverTimestamp(),
+  });
+
+  try {
+    await batch.commit();
+    console.log(`DataService: Successfully committed batch write for order assignment.`);
+    return true;
+  } catch (error) {
+    console.error(`DataService: Error assigning tailor to order:`, error);
     return false;
   }
 }

@@ -45,6 +45,8 @@ export interface Order {
   
   shippingAddress?: Address; 
   notes?: string; // General order notes
+  assignmentInstructions?: string; // Specific instructions for the tailor for this assignment
+  assignmentImage?: string; // A reference image Data URL for this assignment
 
   createdAt?: any; 
   updatedAt?: any; 

@@ -28,11 +28,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input"; // For file input styling
 import { Textarea } from "@/components/ui/textarea"; // For instructions
-import { Calendar as CalendarIcon, CheckCircle, UploadCloud } from "lucide-react";
+import { Calendar as CalendarIcon, CheckCircle } from "lucide-react";
 import { format, addDays } from "date-fns"; // Added addDays
 import { cn } from "@/lib/utils";
-import type { Tailor } from '@/lib/mockData'; 
-import type { ClientPageOrder as Order } from '@/app/tailors/client'; // Use the client page specific order type
+import type { Tailor, Order } from '@/lib/mockData'; 
 
 interface AssignTailorDialogProps {
   isOpen: boolean;
@@ -120,7 +119,7 @@ export function AssignTailorDialog({
         <DialogHeader>
           <DialogTitle>Assign Order #{order.id}</DialogTitle>
           <DialogDescription>
-            Assign "{order.item}" to a tailor, set due date, and add instructions/image.
+            Assign "{order.items.join(', ')}" to a tailor, set due date, and add instructions/image.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

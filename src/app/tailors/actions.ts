@@ -3,7 +3,7 @@
 
 import type { Tailor } from '@/lib/mockData';
 import type { TailorFormData } from '@/components/tailors/tailor-form-dialog';
-import { saveTailor as saveTailorToDb, deleteTailorById as deleteTailorFromDb } from '@/lib/server/dataService';
+import { saveTailor as saveTailorToDb, deleteTailorById as deleteTailorFromDb, assignTailorToOrderInDb, type AssignmentDetails } from '@/lib/server/dataService';
 import { revalidatePath } from 'next/cache';
 
 export async function saveTailorAction(data: TailorFormData, existingTailorId?: string): Promise<Tailor | null> {
@@ -28,4 +28,25 @@ export async function deleteTailorAction(tailorId: string): Promise<boolean> {
     revalidatePath('/login');
   }
   return success;
+}
+
+export async function assignTailorToOrderAction(orderId: string, details: AssignmentDetails): Promise<{ success: boolean; error?: string }> {
+  console.log(`Server Action: assignTailorToOrderAction for order ID ${orderId}`);
+  try {
+    const success = await assignTailorToOrderInDb(orderId, details);
+    if (success) {
+      console.log("Server Action: Tailor assigned successfully. Revalidating paths.");
+      revalidatePath('/tailors');
+      revalidatePath('/orders');
+      revalidatePath(`/orders/${orderId}`);
+      return { success: true };
+    } else {
+      console.error("Server Action: assignTailorToOrderInDb returned false.");
+      return { success: false, error: "Failed to assign tailor in database." };
+    }
+  } catch (error) {
+    console.error("Server Action: Unexpected error during assignTailorToOrderAction:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    return { success: false, error: `Server action error: ${errorMessage}` };
+  }
 }

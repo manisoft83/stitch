@@ -1,6 +1,7 @@
-import { getTailors } from '@/lib/server/dataService';
+import { getTailors, getOrdersFromDb } from '@/lib/server/dataService';
 import TailorsClientPage from './client';
 import type { Metadata } from 'next';
+import type { Order, Tailor } from '@/lib/mockData';
 
 export const metadata: Metadata = {
   title: 'Tailor Hub - StitchStyle',
@@ -10,8 +11,9 @@ export const metadata: Metadata = {
 // This is now a Server Component
 export default async function TailorsPage() {
   // Fetch initial data on the server
-  const serverFetchedTailors = await getTailors();
+  const serverFetchedTailors: Tailor[] = await getTailors();
+  const serverFetchedOrders: Order[] = await getOrdersFromDb();
   
   // Pass the fetched data to the Client Component
-  return <TailorsClientPage initialTailors={serverFetchedTailors} />;
+  return <TailorsClientPage initialTailors={serverFetchedTailors} initialOrders={serverFetchedOrders} />;
 }
