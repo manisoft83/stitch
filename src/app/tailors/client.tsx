@@ -95,7 +95,7 @@ export default function TailorsClientPage({ initialTailors, initialOrders }: Tai
           ...orderToAssign,
           assignedTailorId: tailorId,
           assignedTailorName: tailorName,
-          actualDueDate: format(dueDate, "yyyy-MM-dd"),
+          dueDate: format(dueDate, "yyyy-MM-dd"), // Correctly format date for Order type
           status: "Assigned",
           assignmentInstructions: instructions,
           assignmentImage: imageDataUrl,

@@ -1,3 +1,4 @@
+
 import { getTailors, getOrdersFromDb } from '@/lib/server/dataService';
 import TailorsClientPage from './client';
 import type { Metadata } from 'next';
