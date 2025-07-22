@@ -45,7 +45,9 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
     setAvailableTailors(initialTailors);
   }, [initialTailors]);
 
-  useEffect(() => { // Effect to update local orders state if initialOrders prop changes (e.g., due to revalidation)
+  // This effect ensures that if the server sends new data (e.g., after a revalidation),
+  // the component's state is updated to reflect it.
+  useEffect(() => {
     setOrders(initialOrders);
   }, [initialOrders]);
 
