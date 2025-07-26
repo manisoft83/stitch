@@ -22,6 +22,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import type { Tailor, Order } from '@/lib/mockData';
 import { Separator } from '@/components/ui/separator';
