@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -183,14 +182,17 @@ export default function SummaryStepPage() {
                 {orderItems.map((itemDesign, index) => (
                   <div key={index} className="border-b pb-3 last:border-b-0 last:pb-0">
                      <h4 className="text-md font-semibold mb-1 flex items-center gap-2"><Shirt className="h-4 w-4 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(itemDesign)}</h4>
-                     <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
-                        <p className="font-medium text-xs text-foreground">Measurements:</p>
-                        <ul className="list-disc list-inside pl-2 text-muted-foreground grid grid-cols-2 gap-x-4">
-                            {Object.entries(itemDesign.measurements).map(([key, value]) => value ? (
-                                <li key={key}><strong>{getMeasurementLabel(key)}:</strong> {value}</li>
-                            ) : null)}
-                        </ul>
-                    </div>
+                     
+                     {Object.keys(itemDesign.measurements).filter(k => itemDesign.measurements[k] !== undefined && itemDesign.measurements[k] !== '').length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
+                            <p className="font-medium text-xs text-foreground">Measurements:</p>
+                            <ul className="list-disc list-inside pl-2 text-muted-foreground grid grid-cols-2 gap-x-4">
+                                {Object.entries(itemDesign.measurements).map(([key, value]) => (value !== undefined && value !== '') ? (
+                                    <li key={key}><strong>{getMeasurementLabel(key)}:</strong> {value}</li>
+                                ) : null)}
+                            </ul>
+                        </div>
+                     )}
 
                     {itemDesign.notes && <p className="mt-2 text-sm"><strong>Notes:</strong> <span className="whitespace-pre-wrap">{itemDesign.notes}</span></p>}
                         

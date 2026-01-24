@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -275,11 +274,11 @@ export default function OrderDetailsPage() {
                             <Card key={index} className="bg-background/50 p-4 rounded-md text-sm space-y-4">
                                 <h4 className="font-medium text-md flex items-center gap-1.5"><Shirt className="h-5 w-5 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(design)}</h4>
                                 
-                                {design.measurements && Object.keys(design.measurements).filter(k => design.measurements[k]).length > 0 && (
+                                {design.measurements && Object.keys(design.measurements).filter(k => design.measurements[k] !== undefined && design.measurements[k] !== '').length > 0 && (
                                     <div className="pt-3 border-t border-muted/50">
                                         <p className="font-semibold text-sm text-foreground flex items-center gap-2 mb-2"><Ruler className="h-4 w-4"/>Measurements</p>
                                         <ul className="text-muted-foreground grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-xs">
-                                            {Object.entries(design.measurements).map(([key, value]) => value ? (
+                                            {Object.entries(design.measurements).map(([key, value]) => (value !== undefined && value !== '') ? (
                                                 <li key={key} className="flex gap-1"><strong>{getMeasurementLabel(key)}:</strong><span>{value}</span></li>
                                             ) : null)}
                                         </ul>
