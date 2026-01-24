@@ -8,15 +8,16 @@ import type { MeasurementFormValues } from '@/lib/schemas';
 
 // Define the structure for blouse-specific details
 export interface BlouseDetails {
-  type?: string;
-  length?: number;
-  upperChest?: number;
-  waist?: number;
-  shoulder?: number;
-  sleeve?: number;
-  frontNeck?: number;
-  backNeck?: number;
-  dt?: number;
+  fl?: number;
+  yoke?: string;
+  sh?: number;
+  cut?: string;
+  sl?: number;
+  neckType?: string;
+  fn?: number;
+  bn?: number;
+  slit?: string;
+  extra?: string;
 }
 
 // Define the structure for design details of a single item
