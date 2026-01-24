@@ -67,7 +67,7 @@ export default function SummaryStepPage() {
 
     const itemsSummaryList: string[] = orderItems.map(item => generateDesignSummary(item));
     
-    const measurementsSummaryText: string = `Profile: ${currentMeasurements.name || "Default"}. Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${currentMeasurements.hips}, Height: ${currentMeasurements.height}`;
+    const measurementsSummaryText: string = `Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${currentMeasurements.hips}, Height: ${currentMeasurements.height}`;
 
     const generalOrderNotes = orderItems.map((item, idx) => item.notes ? `Item ${idx+1} Notes: ${item.notes}`: '').filter(Boolean).join('\n') || `Custom order for ${currentCustomer.name}. Includes ${orderItems.length} item(s).`;
     
@@ -182,7 +182,7 @@ export default function SummaryStepPage() {
           {currentMeasurements && (
             <Card className="bg-muted/30">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2"><Ruler className="h-5 w-5 text-primary"/>Measurement Profile: {currentMeasurements.name || "Default"}</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2"><Ruler className="h-5 w-5 text-primary"/>Measurements</CardTitle>
               </CardHeader>
               <CardContent className="text-sm space-y-1">
                 <p><strong>Bust:</strong> {currentMeasurements.bust} inches</p>

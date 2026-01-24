@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
 export const measurementFormSchema = z.object({
-  name: z.string().min(2, {
-    message: "Profile name must be at least 2 characters.",
-  }).optional(),
   bust: z.coerce.number().positive({ message: "Bust size must be a positive number." }),
   waist: z.coerce.number().positive({ message: "Waist size must be a positive number." }),
   hips: z.coerce.number().positive({ message: "Hip size must be a positive number." }),

@@ -53,7 +53,7 @@ export default function MeasurementStepPage() {
 
         toast({
           title: "Measurements Saved",
-          description: `${currentCustomer?.name}'s measurements ${data.name ? "for profile '" + data.name + "'" : ""} have been updated in Firestore.`,
+          description: `${currentCustomer?.name}'s measurements have been updated in Firestore.`,
         });
         
         if (workflowReturnPath) {
@@ -80,9 +80,9 @@ export default function MeasurementStepPage() {
   }
   
   const initialFormValues: Partial<MeasurementFormValues> = 
-    currentMeasurements || //优先使用工作流中的当前测量值
-    currentCustomer?.measurements || //其次使用客户对象上的测量值
-    { name: '', bust: undefined, waist: undefined, hips: undefined, height: undefined };//最后的默认值
+    currentMeasurements ||
+    currentCustomer?.measurements ||
+    { bust: undefined, waist: undefined, hips: undefined, height: undefined };
 
   return (
     <div className="container mx-auto py-8">
