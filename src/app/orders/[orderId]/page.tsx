@@ -272,26 +272,31 @@ export default function OrderDetailsPage() {
                     </div>
                     <div className="space-y-4">
                         {currentOrder.detailedItems.map((design, index) => (
-                            <Card key={index} className="bg-background/50 p-4 rounded-md text-sm space-y-1">
-                                <h4 className="font-medium text-md flex items-center gap-1.5"><Shirt className="h-4 w-4 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(design)}</h4>
+                            <Card key={index} className="bg-background/50 p-4 rounded-md text-sm space-y-4">
+                                <h4 className="font-medium text-md flex items-center gap-1.5"><Shirt className="h-5 w-5 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(design)}</h4>
                                 
-                                {design.measurements && Object.keys(design.measurements).length > 0 && (
-                                    <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
-                                        <p className="font-medium text-xs text-foreground">Measurements:</p>
-                                        <ul className="list-disc list-inside pl-4 text-muted-foreground grid grid-cols-2 gap-x-2">
+                                {design.measurements && Object.keys(design.measurements).filter(k => design.measurements[k]).length > 0 && (
+                                    <div className="pt-3 border-t border-muted/50">
+                                        <p className="font-semibold text-sm text-foreground flex items-center gap-2 mb-2"><Ruler className="h-4 w-4"/>Measurements</p>
+                                        <ul className="text-muted-foreground grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-xs">
                                             {Object.entries(design.measurements).map(([key, value]) => value ? (
-                                                <li key={key}><strong>{getMeasurementLabel(key)}:</strong> {value}</li>
+                                                <li key={key} className="flex gap-1"><strong>{getMeasurementLabel(key)}:</strong><span>{value}</span></li>
                                             ) : null)}
                                         </ul>
                                     </div>
                                 )}
 
-                                {design.notes && <p className="mt-2"><strong>Notes:</strong> <span className="whitespace-pre-wrap">{design.notes}</span></p>}
+                                {design.notes && (
+                                    <div className="pt-3 border-t border-muted/50">
+                                        <p className="font-semibold text-sm text-foreground flex items-center gap-2 mb-2"><FileText className="h-4 w-4"/>Notes</p>
+                                        <p className="text-muted-foreground whitespace-pre-wrap text-xs">{design.notes}</p>
+                                    </div>
+                                )}
                                 
                                 {design.referenceImages && design.referenceImages.length > 0 && (
-                                    <div className="mt-2">
-                                        <strong className="flex items-center gap-1 text-xs"><ImageIcon className="h-3 w-3" />Reference Images:</strong>
-                                        <div className="flex flex-wrap gap-2 mt-1">
+                                    <div className="pt-3 border-t border-muted/50">
+                                        <strong className="font-semibold text-sm text-foreground flex items-center gap-2 mb-2"><ImageIcon className="h-4 w-4" />Reference Images</strong>
+                                        <div className="flex flex-wrap gap-2">
                                         {design.referenceImages.map((src, imgIdx) => (
                                             <Image
                                                 key={imgIdx}
