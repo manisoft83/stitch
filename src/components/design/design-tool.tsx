@@ -1,89 +1,60 @@
 
 "use client";
 
-import { useState, useEffect, type ChangeEvent } from 'react';
+import { useState, useEffect, type ChangeEvent, useMemo } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { UploadCloud, XCircle, Save, Ruler, Shirt } from 'lucide-react';
-import type { DesignDetails, BlouseDetails, PantDetails, SkirtDetails } from '@/contexts/order-workflow-context';
-
-const styleOptions = [
-  { id: 'a-line-dress', name: 'A-Line Dress' },
-  { id: 'fitted-blouse', name: 'Fitted Blouse' },
-  { id: 'wide-leg-trousers', name: 'Wide-Leg Trousers' },
-  { id: 'pencil-skirt', name: 'Pencil Skirt' },
-];
+import type { DesignDetails, GarmentStyle } from '@/contexts/order-workflow-context';
+import { allPossibleMeasurements } from '@/lib/mockData';
 
 interface DesignToolProps {
   initialDesign?: DesignDetails | null;
-  onSaveDesign: (design: DesignDetails) => void; // Renamed to onSaveDesign, more generic
+  onSaveDesign: (design: DesignDetails) => void;
   submitButtonText?: string;
+  availableStyles: GarmentStyle[];
 }
 
-export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Save Design" }: DesignToolProps) {
-  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
+export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Save Design", availableStyles }: DesignToolProps) {
+  const [styleId, setStyleId] = useState<string>('');
   const [customNotes, setCustomNotes] = useState('');
   const [referenceImagePreviews, setReferenceImagePreviews] = useState<string[]>([]);
-  const [blouseDetails, setBlouseDetails] = useState<Partial<BlouseDetails>>({});
-  const [pantDetails, setPantDetails] = useState<Partial<PantDetails>>({});
-  const [skirtDetails, setSkirtDetails] = useState<Partial<SkirtDetails>>({});
+  const [measurements, setMeasurements] = useState<{ [key: string]: string | number | undefined }>({});
 
   useEffect(() => {
     if (initialDesign) {
-      setSelectedStyle(initialDesign.style || null);
+      setStyleId(initialDesign.styleId || '');
       setCustomNotes(initialDesign.notes || '');
       setReferenceImagePreviews(initialDesign.referenceImages || []);
-      setBlouseDetails(initialDesign.blouseDetails || {});
-      setPantDetails(initialDesign.pantDetails || {});
-      setSkirtDetails(initialDesign.skirtDetails || {});
+      setMeasurements(initialDesign.measurements || {});
     } else {
-      // Reset fields if initialDesign is null (e.g. new item)
-      setSelectedStyle(null);
+      // Reset all fields for a new design
+      setStyleId('');
       setCustomNotes('');
       setReferenceImagePreviews([]);
-      setBlouseDetails({});
-      setPantDetails({});
-      setSkirtDetails({});
+      setMeasurements({});
     }
   }, [initialDesign]);
+
+  const selectedStyle = useMemo(() => {
+    return availableStyles.find(s => s.id === styleId);
+  }, [styleId, availableStyles]);
+
+  const handleStyleChange = (newStyleId: string) => {
+    setStyleId(newStyleId);
+    // Reset measurements when style changes to avoid carrying over irrelevant data
+    setMeasurements({});
+  };
+
+  const handleMeasurementChange = (field: string, value: string) => {
+    setMeasurements(prev => ({ ...prev, [field]: value }));
+  };
   
-  const handleBlouseDetailChange = (
-    field: keyof BlouseDetails,
-    value: string
-  ) => {
-    const numericFields: (keyof BlouseDetails)[] = ['fl', 'sh', 'sl', 'fn', 'bn'];
-    setBlouseDetails((prev) => ({
-      ...prev,
-      [field]: numericFields.includes(field) ? (value ? Number(value) : undefined) : value,
-    }));
-  };
-
-  const handlePantDetailChange = (
-    field: keyof PantDetails,
-    value: string
-  ) => {
-    setPantDetails((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleSkirtDetailChange = (
-    field: keyof SkirtDetails,
-    value: string
-  ) => {
-    setSkirtDetails((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
@@ -111,242 +82,136 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
   };
 
   const handleSubmitDesign = () => {
+    if (!selectedStyle) return;
     const designDetails: DesignDetails = {
-      style: selectedStyle,
+      styleId: selectedStyle.id,
+      styleName: selectedStyle.name,
       notes: customNotes,
       referenceImages: referenceImagePreviews,
-      blouseDetails: selectedStyle === 'fitted-blouse' ? blouseDetails : undefined,
-      pantDetails: selectedStyle === 'wide-leg-trousers' ? pantDetails : undefined,
-      skirtDetails: selectedStyle === 'pencil-skirt' ? skirtDetails : undefined,
+      measurements,
     };
     onSaveDesign(designDetails);
   };
 
   const isFormValid = !!selectedStyle;
+  const measurementFields = useMemo(() => {
+    if (!selectedStyle) return [];
+    return allPossibleMeasurements.filter(m => selectedStyle.requiredMeasurements.includes(m.id));
+  }, [selectedStyle]);
 
   return (
-    <div className="grid lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 space-y-6">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Shirt className="h-6 w-6 text-primary" /> Select Garment Style</CardTitle>
+          <CardDescription>Choose the base style for your custom piece. This will determine which measurements are required.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Select onValueChange={handleStyleChange} value={styleId}>
+            <SelectTrigger id="style-select">
+              <SelectValue placeholder="Choose a style..." />
+            </SelectTrigger>
+            <SelectContent>
+              {availableStyles.map(style => (
+                <SelectItem key={style.id} value={style.id}>{style.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+      
+      {selectedStyle && measurementFields.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Shirt className="h-6 w-6 text-primary" /> Select Garment Style</CardTitle>
-            <CardDescription>Choose the base style for your custom piece.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Ruler className="h-6 w-6 text-primary" /> {selectedStyle.name} Measurements</CardTitle>
+            <CardDescription>Provide the specific measurements required for this garment style.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Select onValueChange={setSelectedStyle} value={selectedStyle || undefined}>
-              <SelectTrigger id="style-select">
-                <SelectValue placeholder="Choose a style..." />
-              </SelectTrigger>
-              <SelectContent>
-                {styleOptions.map(style => (
-                  <SelectItem key={style.id} value={style.id}>{style.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-        
-        {selectedStyle === 'fitted-blouse' && (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Ruler className="h-6 w-6 text-primary" /> Blouse Details</CardTitle>
-                    <CardDescription>Provide specific details for the fitted blouse based on the order form.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="blouse-yoke">Yoke</Label>
-                            <Input id="blouse-yoke" placeholder="e.g., Princess cut, Padded" value={blouseDetails.yoke || ''} onChange={(e) => handleBlouseDetailChange('yoke', e.target.value)} />
-                        </div>
-                        <div>
-                            <Label htmlFor="blouse-fl">FL</Label>
-                            <Input id="blouse-fl" type="number" placeholder="Full Length" value={blouseDetails.fl || ''} onChange={(e) => handleBlouseDetailChange('fl', e.target.value)} />
-                        </div>
-                    </div>
-                     <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="blouse-sh">SH</Label>
-                            <Input id="blouse-sh" type="number" placeholder="Shoulder" value={blouseDetails.sh || ''} onChange={(e) => handleBlouseDetailChange('sh', e.target.value)} />
-                        </div>
-                        <div>
-                            <Label htmlFor="blouse-cut">Cut</Label>
-                            <Input id="blouse-cut" placeholder="e.g., Regular" value={blouseDetails.cut || ''} onChange={(e) => handleBlouseDetailChange('cut', e.target.value)} />
-                        </div>
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="blouse-sl">SL</Label>
-                            <Input id="blouse-sl" type="number" placeholder="Sleeve Length" value={blouseDetails.sl || ''} onChange={(e) => handleBlouseDetailChange('sl', e.target.value)} />
-                        </div>
-                        <div>
-                            <Label htmlFor="blouse-neck-type">Neck Type</Label>
-                            <Input id="blouse-neck-type" placeholder="e.g., Round, V-neck" value={blouseDetails.neckType || ''} onChange={(e) => handleBlouseDetailChange('neckType', e.target.value)} />
-                        </div>
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="blouse-fn">FN</Label>
-                            <Input id="blouse-fn" type="number" placeholder="Front Neck" value={blouseDetails.fn || ''} onChange={(e) => handleBlouseDetailChange('fn', e.target.value)} />
-                        </div>
-                        <div>
-                            <Label htmlFor="blouse-bn">BN</Label>
-                            <Input id="blouse-bn" type="number" placeholder="Back Neck" value={blouseDetails.bn || ''} onChange={(e) => handleBlouseDetailChange('bn', e.target.value)} />
-                        </div>
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="blouse-slit">Slit</Label>
-                            <Input id="blouse-slit" placeholder="Slit details" value={blouseDetails.slit || ''} onChange={(e) => handleBlouseDetailChange('slit', e.target.value)} />
-                        </div>
-                        <div>
-                            <Label htmlFor="blouse-extra">Extra</Label>
-                            <Input id="blouse-extra" placeholder="Extra details" value={blouseDetails.extra || ''} onChange={(e) => handleBlouseDetailChange('extra', e.target.value)} />
-                        </div>
-                    </div>
-                    <div>
-                        <Label htmlFor="blouse-dt">DT</Label>
-                        <Input id="blouse-dt" placeholder="DT details" value={blouseDetails.dt || ''} onChange={(e) => handleBlouseDetailChange('dt', e.target.value)} />
-                    </div>
-                </CardContent>
-            </Card>
-        )}
-
-        {selectedStyle === 'wide-leg-trousers' && (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Ruler className="h-6 w-6 text-primary" /> Pant Details</CardTitle>
-                    <CardDescription>Provide specific details for the trousers.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <Label htmlFor="pant-type">Pant Type</Label>
-                        <Input id="pant-type" placeholder="e.g., High-waist, Pleated, Elastic waist" value={pantDetails.type || ''} onChange={(e) => handlePantDetailChange('type', e.target.value)} />
-                    </div>
-                </CardContent>
-            </Card>
-        )}
-
-        {selectedStyle === 'pencil-skirt' && (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Ruler className="h-6 w-6 text-primary" /> Skirt Details</CardTitle>
-                    <CardDescription>Provide specific details for the skirt.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <Label htmlFor="skirt-type">Skirt Type</Label>
-                        <Input id="skirt-type" placeholder="e.g., With slit, High-waist, Knee-length" value={skirtDetails.type || ''} onChange={(e) => handleSkirtDetailChange('type', e.target.value)} />
-                    </div>
-                </CardContent>
-            </Card>
-        )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Custom Notes</CardTitle>
-            <CardDescription>Add any specific instructions or details for your design.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              placeholder="e.g., I'd like a slightly longer hem, specific button types..."
-              value={customNotes}
-              onChange={(e) => setCustomNotes(e.target.value)}
-              rows={4}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><UploadCloud className="h-6 w-6 text-primary" /> Reference Images</CardTitle>
-            <CardDescription>Upload up to 5 images for design reference (e.g., inspiration, specific details).</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Input 
-              id="image-upload" 
-              type="file" 
-              accept="image/*" 
-              multiple
-              onChange={handleImageChange} 
-              className="text-sm file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-              disabled={referenceImagePreviews.length >= 5}
-            />
-            {referenceImagePreviews.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <Label className="text-xs text-muted-foreground">Image Previews:</Label>
-                <div className="flex flex-wrap gap-2">
-                  {referenceImagePreviews.map((src, index) => (
-                    <div key={index} className="relative group">
-                      <Image 
-                          src={src} 
-                          alt={`Reference ${index + 1}`} 
-                          width={80} 
-                          height={80} 
-                          className="rounded-md border object-cover" 
-                          data-ai-hint="design clothing reference"
-                      />
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => removeImage(index)}
-                        aria-label="Remove image"
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+          <CardContent className="grid md:grid-cols-2 gap-4">
+            {measurementFields.map(field => (
+              <div key={field.id}>
+                <Label htmlFor={`measurement-${field.id}`}>{field.label}</Label>
+                <Input
+                  id={`measurement-${field.id}`}
+                  placeholder={field.label}
+                  value={measurements[field.id] || ''}
+                  onChange={(e) => handleMeasurementChange(field.id, e.target.value)}
+                />
               </div>
-            )}
-            {referenceImagePreviews.length >= 5 && (
-                <p className="text-xs text-destructive mt-2">Maximum of 5 images reached.</p>
-            )}
+            ))}
           </CardContent>
         </Card>
+      )}
 
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Custom Notes</CardTitle>
+          <CardDescription>Add any specific instructions or details for your design.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            placeholder="e.g., I'd like a slightly longer hem, specific button types..."
+            value={customNotes}
+            onChange={(e) => setCustomNotes(e.target.value)}
+            rows={4}
+          />
+        </CardContent>
+      </Card>
 
-      <div className="lg:col-span-1 space-y-6">
-        <Card className="sticky top-20 shadow-lg">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><UploadCloud className="h-6 w-6 text-primary" /> Reference Images</CardTitle>
+          <CardDescription>Upload up to 5 images for design reference (e.g., inspiration, specific details).</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Input 
+            id="image-upload" 
+            type="file" 
+            accept="image/*" 
+            multiple
+            onChange={handleImageChange} 
+            className="text-sm file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+            disabled={referenceImagePreviews.length >= 5}
+          />
+          {referenceImagePreviews.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <Label className="text-xs text-muted-foreground">Image Previews:</Label>
+              <div className="flex flex-wrap gap-2">
+                {referenceImagePreviews.map((src, index) => (
+                  <div key={index} className="relative group">
+                    <Image 
+                        src={src} 
+                        alt={`Reference ${index + 1}`} 
+                        width={80} 
+                        height={80} 
+                        className="rounded-md border object-cover" 
+                        data-ai-hint="design clothing reference"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removeImage(index)}
+                      aria-label="Remove image"
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {referenceImagePreviews.length >= 5 && (
+              <p className="text-xs text-destructive mt-2">Maximum of 5 images reached.</p>
+          )}
+        </CardContent>
+      </Card>
+      
+      <Card className="sticky top-20 shadow-lg bg-secondary/20">
           <CardHeader>
             <CardTitle className="text-xl">Current Item Design</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>Style:</Label>
-              <p className="font-semibold">{selectedStyle ? styleOptions.find(s=>s.id === selectedStyle)?.name : 'Not selected'}</p>
-            </div>
-            {referenceImagePreviews.length > 0 && (
-                <>
-                <Separator />
-                <div>
-                    <Label>Reference Images:</Label>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                    {referenceImagePreviews.map((src, index) => (
-                        <Image 
-                            key={index}
-                            src={src} 
-                            alt={`Ref ${index + 1}`} 
-                            width={40} 
-                            height={40} 
-                            className="rounded border object-cover"
-                            data-ai-hint="thumbnail reference"
-                        />
-                    ))}
-                    </div>
-                </div>
-                </>
-            )}
-            {customNotes && (
-              <>
-                <Separator />
-                <div>
-                  <Label>Notes:</Label>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{customNotes}</p>
-                </div>
-              </>
-            )}
+          <CardContent>
+             <p className="font-semibold">{selectedStyle?.name || 'No style selected'}</p>
           </CardContent>
           <CardFooter>
             <Button
@@ -358,7 +223,6 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
             </Button>
           </CardFooter>
         </Card>
-      </div>
     </div>
   );
 }

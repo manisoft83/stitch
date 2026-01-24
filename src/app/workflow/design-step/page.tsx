@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useOrderWorkflow, type DesignDetails, initialSingleDesignState } from '@/contexts/order-workflow-context';
@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, ArrowRight, PlusCircle, Trash2, Edit3, Package, Shirt } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { getDetailNameById, styleOptionsForDisplay, generateDesignSummary } from '@/lib/mockData';
+import { getGarmentStyles } from '@/lib/server/dataService';
+import { generateDesignSummary, type GarmentStyle } from '@/lib/mockData';
 
 export default function DesignStepPage() {
   const router = useRouter();
@@ -27,6 +28,24 @@ export default function DesignStepPage() {
     startEditingOrderItem,
     editingItemIndex,
   } = useOrderWorkflow();
+  
+  const [availableStyles, setAvailableStyles] = useState<GarmentStyle[]>([]);
+  const [isLoadingStyles, setIsLoadingStyles] = useState(true);
+
+  useEffect(() => {
+    async function fetchStyles() {
+      try {
+        const styles = await getGarmentStyles();
+        setAvailableStyles(styles);
+      } catch (e) {
+        toast({ title: "Error", description: "Could not load garment styles.", variant: "destructive" });
+      } finally {
+        setIsLoadingStyles(false);
+      }
+    }
+    fetchStyles();
+  }, [toast]);
+
 
   useEffect(() => {
     if (!currentCustomer) {
@@ -62,7 +81,7 @@ export default function DesignStepPage() {
 
   const canProceedToSummary = orderItems.length > 0;
 
-  if (!currentCustomer) {
+  if (!currentCustomer || isLoadingStyles) {
     return <div className="container mx-auto py-8 flex justify-center items-center min-h-[calc(100vh-200px)]"><p>Loading workflow state or redirecting...</p></div>;
   }
 
@@ -77,13 +96,18 @@ export default function DesignStepPage() {
             </CardTitle>
           </div>
           <CardDescription>
-            Use the tool below to configure design details for an item. Add multiple items to your order.
+            Select a style, fill in its required measurements, and add notes or reference images.
             Customer: <span className="font-semibold text-foreground">{currentCustomer.name}</span>.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {activeDesign ? (
-            <DesignTool initialDesign={activeDesign} onSaveDesign={handleSaveCurrentItem} submitButtonText={editingItemIndex !== null ? "Update Item in Order" : "Add Item to Order"} />
+            <DesignTool 
+              initialDesign={activeDesign} 
+              onSaveDesign={handleSaveCurrentItem} 
+              submitButtonText={editingItemIndex !== null ? "Update Item in Order" : "Add Item to Order"}
+              availableStyles={availableStyles}
+            />
           ) : (
             <div className="text-center py-8">
               <p className="text-muted-foreground mb-4">No item is currently being designed.</p>

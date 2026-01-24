@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { type Order, allOrderStatuses, type OrderStatus, type Customer } from '@/lib/mockData';
+import { type Order, allOrderStatuses, type OrderStatus, type Customer, allPossibleMeasurements } from '@/lib/mockData';
 import { getOrderDetailsAction, updateOrderStatusAction, updateOrderPriceAction } from '@/app/orders/actions';
 import { getCustomerById } from '@/lib/server/dataService';
 
@@ -21,7 +21,7 @@ import { format, parseISO } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
 import { useAuth } from '@/hooks/use-auth'; // Added useAuth
-import { getDetailNameById, styleOptionsForDisplay, generateDesignSummary } from '@/lib/mockData';
+import { generateDesignSummary } from '@/lib/mockData';
 import type { DesignDetails } from '@/contexts/order-workflow-context';
 
 
@@ -171,6 +171,9 @@ export default function OrderDetailsPage() {
     }
   };
 
+  const getMeasurementLabel = (id: string) => {
+    return allPossibleMeasurements.find(m => m.id === id)?.label || id;
+  }
 
   return (
     <div className="container mx-auto py-8">
@@ -271,41 +274,14 @@ export default function OrderDetailsPage() {
                         {currentOrder.detailedItems.map((design, index) => (
                             <Card key={index} className="bg-background/50 p-4 rounded-md text-sm space-y-1">
                                 <h4 className="font-medium text-md flex items-center gap-1.5"><Shirt className="h-4 w-4 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(design)}</h4>
-                                <p><strong>Style:</strong> {getDetailNameById(design.style, styleOptionsForDisplay)}</p>
                                 
-                                {design.style === 'fitted-blouse' && design.blouseDetails && Object.values(design.blouseDetails).some(v => v) && (
+                                {design.measurements && Object.keys(design.measurements).length > 0 && (
                                     <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
-                                        <p className="font-medium text-xs text-foreground">Blouse Specifics:</p>
-                                        <ul className="list-disc list-inside pl-4 text-muted-foreground">
-                                            {design.blouseDetails.yoke && <li>Yoke: {design.blouseDetails.yoke}</li>}
-                                            {design.blouseDetails.fl && <li>FL: {design.blouseDetails.fl}"</li>}
-                                            {design.blouseDetails.sh && <li>SH: {design.blouseDetails.sh}"</li>}
-                                            {design.blouseDetails.cut && <li>Cut: {design.blouseDetails.cut}</li>}
-                                            {design.blouseDetails.sl && <li>SL: {design.blouseDetails.sl}"</li>}
-                                            {design.blouseDetails.neckType && <li>Neck Type: {design.blouseDetails.neckType}</li>}
-                                            {design.blouseDetails.fn && <li>FN: {design.blouseDetails.fn}"</li>}
-                                            {design.blouseDetails.bn && <li>BN: {design.blouseDetails.bn}"</li>}
-                                            {design.blouseDetails.slit && <li>Slit: {design.blouseDetails.slit}</li>}
-                                            {design.blouseDetails.extra && <li>Extra: {design.blouseDetails.extra}</li>}
-                                            {design.blouseDetails.dt && <li>DT: {design.blouseDetails.dt}</li>}
-                                        </ul>
-                                    </div>
-                                )}
-                                
-                                {design.style === 'wide-leg-trousers' && design.pantDetails && Object.values(design.pantDetails).some(v => v) && (
-                                    <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
-                                        <p className="font-medium text-xs text-foreground">Pant Specifics:</p>
-                                        <ul className="list-disc list-inside pl-4 text-muted-foreground">
-                                            {design.pantDetails.type && <li>Type: {design.pantDetails.type}</li>}
-                                        </ul>
-                                    </div>
-                                )}
-
-                                {design.style === 'pencil-skirt' && design.skirtDetails && Object.values(design.skirtDetails).some(v => v) && (
-                                    <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
-                                        <p className="font-medium text-xs text-foreground">Skirt Specifics:</p>
-                                        <ul className="list-disc list-inside pl-4 text-muted-foreground">
-                                            {design.skirtDetails.type && <li>Type: {design.skirtDetails.type}</li>}
+                                        <p className="font-medium text-xs text-foreground">Measurements:</p>
+                                        <ul className="list-disc list-inside pl-4 text-muted-foreground grid grid-cols-2 gap-x-2">
+                                            {Object.entries(design.measurements).map(([key, value]) => value ? (
+                                                <li key={key}><strong>{getMeasurementLabel(key)}:</strong> {value}</li>
+                                            ) : null)}
                                         </ul>
                                     </div>
                                 )}

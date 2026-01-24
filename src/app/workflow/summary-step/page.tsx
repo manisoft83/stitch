@@ -4,17 +4,15 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useOrderWorkflow, type DesignDetails, initialSingleDesignState } from '@/contexts/order-workflow-context';
+import { useOrderWorkflow, type DesignDetails } from '@/contexts/order-workflow-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import type { Order as FullOrderType } from '@/lib/mockData';
+import { type Order as FullOrderType, generateDesignSummary, allPossibleMeasurements } from '@/lib/mockData';
 import { format, addDays } from 'date-fns';
 import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon, MapPin, PackagePlus, Shirt } from 'lucide-react';
 import { saveOrderAction, type SaveOrderActionResult } from '@/app/orders/actions';
-import { getDetailNameById, styleOptionsForDisplay, generateDesignSummary } from '@/lib/mockData';
-
 
 export default function SummaryStepPage() {
   const router = useRouter();
@@ -73,7 +71,7 @@ export default function SummaryStepPage() {
     const orderDataForSave: Omit<FullOrderType, 'id' | 'createdAt' | 'updatedAt'> = {
       date: format(new Date(), "yyyy-MM-dd"),
       status: orderStatusToSet,
-      total: "Pricing TBD", // Updated placeholder
+      total: "Pricing TBD",
       items: itemsSummaryList,
       customerId: currentCustomer.id,
       customerName: currentCustomer.name,
@@ -114,6 +112,10 @@ export default function SummaryStepPage() {
       setIsSubmitting(false);
     }
   }; 
+  
+  const getMeasurementLabel = (id: string) => {
+    return allPossibleMeasurements.find(m => m.id === id)?.label || id;
+  }
 
   if (!isSubmitting && !isNavigatingAfterSuccess) {
     if (!currentCustomer || !orderItems || orderItems.length === 0) {
@@ -181,67 +183,35 @@ export default function SummaryStepPage() {
                 {orderItems.map((itemDesign, index) => (
                   <div key={index} className="border-b pb-3 last:border-b-0 last:pb-0">
                      <h4 className="text-md font-semibold mb-1 flex items-center gap-2"><Shirt className="h-4 w-4 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(itemDesign)}</h4>
-                    <div className="text-xs space-y-0.5 pl-2">
-                        <p><strong>Style:</strong> {itemDesign.style ? getDetailNameById(itemDesign.style, styleOptionsForDisplay) : 'N/A'}</p>
-                        
-                        {itemDesign.style === 'fitted-blouse' && itemDesign.blouseDetails && Object.values(itemDesign.blouseDetails).some(v => v) && (
-                            <div className="mt-2 pt-2 border-t border-muted/50">
-                                <p className="font-medium text-xs text-foreground">Blouse Specifics:</p>
-                                <ul className="list-disc list-inside pl-2 text-muted-foreground">
-                                    {itemDesign.blouseDetails.yoke && <li>Yoke: {itemDesign.blouseDetails.yoke}</li>}
-                                    {itemDesign.blouseDetails.fl && <li>FL: {itemDesign.blouseDetails.fl}"</li>}
-                                    {itemDesign.blouseDetails.sh && <li>SH: {itemDesign.blouseDetails.sh}"</li>}
-                                    {itemDesign.blouseDetails.cut && <li>Cut: {itemDesign.blouseDetails.cut}</li>}
-                                    {itemDesign.blouseDetails.sl && <li>SL: {itemDesign.blouseDetails.sl}"</li>}
-                                    {itemDesign.blouseDetails.neckType && <li>Neck Type: {itemDesign.blouseDetails.neckType}</li>}
-                                    {itemDesign.blouseDetails.fn && <li>FN: {itemDesign.blouseDetails.fn}"</li>}
-                                    {itemDesign.blouseDetails.bn && <li>BN: {itemDesign.blouseDetails.bn}"</li>}
-                                    {itemDesign.blouseDetails.slit && <li>Slit: {itemDesign.blouseDetails.slit}</li>}
-                                    {itemDesign.blouseDetails.extra && <li>Extra: {itemDesign.blouseDetails.extra}</li>}
-                                    {itemDesign.blouseDetails.dt && <li>DT: {itemDesign.blouseDetails.dt}</li>}
-                                </ul>
-                            </div>
-                        )}
-
-                        {itemDesign.style === 'wide-leg-trousers' && itemDesign.pantDetails && Object.values(itemDesign.pantDetails).some(v => v) && (
-                            <div className="mt-2 pt-2 border-t border-muted/50">
-                                <p className="font-medium text-xs text-foreground">Pant Specifics:</p>
-                                <ul className="list-disc list-inside pl-2 text-muted-foreground">
-                                    {itemDesign.pantDetails.type && <li>Type: {itemDesign.pantDetails.type}</li>}
-                                </ul>
-                            </div>
-                        )}
-
-                        {itemDesign.style === 'pencil-skirt' && itemDesign.skirtDetails && Object.values(itemDesign.skirtDetails).some(v => v) && (
-                            <div className="mt-2 pt-2 border-t border-muted/50">
-                                <p className="font-medium text-xs text-foreground">Skirt Specifics:</p>
-                                <ul className="list-disc list-inside pl-2 text-muted-foreground">
-                                    {itemDesign.skirtDetails.type && <li>Type: {itemDesign.skirtDetails.type}</li>}
-                                </ul>
-                            </div>
-                        )}
-
-                        {itemDesign.notes && <p className="mt-2"><strong>Notes:</strong> <span className="whitespace-pre-wrap">{itemDesign.notes}</span></p>}
-                        
-                        {itemDesign.referenceImages && itemDesign.referenceImages.length > 0 && (
-                        <div className="mt-1">
-                            <strong className="flex items-center gap-1 text-xs"><ImageIcon className="h-3 w-3" />Ref Images:</strong>
-                            <div className="flex flex-wrap gap-1 mt-0.5">
-                            {itemDesign.referenceImages.map((src, imgIdx) => (
-                                <Image
-                                key={imgIdx}
-                                src={src}
-                                alt={`Ref ${index + 1}-${imgIdx + 1}`}
-                                width={30}
-                                height={30}
-                                className="rounded border object-cover shadow-sm"
-                                data-ai-hint="design reference thumbnail"
-                                />
-                            ))}
-                            </div>
-                        </div>
-                        )}
+                     <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
+                        <p className="font-medium text-xs text-foreground">Measurements:</p>
+                        <ul className="list-disc list-inside pl-2 text-muted-foreground grid grid-cols-2 gap-x-4">
+                            {Object.entries(itemDesign.measurements).map(([key, value]) => value ? (
+                                <li key={key}><strong>{getMeasurementLabel(key)}:</strong> {value}</li>
+                            ) : null)}
+                        </ul>
                     </div>
+
+                    {itemDesign.notes && <p className="mt-2 text-sm"><strong>Notes:</strong> <span className="whitespace-pre-wrap">{itemDesign.notes}</span></p>}
+                        
+                    {itemDesign.referenceImages && itemDesign.referenceImages.length > 0 && (
+                    <div className="mt-1">
+                        <strong className="flex items-center gap-1 text-sm"><ImageIcon className="h-4 w-4" />Ref Images:</strong>
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                        {itemDesign.referenceImages.map((src, imgIdx) => (
+                            <Image
+                            key={imgIdx}
+                            src={src}
+                            alt={`Ref ${index + 1}-${imgIdx + 1}`}
+                            width={30}
+                            height={30}
+                            className="rounded border object-cover shadow-sm"
+                            data-ai-hint="design reference thumbnail"
+                            />
+                        ))}
+                        </div>
+                    </div>
+                    )}
                   </div>
                 ))}
               </CardContent>

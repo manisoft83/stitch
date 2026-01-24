@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Palette, ShoppingCart, PackageSearch, Users, Contact, Wand2 } from 'lucide-react'; // Added Contact for customers
+import { Home, Palette, ShoppingCart, PackageSearch, Users, Contact, Wand2, Tag } from 'lucide-react'; // Added Tag for styles
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
@@ -20,8 +20,9 @@ const allNavItems: NavItem[] = [
   { href: '/workflow/customer-step', label: 'Place Order', icon: Palette, roles: ['admin', 'tailor'] },
   { href: '/orders', label: 'Order Management', icon: ShoppingCart, roles: ['admin', 'tailor'] },
   { href: '/tracking', label: 'Order Tracking', icon: PackageSearch, roles: ['admin', 'tailor'] },
-  { href: '/customers', label: 'Customers', icon: Contact, roles: ['admin']}, // New Customer Management Link
+  { href: '/customers', label: 'Customers', icon: Contact, roles: ['admin']},
   { href: '/tailors', label: 'Tailor Hub', icon: Users, roles: ['admin'] },
+  { href: '/admin/styles', label: 'Style Management', icon: Tag, roles: ['admin'] },
 ];
 
 export default function SidebarNav() {

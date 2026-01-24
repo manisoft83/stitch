@@ -1,7 +1,5 @@
 
 import { format, subDays, addDays } from "date-fns";
-import type { MeasurementFormValues } from '@/lib/schemas';
-import type { DesignDetails } from "@/contexts/order-workflow-context"; // Import DesignDetails
 
 // Types related to mock data that were moved from dataService.ts
 export type OrderStatus = "Pending Assignment" | "Assigned" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
@@ -19,10 +17,56 @@ export interface Customer {
   email: string;
   phone: string;
   address?: Address; 
-  // Optional: Timestamps if you want to track them on the client, though often managed by Firestore serverTimestamp
-  // createdAt?: any; // Could be Firestore Timestamp or string/Date
-  // updatedAt?: any;
 }
+
+// --- New Garment Style Management Types ---
+
+export const allPossibleMeasurements = [
+    { id: 'type', label: 'Type' },
+    { id: 'length', label: 'Length' },
+    { id: 'upper_chest', label: 'Upper Chest' },
+    { id: 'waist', label: 'Waist' },
+    { id: 'shoulder', label: 'Shoulder' },
+    { id: 'sleeve', label: 'Sleeve' },
+    { id: 'front_neck', label: 'Front Neck' },
+    { id: 'back_neck', label: 'Back Neck' },
+    { id: 'dt', label: 'DT' },
+    { id: 'pant_type', label: 'Pant Type' },
+    { id: 'skirt_type', label: 'Skirt Type' },
+    { id: 'fl', label: 'FL (Full Length)' },
+    { id: 'yoke', label: 'Yoke' },
+    { id: 'sh', label: 'SH (Shoulder)' },
+    { id: 'cut', label: 'Cut' },
+    { id: 'sl', label: 'SL (Sleeve Length)' },
+    { id: 'fn', label: 'FN (Front Neck)' },
+    { id: 'bn', label: 'BN (Back Neck)' },
+    { id: 'slit', label: 'Slit' },
+    { id: 'extra', label: 'Extra' },
+];
+
+
+export interface GarmentStyle {
+  id: string;
+  name: string;
+  requiredMeasurements: string[]; // Array of measurement IDs from allPossibleMeasurements
+}
+
+// --- End New Garment Style Types ---
+
+// Define the structure for design details of a single item
+export interface DesignDetails {
+  styleId: string;
+  styleName: string;
+  notes: string;
+  referenceImages?: string[]; 
+  measurements: { [key: string]: string | number | undefined };
+  // Fields below are more for overall order context during editing
+  status?: OrderStatus; 
+  assignedTailorId?: string | null;
+  assignedTailorName?: string | null;
+  dueDate?: string | null; 
+}
+
 
 export interface Order {
   id: string;
@@ -77,13 +121,6 @@ export const statusFilterOptions: { value: StatusFilterValue; label: string }[] 
 ];
 
 // Helper to get style/fabric/color names - used in summary, might be needed elsewhere
-export const styleOptionsForDisplay = [
-  { id: 'a-line-dress', name: 'A-Line Dress' },
-  { id: 'fitted-blouse', name: 'Fitted Blouse' },
-  { id: 'wide-leg-trousers', name: 'Wide-Leg Trousers' },
-  { id: 'pencil-skirt', name: 'Pencil Skirt' },
-];
-
 export const getDetailNameById = (id: string | null, options: Array<{id: string, name: string}>): string => {
     if (!id) return 'Not selected';
     return options.find(opt => opt.id === id)?.name || 'Unknown';
@@ -91,6 +128,5 @@ export const getDetailNameById = (id: string | null, options: Array<{id: string,
 
 // Function to generate a summary string for a design
 export const generateDesignSummary = (design: DesignDetails): string => {
-  const styleName = design.style ? getDetailNameById(design.style, styleOptionsForDisplay) : 'N/A';
-  return styleName;
+  return design.styleName || 'N/A';
 };

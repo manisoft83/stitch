@@ -3,48 +3,7 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useState, useContext, useCallback } from 'react';
-import type { Customer, OrderStatus, Order as FullOrderType } from '@/lib/mockData'; // Renamed Order to FullOrderType
-import type { MeasurementFormValues } from '@/lib/schemas';
-
-// Define the structure for blouse-specific details
-export interface BlouseDetails {
-  yoke?: string;
-  fl?: number;
-  sh?: number;
-  cut?: string;
-  sl?: number;
-  neckType?: string;
-  fn?: number;
-  bn?: number;
-  slit?: string;
-  extra?: string;
-  dt?: string;
-}
-
-// Define the structure for pant-specific details
-export interface PantDetails {
-  type?: string;
-}
-
-// Define the structure for skirt-specific details
-export interface SkirtDetails {
-  type?: string;
-}
-
-// Define the structure for design details of a single item
-export interface DesignDetails {
-  style: string | null;
-  notes: string;
-  referenceImages?: string[]; 
-  blouseDetails?: Partial<BlouseDetails>;
-  pantDetails?: Partial<PantDetails>;
-  skirtDetails?: Partial<SkirtDetails>;
-  // Fields below are more for overall order context during editing, might be moved
-  status?: OrderStatus; 
-  assignedTailorId?: string | null;
-  assignedTailorName?: string | null;
-  dueDate?: string | null; 
-}
+import type { Customer, OrderStatus, Order as FullOrderType, DesignDetails } from '@/lib/mockData';
 
 interface OrderWorkflowState {
   currentCustomer: Customer | null;
@@ -71,12 +30,11 @@ interface OrderWorkflowContextType extends OrderWorkflowState {
 const OrderWorkflowContext = createContext<OrderWorkflowContextType | undefined>(undefined);
 
 export const initialSingleDesignState: DesignDetails = {
-  style: null,
+  styleId: '',
+  styleName: '',
   notes: '',
   referenceImages: [],
-  blouseDetails: {},
-  pantDetails: {},
-  skirtDetails: {},
+  measurements: {},
   status: "Pending Assignment",
   assignedTailorId: null,
   assignedTailorName: null,

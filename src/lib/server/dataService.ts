@@ -5,14 +5,14 @@
 import { db } from '@/lib/firebase/config';
 import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, Timestamp, query, where, getDoc, updateDoc, FieldValue, deleteField, orderBy, limit, writeBatch } from 'firebase/firestore';
 import type { TailorFormData } from '@/lib/mockData'; // Using TailorFormData specifically for the form
-import type { Tailor, Customer, Address, Order, OrderStatus } from '@/lib/mockData'; // Keep general types
+import type { Tailor, Customer, Address, Order, OrderStatus, GarmentStyle, DesignDetails } from '@/lib/mockData';
 import { format } from 'date-fns';
-import type { DesignDetails } from '@/contexts/order-workflow-context';
 
 
 const TAILORS_COLLECTION = 'tailors';
 const CUSTOMERS_COLLECTION = 'customers';
 const ORDERS_COLLECTION = 'orders';
+const GARMENT_STYLES_COLLECTION = 'garmentStyles';
 
 // --- Timestamp Converters ---
 const fromFirestoreTimestamp = (timestamp: Timestamp | undefined | null): string | undefined => {
@@ -455,6 +455,66 @@ export async function assignTailorToOrderInDb(orderId: string, details: Assignme
     return true;
   } catch (error) {
     console.error(`DataService: Error assigning tailor to order:`, error);
+    return false;
+  }
+}
+
+// --- Garment Style Functions ---
+
+export async function getGarmentStyles(): Promise<GarmentStyle[]> {
+  console.log("DataService: Fetching garment styles from Firestore");
+  try {
+    const stylesCollection = collection(db, GARMENT_STYLES_COLLECTION);
+    const styleSnapshot = await getDocs(query(stylesCollection, orderBy("name")));
+    const stylesList = styleSnapshot.docs.map(docSnap => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    } as GarmentStyle));
+    console.log(`DataService: Successfully fetched ${stylesList.length} garment styles.`);
+    return stylesList;
+  } catch (error) {
+    console.error("DataService: Error fetching garment styles:", error);
+    return [];
+  }
+}
+
+export async function saveGarmentStyle(
+  data: { name: string; requiredMeasurements: string[] },
+  existingStyleId?: string
+): Promise<GarmentStyle | null> {
+  console.log(`DataService: Saving garment style. StyleID: ${existingStyleId}`);
+  const dataToSave = {
+    ...data,
+    updatedAt: serverTimestamp(),
+  };
+
+  try {
+    if (existingStyleId) {
+      const styleRef = doc(db, GARMENT_STYLES_COLLECTION, existingStyleId);
+      await updateDoc(styleRef, dataToSave);
+      const updatedDoc = await getDoc(styleRef);
+      return { id: updatedDoc.id, ...updatedDoc.data() } as GarmentStyle;
+    } else {
+      const docRef = await addDoc(collection(db, GARMENT_STYLES_COLLECTION), {
+        ...dataToSave,
+        createdAt: serverTimestamp(),
+      });
+      const newDoc = await getDoc(docRef);
+      return { id: newDoc.id, ...newDoc.data() } as GarmentStyle;
+    }
+  } catch (error) {
+    console.error(`DataService: Error saving garment style:`, error);
+    return null;
+  }
+}
+
+export async function deleteGarmentStyle(styleId: string): Promise<boolean> {
+  console.log(`DataService: Deleting garment style ${styleId}`);
+  try {
+    await deleteDoc(doc(db, GARMENT_STYLES_COLLECTION, styleId));
+    return true;
+  } catch (error) {
+    console.error(`DataService: Error deleting garment style:`, error);
     return false;
   }
 }
