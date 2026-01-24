@@ -170,6 +170,7 @@ export async function getCustomers(): Promise<Customer[]> {
         email: data.email || '',
         phone: data.phone || '',
         address: data.address || undefined,
+        savedMeasurements: data.savedMeasurements || undefined,
       } as Customer;
     });
     console.log(`DataService: Successfully fetched ${customersList.length} customers.`);
@@ -194,6 +195,7 @@ export async function getCustomerById(customerId: string): Promise<Customer | nu
         email: data.email || '',
         phone: data.phone || '',
         address: data.address || undefined,
+        savedMeasurements: data.savedMeasurements || undefined,
       } as Customer;
     } else {
       console.log(`DataService: Customer with ID ${customerId} not found.`);
@@ -275,6 +277,7 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
         email: updatedData.email || '',
         phone: updatedData.phone || '',
         address: updatedData.address || undefined,
+        savedMeasurements: updatedData.savedMeasurements || undefined,
       };
     } else {
       console.log(`DataService: Attempting to add new customer`);
@@ -296,6 +299,7 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
         email: savedData.email || '',
         phone: savedData.phone || '',
         address: savedData.address || undefined,
+        savedMeasurements: savedData.savedMeasurements || undefined,
       };
     }
   } catch (error) {
@@ -334,12 +338,13 @@ export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 
   };
 
   try {
+    let savedOrder: Order | null = null;
     if (existingOrderId) {
       const orderRef = doc(db, ORDERS_COLLECTION, existingOrderId);
       await updateDoc(orderRef, dataToSave);
       console.log(`DataService: Successfully updated order ${existingOrderId}`);
       const updatedDocSnap = await getDoc(orderRef);
-      return orderFromDoc(updatedDocSnap.data(), existingOrderId);
+      savedOrder = orderFromDoc(updatedDocSnap.data(), existingOrderId);
     } else {
       // New order: generate incremental orderNumber
       const orderCounterRef = doc(db, COUNTERS_COLLECTION, 'orderCounter');
@@ -364,8 +369,36 @@ export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 
       const docRef = await addDoc(collection(db, ORDERS_COLLECTION), dataToSave);
       console.log(`DataService: Successfully created new order with ID ${docRef.id}`);
       const newDocSnap = await getDoc(docRef);
-      return orderFromDoc(newDocSnap.data(), docRef.id);
+      savedOrder = orderFromDoc(newDocSnap.data(), docRef.id);
     }
+
+    // After order is saved, update customer's saved measurements
+    if (savedOrder && dataToSave.customerId && dataToSave.detailedItems) {
+      const customerRef = doc(db, CUSTOMERS_COLLECTION, dataToSave.customerId);
+      const measurementUpdates: { [key: string]: any } = {};
+
+      dataToSave.detailedItems.forEach((item: DesignDetails) => {
+        if (item.styleId && item.measurements && Object.keys(item.measurements).length > 0) {
+          const hasValues = Object.values(item.measurements).some(v => v !== '' && v !== null && v !== undefined);
+          if (hasValues) {
+            // Use dot notation to update nested fields in the savedMeasurements map
+            measurementUpdates[`savedMeasurements.${item.styleId}`] = item.measurements;
+          }
+        }
+      });
+      
+      if (Object.keys(measurementUpdates).length > 0) {
+        measurementUpdates['updatedAt'] = serverTimestamp();
+        console.log(`DataService: Updating customer ${dataToSave.customerId} with new saved measurements.`);
+        // This is a non-critical background update. If it fails, the order is still saved.
+        updateDoc(customerRef, measurementUpdates).catch(err => {
+            console.error(`DataService: Failed to save measurements to customer profile:`, err);
+        });
+      }
+    }
+
+    return savedOrder;
+
   } catch (error) {
     console.error(`DataService: Error saving order ${existingOrderId || 'NEW'} to Firestore:`, error);
     return null;

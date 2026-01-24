@@ -11,7 +11,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { UploadCloud, XCircle, Save, Ruler, Shirt } from 'lucide-react';
 import type { DesignDetails, GarmentStyle } from '@/contexts/order-workflow-context';
+import { useOrderWorkflow } from '@/contexts/order-workflow-context';
 import { allPossibleMeasurements } from '@/lib/mockData';
+import { useToast } from '@/hooks/use-toast';
+
 
 interface DesignToolProps {
   initialDesign?: DesignDetails | null;
@@ -21,6 +24,9 @@ interface DesignToolProps {
 }
 
 export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Save Design", availableStyles }: DesignToolProps) {
+  const { currentCustomer } = useOrderWorkflow();
+  const { toast } = useToast();
+
   const [styleId, setStyleId] = useState<string>('');
   const [customNotes, setCustomNotes] = useState('');
   const [referenceImagePreviews, setReferenceImagePreviews] = useState<string[]>([]);
@@ -47,8 +53,19 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
 
   const handleStyleChange = (newStyleId: string) => {
     setStyleId(newStyleId);
-    // Reset measurements when style changes to avoid carrying over irrelevant data
-    setMeasurements({});
+    
+    // Autofill logic
+    const savedMeasurements = currentCustomer?.savedMeasurements?.[newStyleId];
+    if (savedMeasurements) {
+        setMeasurements(savedMeasurements);
+        toast({
+            title: "Measurements Autofilled",
+            description: `Saved measurements for this style have been applied for ${currentCustomer.name}.`
+        });
+    } else {
+        // Reset measurements when style changes to avoid carrying over irrelevant data
+        setMeasurements({});
+    }
   };
 
   const handleMeasurementChange = (field: string, value: string) => {
@@ -104,7 +121,7 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Shirt className="h-6 w-6 text-primary" /> Select Garment Style</CardTitle>
-          <CardDescription>Choose the base style for your custom piece. This will determine which measurements are required.</CardDescription>
+          <CardDescription>Choose the base style for your custom piece. Styles with saved measurements for this customer are marked.</CardDescription>
         </CardHeader>
         <CardContent>
           <Select onValueChange={handleStyleChange} value={styleId}>
@@ -112,9 +129,21 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
               <SelectValue placeholder="Choose a style..." />
             </SelectTrigger>
             <SelectContent>
-              {availableStyles.map(style => (
-                <SelectItem key={style.id} value={style.id}>{style.name}</SelectItem>
-              ))}
+              {availableStyles.map(style => {
+                const hasSavedMeasurements = !!currentCustomer?.savedMeasurements?.[style.id];
+                return (
+                  <SelectItem key={style.id} value={style.id}>
+                    <div className="flex justify-between items-center w-full">
+                        <span>{style.name}</span>
+                        {hasSavedMeasurements && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1.5 ml-4">
+                                <Ruler className="h-3 w-3"/> Saved
+                            </span>
+                        )}
+                    </div>
+                  </SelectItem>
+                )
+              })}
             </SelectContent>
           </Select>
         </CardContent>

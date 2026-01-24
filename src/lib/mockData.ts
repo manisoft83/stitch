@@ -16,7 +16,10 @@ export interface Customer {
   name: string;
   email: string;
   phone: string;
-  address?: Address; 
+  address?: Address;
+  savedMeasurements?: {
+    [garmentStyleId: string]: { [key: string]: string | number | undefined };
+  };
 }
 
 // --- New Garment Style Management Types ---
