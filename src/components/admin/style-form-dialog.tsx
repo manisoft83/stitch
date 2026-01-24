@@ -95,7 +95,7 @@ export function StyleFormDialog({ isOpen, onOpenChange, styleToEdit, onSave }: S
                     <p className="text-sm text-muted-foreground">Select the measurements needed for this style.</p>
                   </div>
                   <ScrollArea className="h-72 w-full rounded-md border">
-                    <div className="p-4 space-y-2">
+                    <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-2">
                       {allPossibleMeasurements.map((item) => (
                         <FormField
                           key={item.id}
