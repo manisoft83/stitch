@@ -180,11 +180,13 @@ export default function SummaryStepPage() {
                 <CardTitle className="text-lg flex items-center gap-2"><PackagePlus className="h-5 w-5 text-primary"/>Order Items ({orderItems.length})</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {orderItems.map((itemDesign, index) => (
+                {orderItems.map((itemDesign, index) => {
+                  const hasMeasurementsToShow = itemDesign.measurements && Object.values(itemDesign.measurements).some(v => v !== undefined && v !== null && v !== '');
+                  return (
                   <div key={index} className="border-b pb-3 last:border-b-0 last:pb-0">
                      <h4 className="text-md font-semibold mb-1 flex items-center gap-2"><Shirt className="h-4 w-4 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(itemDesign)}</h4>
                      
-                     {itemDesign.measurements && Object.keys(itemDesign.measurements).length > 0 && (
+                     {hasMeasurementsToShow && (
                         <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
                             <p className="font-medium text-xs text-foreground">Measurements:</p>
                             <ul className="list-disc list-inside pl-2 text-muted-foreground grid grid-cols-2 gap-x-4">
@@ -222,7 +224,7 @@ export default function SummaryStepPage() {
                     </div>
                     )}
                   </div>
-                ))}
+                )})}
               </CardContent>
             </Card>
           )}
