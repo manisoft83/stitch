@@ -375,23 +375,26 @@ export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 
     // After order is saved, update customer's saved measurements
     if (savedOrder && dataToSave.customerId && dataToSave.detailedItems) {
       const customerRef = doc(db, CUSTOMERS_COLLECTION, dataToSave.customerId);
-      const measurementUpdates: { [key: string]: any } = {};
+      
+      const customerUpdates: { savedMeasurements: { [styleId: string]: any }, updatedAt: FieldValue } = {
+        savedMeasurements: {},
+        updatedAt: serverTimestamp(),
+      };
 
       dataToSave.detailedItems.forEach((item: DesignDetails) => {
         if (item.styleId && item.measurements && Object.keys(item.measurements).length > 0) {
           const hasValues = Object.values(item.measurements).some(v => v !== '' && v !== null && v !== undefined);
           if (hasValues) {
-            // Use dot notation to update nested fields in the savedMeasurements map
-            measurementUpdates[`savedMeasurements.${item.styleId}`] = item.measurements;
+            customerUpdates.savedMeasurements[item.styleId] = item.measurements;
           }
         }
       });
       
-      if (Object.keys(measurementUpdates).length > 0) {
-        measurementUpdates['updatedAt'] = serverTimestamp();
+      if (Object.keys(customerUpdates.savedMeasurements).length > 0) {
         console.log(`DataService: Updating customer ${dataToSave.customerId} with new saved measurements.`);
+        // Use setDoc with merge: true to safely create or update the nested map.
         // This is a non-critical background update. If it fails, the order is still saved.
-        updateDoc(customerRef, measurementUpdates).catch(err => {
+        setDoc(customerRef, customerUpdates, { merge: true }).catch(err => {
             console.error(`DataService: Failed to save measurements to customer profile:`, err);
         });
       }
