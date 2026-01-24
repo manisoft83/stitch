@@ -183,25 +183,43 @@ export default function SummaryStepPage() {
                      <h4 className="text-md font-semibold mb-1 flex items-center gap-2"><Shirt className="h-4 w-4 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(itemDesign)}</h4>
                     <div className="text-xs space-y-0.5 pl-2">
                         <p><strong>Style:</strong> {itemDesign.style ? getDetailNameById(itemDesign.style, styleOptionsForDisplay) : 'N/A'}</p>
-                        {itemDesign.notes && <p><strong>Notes:</strong> <span className="whitespace-pre-wrap">{itemDesign.notes}</span></p>}
                         
-                        {itemDesign.style === 'fitted-blouse' && itemDesign.blouseDetails && Object.keys(itemDesign.blouseDetails).length > 0 && (
+                        {itemDesign.style === 'fitted-blouse' && itemDesign.blouseDetails && Object.values(itemDesign.blouseDetails).some(v => v) && (
                             <div className="mt-2 pt-2 border-t border-muted/50">
                                 <p className="font-medium text-xs text-foreground">Blouse Specifics:</p>
                                 <ul className="list-disc list-inside pl-2 text-muted-foreground">
-                                    {itemDesign.blouseDetails.fl && <li>FL: {itemDesign.blouseDetails.fl}"</li>}
-                                    {itemDesign.blouseDetails.yoke && <li>Yoke: {itemDesign.blouseDetails.yoke}</li>}
-                                    {itemDesign.blouseDetails.sh && <li>SH: {itemDesign.blouseDetails.sh}"</li>}
-                                    {itemDesign.blouseDetails.cut && <li>Cut: {itemDesign.blouseDetails.cut}</li>}
-                                    {itemDesign.blouseDetails.sl && <li>SL: {itemDesign.blouseDetails.sl}"</li>}
-                                    {itemDesign.blouseDetails.neckType && <li>Neck Type: {itemDesign.blouseDetails.neckType}</li>}
-                                    {itemDesign.blouseDetails.fn && <li>FN: {itemDesign.blouseDetails.fn}"</li>}
-                                    {itemDesign.blouseDetails.bn && <li>BN: {itemDesign.blouseDetails.bn}"</li>}
-                                    {itemDesign.blouseDetails.slit && <li>Slit: {itemDesign.blouseDetails.slit}</li>}
-                                    {itemDesign.blouseDetails.extra && <li>Extra: {itemDesign.blouseDetails.extra}</li>}
+                                    {itemDesign.blouseDetails.yoke && <li>Type: {itemDesign.blouseDetails.yoke}</li>}
+                                    {itemDesign.blouseDetails.fl && <li>Length: {itemDesign.blouseDetails.fl}"</li>}
+                                    {itemDesign.blouseDetails.sh && <li>Upper Chest: {itemDesign.blouseDetails.sh}"</li>}
+                                    {itemDesign.blouseDetails.sl && <li>Waist: {itemDesign.blouseDetails.sl}"</li>}
+                                    {itemDesign.blouseDetails.cut && <li>Shoulder: {itemDesign.blouseDetails.cut}</li>}
+                                    {itemDesign.blouseDetails.neckType && <li>Sleeve: {itemDesign.blouseDetails.neckType}</li>}
+                                    {itemDesign.blouseDetails.fn && <li>Front Neck: {itemDesign.blouseDetails.fn}"</li>}
+                                    {itemDesign.blouseDetails.bn && <li>Back Neck: {itemDesign.blouseDetails.bn}"</li>}
+                                    {itemDesign.blouseDetails.dt && <li>DT: {itemDesign.blouseDetails.dt}</li>}
                                 </ul>
                             </div>
                         )}
+
+                        {itemDesign.style === 'wide-leg-trousers' && itemDesign.pantDetails && Object.values(itemDesign.pantDetails).some(v => v) && (
+                            <div className="mt-2 pt-2 border-t border-muted/50">
+                                <p className="font-medium text-xs text-foreground">Pant Specifics:</p>
+                                <ul className="list-disc list-inside pl-2 text-muted-foreground">
+                                    {itemDesign.pantDetails.type && <li>Type: {itemDesign.pantDetails.type}</li>}
+                                </ul>
+                            </div>
+                        )}
+
+                        {itemDesign.style === 'pencil-skirt' && itemDesign.skirtDetails && Object.values(itemDesign.skirtDetails).some(v => v) && (
+                            <div className="mt-2 pt-2 border-t border-muted/50">
+                                <p className="font-medium text-xs text-foreground">Skirt Specifics:</p>
+                                <ul className="list-disc list-inside pl-2 text-muted-foreground">
+                                    {itemDesign.skirtDetails.type && <li>Type: {itemDesign.skirtDetails.type}</li>}
+                                </ul>
+                            </div>
+                        )}
+
+                        {itemDesign.notes && <p className="mt-2"><strong>Notes:</strong> <span className="whitespace-pre-wrap">{itemDesign.notes}</span></p>}
                         
                         {itemDesign.referenceImages && itemDesign.referenceImages.length > 0 && (
                         <div className="mt-1">

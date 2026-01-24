@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { UploadCloud, XCircle, Save, Ruler, Shirt } from 'lucide-react';
-import type { DesignDetails, BlouseDetails } from '@/contexts/order-workflow-context';
+import type { DesignDetails, BlouseDetails, PantDetails, SkirtDetails } from '@/contexts/order-workflow-context';
 
 const styleOptions = [
   { id: 'a-line-dress', name: 'A-Line Dress' },
@@ -31,6 +31,8 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
   const [customNotes, setCustomNotes] = useState('');
   const [referenceImagePreviews, setReferenceImagePreviews] = useState<string[]>([]);
   const [blouseDetails, setBlouseDetails] = useState<Partial<BlouseDetails>>({});
+  const [pantDetails, setPantDetails] = useState<Partial<PantDetails>>({});
+  const [skirtDetails, setSkirtDetails] = useState<Partial<SkirtDetails>>({});
 
   useEffect(() => {
     if (initialDesign) {
@@ -38,12 +40,16 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
       setCustomNotes(initialDesign.notes || '');
       setReferenceImagePreviews(initialDesign.referenceImages || []);
       setBlouseDetails(initialDesign.blouseDetails || {});
+      setPantDetails(initialDesign.pantDetails || {});
+      setSkirtDetails(initialDesign.skirtDetails || {});
     } else {
       // Reset fields if initialDesign is null (e.g. new item)
       setSelectedStyle(null);
       setCustomNotes('');
       setReferenceImagePreviews([]);
       setBlouseDetails({});
+      setPantDetails({});
+      setSkirtDetails({});
     }
   }, [initialDesign]);
   
@@ -55,6 +61,26 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
     setBlouseDetails((prev) => ({
       ...prev,
       [field]: numericFields.includes(field) ? (value ? Number(value) : undefined) : value,
+    }));
+  };
+
+  const handlePantDetailChange = (
+    field: keyof PantDetails,
+    value: string
+  ) => {
+    setPantDetails((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSkirtDetailChange = (
+    field: keyof SkirtDetails,
+    value: string
+  ) => {
+    setSkirtDetails((prev) => ({
+      ...prev,
+      [field]: value,
     }));
   };
 
@@ -90,6 +116,8 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
       notes: customNotes,
       referenceImages: referenceImagePreviews,
       blouseDetails: selectedStyle === 'fitted-blouse' ? blouseDetails : undefined,
+      pantDetails: selectedStyle === 'wide-leg-trousers' ? pantDetails : undefined,
+      skirtDetails: selectedStyle === 'pencil-skirt' ? skirtDetails : undefined,
     };
     onSaveDesign(designDetails);
   };
@@ -127,51 +155,77 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
                 <CardContent className="space-y-4">
                     <div className="grid md:grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="blouse-fl">FL (Full Length)</Label>
-                            <Input id="blouse-fl" type="number" placeholder="e.g., 15" value={blouseDetails.fl || ''} onChange={(e) => handleBlouseDetailChange('fl', e.target.value)} />
+                            <Label htmlFor="blouse-type">Type</Label>
+                            <Input id="blouse-type" placeholder="e.g., Princess cut, Padded" value={blouseDetails.yoke || ''} onChange={(e) => handleBlouseDetailChange('yoke', e.target.value)} />
                         </div>
                         <div>
-                            <Label htmlFor="blouse-yoke">Yoke</Label>
-                            <Input id="blouse-yoke" placeholder="Yoke details" value={blouseDetails.yoke || ''} onChange={(e) => handleBlouseDetailChange('yoke', e.target.value)} />
+                            <Label htmlFor="blouse-length">Length</Label>
+                            <Input id="blouse-length" type="number" placeholder="e.g., 15" value={blouseDetails.fl || ''} onChange={(e) => handleBlouseDetailChange('fl', e.target.value)} />
                         </div>
                     </div>
-                    <div className="grid md:grid-cols-2 gap-4">
+                     <div className="grid md:grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="blouse-sh">SH (Shoulder)</Label>
-                            <Input id="blouse-sh" type="number" placeholder="e.g., 14.5" value={blouseDetails.sh || ''} onChange={(e) => handleBlouseDetailChange('sh', e.target.value)} />
+                            <Label htmlFor="blouse-upper-chest">Upper Chest</Label>
+                            <Input id="blouse-upper-chest" type="number" placeholder="e.g., 34" value={blouseDetails.sh || ''} onChange={(e) => handleBlouseDetailChange('sh', e.target.value)} />
                         </div>
                         <div>
-                            <Label htmlFor="blouse-cut">Cut</Label>
-                            <Input id="blouse-cut" placeholder="Cut details" value={blouseDetails.cut || ''} onChange={(e) => handleBlouseDetailChange('cut', e.target.value)} />
+                            <Label htmlFor="blouse-waist">Waist</Label>
+                            <Input id="blouse-waist" type="number" placeholder="e.g., 28" value={blouseDetails.sl || ''} onChange={(e) => handleBlouseDetailChange('sl', e.target.value)} />
                         </div>
-                    </div>
-                     <div>
-                        <Label htmlFor="blouse-sl">SL (Sleeve Length)</Label>
-                        <Input id="blouse-sl" type="number" placeholder="e.g., 10" value={blouseDetails.sl || ''} onChange={(e) => handleBlouseDetailChange('sl', e.target.value)} />
                     </div>
                     <div>
-                        <Label htmlFor="blouse-neck-type">Neck Type</Label>
-                        <Input id="blouse-neck-type" placeholder="e.g., Round, V-Neck" value={blouseDetails.neckType || ''} onChange={(e) => handleBlouseDetailChange('neckType', e.target.value)} />
+                        <Label htmlFor="blouse-shoulder">Shoulder</Label>
+                        <Input id="blouse-shoulder" placeholder="e.g., 14.5" value={blouseDetails.cut || ''} onChange={(e) => handleBlouseDetailChange('cut', e.target.value)} />
+                    </div>
+                    <div>
+                        <Label htmlFor="blouse-sleeve">Sleeve</Label>
+                        <Input id="blouse-sleeve" placeholder="e.g., Cap sleeves, 3/4th" value={blouseDetails.neckType || ''} onChange={(e) => handleBlouseDetailChange('neckType', e.target.value)} />
                     </div>
                     <div className="grid md:grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="blouse-fn">FN (Front Neck)</Label>
-                            <Input id="blouse-fn" type="number" placeholder="e.g., 7.5" value={blouseDetails.fn || ''} onChange={(e) => handleBlouseDetailChange('fn', e.target.value)} />
+                            <Label htmlFor="blouse-front-neck">Front Neck</Label>
+                            <Input id="blouse-front-neck" type="number" placeholder="e.g., 7.5" value={blouseDetails.fn || ''} onChange={(e) => handleBlouseDetailChange('fn', e.target.value)} />
                         </div>
                         <div>
-                            <Label htmlFor="blouse-bn">BN (Back Neck)</Label>
-                            <Input id="blouse-bn" type="number" placeholder="e.g., 9" value={blouseDetails.bn || ''} onChange={(e) => handleBlouseDetailChange('bn', e.target.value)} />
+                            <Label htmlFor="blouse-back-neck">Back Neck</Label>
+                            <Input id="blouse-back-neck" type="number" placeholder="e.g., 9" value={blouseDetails.bn || ''} onChange={(e) => handleBlouseDetailChange('bn', e.target.value)} />
                         </div>
                     </div>
                     <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="blouse-slit">Slit</Label>
-                            <Input id="blouse-slit" placeholder="Slit details" value={blouseDetails.slit || ''} onChange={(e) => handleBlouseDetailChange('slit', e.target.value)} />
+                         <div>
+                            <Label htmlFor="blouse-dt">DT</Label>
+                            <Input id="blouse-dt" placeholder="DT details" value={blouseDetails.dt || ''} onChange={(e) => handleBlouseDetailChange('dt', e.target.value)} />
                         </div>
-                        <div>
-                            <Label htmlFor="blouse-extra">Extra</Label>
-                            <Input id="blouse-extra" placeholder="Extra details" value={blouseDetails.extra || ''} onChange={(e) => handleBlouseDetailChange('extra', e.target.value)} />
-                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        )}
+
+        {selectedStyle === 'wide-leg-trousers' && (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Ruler className="h-6 w-6 text-primary" /> Pant Details</CardTitle>
+                    <CardDescription>Provide specific details for the trousers.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div>
+                        <Label htmlFor="pant-type">Pant Type</Label>
+                        <Input id="pant-type" placeholder="e.g., High-waist, Pleated, Elastic waist" value={pantDetails.type || ''} onChange={(e) => handlePantDetailChange('type', e.target.value)} />
+                    </div>
+                </CardContent>
+            </Card>
+        )}
+
+        {selectedStyle === 'pencil-skirt' && (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Ruler className="h-6 w-6 text-primary" /> Skirt Details</CardTitle>
+                    <CardDescription>Provide specific details for the skirt.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div>
+                        <Label htmlFor="skirt-type">Skirt Type</Label>
+                        <Input id="skirt-type" placeholder="e.g., With slit, High-waist, Knee-length" value={skirtDetails.type || ''} onChange={(e) => handleSkirtDetailChange('type', e.target.value)} />
                     </div>
                 </CardContent>
             </Card>

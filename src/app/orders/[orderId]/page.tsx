@@ -273,20 +273,37 @@ export default function OrderDetailsPage() {
                                 <h4 className="font-medium text-md flex items-center gap-1.5"><Shirt className="h-4 w-4 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(design)}</h4>
                                 <p><strong>Style:</strong> {getDetailNameById(design.style, styleOptionsForDisplay)}</p>
                                 
-                                {design.style === 'fitted-blouse' && design.blouseDetails && Object.keys(design.blouseDetails).length > 0 && (
+                                {design.style === 'fitted-blouse' && design.blouseDetails && Object.values(design.blouseDetails).some(v => v) && (
                                     <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
                                         <p className="font-medium text-xs text-foreground">Blouse Specifics:</p>
                                         <ul className="list-disc list-inside pl-4 text-muted-foreground">
-                                            {design.blouseDetails.fl && <li>FL: {design.blouseDetails.fl}"</li>}
-                                            {design.blouseDetails.yoke && <li>Yoke: {design.blouseDetails.yoke}</li>}
-                                            {design.blouseDetails.sh && <li>SH: {design.blouseDetails.sh}"</li>}
-                                            {design.blouseDetails.cut && <li>Cut: {design.blouseDetails.cut}</li>}
-                                            {design.blouseDetails.sl && <li>SL: {design.blouseDetails.sl}"</li>}
-                                            {design.blouseDetails.neckType && <li>Neck Type: {design.blouseDetails.neckType}</li>}
-                                            {design.blouseDetails.fn && <li>FN: {design.blouseDetails.fn}"</li>}
-                                            {design.blouseDetails.bn && <li>BN: {design.blouseDetails.bn}"</li>}
-                                            {design.blouseDetails.slit && <li>Slit: {design.blouseDetails.slit}</li>}
-                                            {design.blouseDetails.extra && <li>Extra: {design.blouseDetails.extra}</li>}
+                                            {design.blouseDetails.yoke && <li>Type: {design.blouseDetails.yoke}</li>}
+                                            {design.blouseDetails.fl && <li>Length: {design.blouseDetails.fl}"</li>}
+                                            {design.blouseDetails.sh && <li>Upper Chest: {design.blouseDetails.sh}"</li>}
+                                            {design.blouseDetails.sl && <li>Waist: {design.blouseDetails.sl}"</li>}
+                                            {design.blouseDetails.cut && <li>Shoulder: {design.blouseDetails.cut}</li>}
+                                            {design.blouseDetails.neckType && <li>Sleeve: {design.blouseDetails.neckType}</li>}
+                                            {design.blouseDetails.fn && <li>Front Neck: {design.blouseDetails.fn}"</li>}
+                                            {design.blouseDetails.bn && <li>Back Neck: {design.blouseDetails.bn}"</li>}
+                                            {design.blouseDetails.dt && <li>DT: {design.blouseDetails.dt}</li>}
+                                        </ul>
+                                    </div>
+                                )}
+                                
+                                {design.style === 'wide-leg-trousers' && design.pantDetails && Object.values(design.pantDetails).some(v => v) && (
+                                    <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
+                                        <p className="font-medium text-xs text-foreground">Pant Specifics:</p>
+                                        <ul className="list-disc list-inside pl-4 text-muted-foreground">
+                                            {design.pantDetails.type && <li>Type: {design.pantDetails.type}</li>}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {design.style === 'pencil-skirt' && design.skirtDetails && Object.values(design.skirtDetails).some(v => v) && (
+                                    <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
+                                        <p className="font-medium text-xs text-foreground">Skirt Specifics:</p>
+                                        <ul className="list-disc list-inside pl-4 text-muted-foreground">
+                                            {design.skirtDetails.type && <li>Type: {design.skirtDetails.type}</li>}
                                         </ul>
                                     </div>
                                 )}

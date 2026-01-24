@@ -18,6 +18,17 @@ export interface BlouseDetails {
   bn?: number;
   slit?: string;
   extra?: string;
+  dt?: string;
+}
+
+// Define the structure for pant-specific details
+export interface PantDetails {
+  type?: string;
+}
+
+// Define the structure for skirt-specific details
+export interface SkirtDetails {
+  type?: string;
 }
 
 // Define the structure for design details of a single item
@@ -26,6 +37,8 @@ export interface DesignDetails {
   notes: string;
   referenceImages?: string[]; 
   blouseDetails?: Partial<BlouseDetails>;
+  pantDetails?: Partial<PantDetails>;
+  skirtDetails?: Partial<SkirtDetails>;
   // Fields below are more for overall order context during editing, might be moved
   status?: OrderStatus; 
   assignedTailorId?: string | null;
@@ -62,6 +75,8 @@ export const initialSingleDesignState: DesignDetails = {
   notes: '',
   referenceImages: [],
   blouseDetails: {},
+  pantDetails: {},
+  skirtDetails: {},
   status: "Pending Assignment",
   assignedTailorId: null,
   assignedTailorName: null,
