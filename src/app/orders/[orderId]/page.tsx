@@ -117,7 +117,7 @@ export default function OrderDetailsPage() {
       setCurrentOrder(prev => prev ? { ...prev, status: newStatus } : null);
       toast({
         title: "Order Status Updated",
-        description: `Order #${currentOrder.id} status changed to ${newStatus}.`,
+        description: `Order #${currentOrder.orderNumber} status changed to ${newStatus}.`,
       });
     } else {
       toast({
@@ -146,7 +146,7 @@ export default function OrderDetailsPage() {
       setCurrentOrder(prev => prev ? { ...prev, total: formattedPrice } : null);
       toast({
         title: "Order Price Updated",
-        description: `Order #${currentOrder.id} price changed to ${formattedPrice}.`,
+        description: `Order #${currentOrder.orderNumber} price changed to ${formattedPrice}.`,
       });
     } else {
       toast({
@@ -184,7 +184,7 @@ export default function OrderDetailsPage() {
       <Card className="shadow-xl">
         <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <CardTitle className="text-2xl font-bold text-primary">Order Details: #{currentOrder.id}</CardTitle>
+            <CardTitle className="text-2xl font-bold text-primary">Order Details: #{currentOrder.orderNumber}</CardTitle>
             <CardDescription>
               Detailed view of your order from Firestore. This order has {currentOrder.detailedItems?.length || 0} item(s).
             </CardDescription>

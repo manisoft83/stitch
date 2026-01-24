@@ -117,7 +117,7 @@ export function AssignTailorDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Assign Order #{order.id}</DialogTitle>
+          <DialogTitle>Assign Order #{order.orderNumber}</DialogTitle>
           <DialogDescription>
             Assign "{order.items.join(', ')}" to a tailor, set due date, and add instructions/image.
           </DialogDescription>

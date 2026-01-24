@@ -344,7 +344,7 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="text-lg text-primary">Order #{order.id}</CardTitle>
+                      <CardTitle className="text-lg text-primary">Order #{order.orderNumber}</CardTitle>
                       <CardDescription>Date: {order.date ? format(parseISO(order.date), "PPP") : "N/A"} | Total: {order.total}</CardDescription>
                       {order.customerName && <CardDescription>Customer: {order.customerName}</CardDescription>}
                     </div>

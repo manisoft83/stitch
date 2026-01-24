@@ -68,7 +68,7 @@ export default function SummaryStepPage() {
                                       ? orderItems[0].dueDate 
                                       : format(addDays(new Date(), 7), "yyyy-MM-dd");
 
-    const orderDataForSave: Omit<FullOrderType, 'id' | 'createdAt' | 'updatedAt'> = {
+    const orderDataForSave: Omit<FullOrderType, 'id' | 'createdAt' | 'updatedAt' | 'orderNumber'> = {
       date: format(new Date(), "yyyy-MM-dd"),
       status: orderStatusToSet,
       total: "Pricing TBD",
@@ -84,13 +84,13 @@ export default function SummaryStepPage() {
     };
     
     try {
-      const result: SaveOrderActionResult = await saveOrderAction(orderDataForSave as FullOrderType, editingOrderId || undefined);
+      const result: SaveOrderActionResult = await saveOrderAction(orderDataForSave as Omit<FullOrderType, "orderNumber">, editingOrderId || undefined);
 
       if (result.success && result.order) {
         setIsNavigatingAfterSuccess(true); 
         toast({
           title: editingOrderId ? "Order Updated!" : "Order Placed!",
-          description: `Order #${result.order.id} has been successfully ${editingOrderId ? 'updated' : 'submitted'}.`,
+          description: `Order #${result.order.orderNumber} has been successfully ${editingOrderId ? 'updated' : 'submitted'}.`,
         });
         const pathAfterConfirm = workflowReturnPath || `/orders/${result.order.id}`;
         resetWorkflow();

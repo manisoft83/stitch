@@ -3,7 +3,7 @@
 'use server';
 
 import { db } from '@/lib/firebase/config';
-import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, Timestamp, query, where, getDoc, updateDoc, FieldValue, deleteField, orderBy, limit, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, Timestamp, query, where, getDoc, updateDoc, FieldValue, deleteField, orderBy, limit, writeBatch, runTransaction } from 'firebase/firestore';
 import type { TailorFormData } from '@/lib/mockData'; // Using TailorFormData specifically for the form
 import type { Tailor, Customer, Address, Order, OrderStatus, GarmentStyle, DesignDetails } from '@/lib/mockData';
 import { format } from 'date-fns';
@@ -13,6 +13,7 @@ const TAILORS_COLLECTION = 'tailors';
 const CUSTOMERS_COLLECTION = 'customers';
 const ORDERS_COLLECTION = 'orders';
 const GARMENT_STYLES_COLLECTION = 'garmentStyles';
+const COUNTERS_COLLECTION = 'counters';
 
 // --- Timestamp Converters ---
 const fromFirestoreTimestamp = (timestamp: Timestamp | undefined | null): string | undefined => {
@@ -24,6 +25,7 @@ const orderFromDoc = (docData: ReturnType<typeof docSnapshot.data> | undefined, 
     const data = docData;
     return {
         id: id,
+        orderNumber: data.orderNumber || 0,
         date: data.date ? (data.date instanceof Timestamp ? format(data.date.toDate(), "yyyy-MM-dd") : data.date) : format(new Date(), "yyyy-MM-dd"),
         status: data.status || 'Pending Assignment',
         total: data.total || "Pricing TBD",
@@ -321,10 +323,10 @@ export async function deleteCustomerById(customerId: string): Promise<boolean> {
 
 // --- Order Functions ---
 
-export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>, existingOrderId?: string): Promise<Order | null> {
+export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'orderNumber'>, existingOrderId?: string): Promise<Order | null> {
   console.log(`DataService: Saving order to Firestore. Order ID: ${existingOrderId || 'NEW'}, Item count: ${orderData.items.length}`);
 
-  const dataToSave = {
+  const dataToSave: any = {
     ...orderData,
     date: orderData.date ? format(new Date(orderData.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"), // Ensure date is just yyyy-MM-dd
     dueDate: orderData.dueDate ? format(new Date(orderData.dueDate), "yyyy-MM-dd") : null, // Ensure dueDate is yyyy-MM-dd
@@ -339,11 +341,27 @@ export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 
       const updatedDocSnap = await getDoc(orderRef);
       return orderFromDoc(updatedDocSnap.data(), existingOrderId);
     } else {
-      const orderWithCreationTimestamp = {
-        ...dataToSave,
-        createdAt: serverTimestamp(),
-      };
-      const docRef = await addDoc(collection(db, ORDERS_COLLECTION), orderWithCreationTimestamp);
+      // New order: generate incremental orderNumber
+      const orderCounterRef = doc(db, COUNTERS_COLLECTION, 'orderCounter');
+      
+      const newOrderNumber = await runTransaction(db, async (transaction) => {
+        const counterDoc = await transaction.get(orderCounterRef);
+        let nextNumber;
+        if (!counterDoc.exists()) {
+          nextNumber = 1001; // Start from 1001
+        } else {
+          nextNumber = (counterDoc.data().currentNumber || 1000) + 1;
+        }
+        transaction.set(orderCounterRef, { currentNumber: nextNumber }, { merge: true });
+        return nextNumber;
+      });
+
+      console.log(`DataService: Generated new order number: ${newOrderNumber}`);
+
+      dataToSave.orderNumber = newOrderNumber;
+      dataToSave.createdAt = serverTimestamp();
+
+      const docRef = await addDoc(collection(db, ORDERS_COLLECTION), dataToSave);
       console.log(`DataService: Successfully created new order with ID ${docRef.id}`);
       const newDocSnap = await getDoc(docRef);
       return orderFromDoc(newDocSnap.data(), docRef.id);
@@ -353,6 +371,7 @@ export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 
     return null;
   }
 }
+
 
 export async function getOrdersFromDb(limitCount: number = 50): Promise<Order[]> {
   console.log("DataService: Fetching orders from Firestore");

@@ -33,8 +33,8 @@ export const allPossibleMeasurements = [
     { id: 'dt', label: 'DT' },
     { id: 'pant_type', label: 'Pant Type' },
     { id: 'skirt_type', label: 'Skirt Type' },
-    { id: 'fl', label: 'FL (Full Length)' },
     { id: 'yoke', label: 'Yoke' },
+    { id: 'fl', label: 'FL (Full Length)' },
     { id: 'sh', label: 'SH (Shoulder)' },
     { id: 'cut', label: 'Cut' },
     { id: 'sl', label: 'SL (Sleeve Length)' },
@@ -70,6 +70,7 @@ export interface DesignDetails {
 
 export interface Order {
   id: string;
+  orderNumber: number;
   date: string; // Should be string like "yyyy-MM-dd" for client, Firestore uses Timestamp
   status: OrderStatus;
   total: string; // Keep as string for now, can be number in Firestore if needed

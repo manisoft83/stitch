@@ -171,7 +171,7 @@ function TrackingPageContent() {
           <form onSubmit={handleSubmit} className="flex gap-2">
             <Input 
               type="text" 
-              placeholder="Enter Order ID (e.g., from My Orders)" 
+              placeholder="Enter Order ID (from order details page)" 
               className="flex-grow" 
               value={orderIdInput}
               onChange={(e) => setOrderIdInput(e.target.value)}
@@ -197,7 +197,7 @@ function TrackingPageContent() {
           {searchedOrder && trackingInfo.length > 0 && !error && !isLoading && (
             <div className="mt-6 border-t pt-6">
               <div className="flex justify-between items-center mb-1">
-                <h3 className="text-lg font-semibold text-primary">Order #{searchedOrder.id}</h3>
+                <h3 className="text-lg font-semibold text-primary">Order #{searchedOrder.orderNumber}</h3>
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/orders/${searchedOrder.id}`}>
                     <FileText className="mr-2 h-4 w-4" /> View Full Details

@@ -13,7 +13,7 @@ export interface SaveOrderActionResult {
 }
 
 // The orderData here now expects detailedItems for multi-item orders
-export async function saveOrderAction(orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>, existingOrderId?: string): Promise<SaveOrderActionResult> {
+export async function saveOrderAction(orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'orderNumber'>, existingOrderId?: string): Promise<SaveOrderActionResult> {
   console.log(`Server Action: saveOrderAction for ${existingOrderId ? 'updating order ' + existingOrderId : 'adding new order'}`);
   try {
     const result = await saveOrderToDb(orderData, existingOrderId);

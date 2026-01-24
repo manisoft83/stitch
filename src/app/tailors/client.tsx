@@ -109,7 +109,7 @@ export default function TailorsClientPage({ initialTailors, initialOrders }: Tai
         
         toast({
           title: "Order Assigned!",
-          description: `${updatedOrder.items.join(', ')} (Order #${updatedOrder.id}) assigned to ${tailorName}. Due: ${format(dueDate, "PPP")}`,
+          description: `${updatedOrder.items.join(', ')} (Order #${updatedOrder.orderNumber}) assigned to ${tailorName}. Due: ${format(dueDate, "PPP")}`,
         });
       }
     } else {
@@ -200,7 +200,7 @@ export default function TailorsClientPage({ initialTailors, initialOrders }: Tai
               <Card key={order.id} className="p-4 bg-secondary/30 dark:bg-secondary/20">
                 <div className="flex justify-between items-start">
                     <div>
-                        <p className="font-semibold">{order.items.join(', ')} (Order #{order.id})</p>
+                        <p className="font-semibold">{order.items.join(', ')} (Order #{order.orderNumber})</p>
                         <p className="text-sm text-muted-foreground flex items-center">
                             <CalendarClock className="h-4 w-4 mr-1"/> Requested by: {format(new Date(order.date), "PPP")}
                         </p>
@@ -283,7 +283,7 @@ export default function TailorsClientPage({ initialTailors, initialOrders }: Tai
             {recentlyAssignedOrders.length > 0 ? recentlyAssignedOrders.map(order => (
               <Card key={order.id} className="p-4 bg-green-50 dark:bg-green-900/30 border-green-200 space-y-3">
                 <div>
-                    <p className="font-semibold">{order.items.join(', ')} (Order #{order.id})</p>
+                    <p className="font-semibold">{order.items.join(', ')} (Order #{order.orderNumber})</p>
                     <p className="text-sm text-muted-foreground">
                     Assigned to: {order.assignedTailorName || 'N/A'}
                     </p>
