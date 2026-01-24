@@ -293,7 +293,26 @@ export default function OrderDetailsPage() {
                                 <p><strong>Style:</strong> {getDetailNameById(design.style, styleOptionsForDisplay)}</p>
                                 <p><strong>Fabric:</strong> {getDetailNameById(design.fabric, fabricOptionsForDisplay)}</p>
                                 <p><strong>Color:</strong> {getDetailNameById(design.color, colorOptionsForDisplay)}</p>
-                                {design.notes && <p><strong>Notes:</strong> <span className="whitespace-pre-wrap">{design.notes}</span></p>}
+
+                                {design.style === 'fitted-blouse' && design.blouseDetails && Object.keys(design.blouseDetails).length > 0 && (
+                                    <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
+                                        <p className="font-medium text-xs text-foreground">Blouse Specifics:</p>
+                                        <ul className="list-disc list-inside pl-4 text-muted-foreground">
+                                            {design.blouseDetails.type && <li>Type: {design.blouseDetails.type}</li>}
+                                            {design.blouseDetails.length && <li>Length: {design.blouseDetails.length}"</li>}
+                                            {design.blouseDetails.upperChest && <li>Upper Chest: {design.blouseDetails.upperChest}"</li>}
+                                            {design.blouseDetails.waist && <li>Waist: {design.blouseDetails.waist}"</li>}
+                                            {design.blouseDetails.shoulder && <li>Shoulder: {design.blouseDetails.shoulder}"</li>}
+                                            {design.blouseDetails.sleeve && <li>Sleeve: {design.blouseDetails.sleeve}"</li>}
+                                            {design.blouseDetails.frontNeck && <li>Front Neck: {design.blouseDetails.frontNeck}"</li>}
+                                            {design.blouseDetails.backNeck && <li>Back Neck: {design.blouseDetails.backNeck}"</li>}
+                                            {design.blouseDetails.dt && <li>DT: {design.blouseDetails.dt}"</li>}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {design.notes && <p className="mt-2"><strong>Notes:</strong> <span className="whitespace-pre-wrap">{design.notes}</span></p>}
+                                
                                 {design.referenceImages && design.referenceImages.length > 0 && (
                                     <div className="mt-2">
                                         <strong className="flex items-center gap-1 text-xs"><ImageIcon className="h-3 w-3" />Reference Images:</strong>

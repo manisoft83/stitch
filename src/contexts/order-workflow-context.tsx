@@ -6,6 +6,19 @@ import { createContext, useState, useContext, useCallback } from 'react';
 import type { Customer, OrderStatus, Order as FullOrderType } from '@/lib/mockData'; // Renamed Order to FullOrderType
 import type { MeasurementFormValues } from '@/lib/schemas';
 
+// Define the structure for blouse-specific details
+export interface BlouseDetails {
+  type?: string;
+  length?: number;
+  upperChest?: number;
+  waist?: number;
+  shoulder?: number;
+  sleeve?: number;
+  frontNeck?: number;
+  backNeck?: number;
+  dt?: number;
+}
+
 // Define the structure for design details of a single item
 export interface DesignDetails {
   fabric: string | null;
@@ -13,6 +26,7 @@ export interface DesignDetails {
   style: string | null;
   notes: string;
   referenceImages?: string[]; 
+  blouseDetails?: Partial<BlouseDetails>;
   // Fields below are more for overall order context during editing, might be moved
   status?: OrderStatus; 
   assignedTailorId?: string | null;
@@ -52,6 +66,7 @@ export const initialSingleDesignState: DesignDetails = {
   style: null,
   notes: '',
   referenceImages: [],
+  blouseDetails: {},
   status: "Pending Assignment",
   assignedTailorId: null,
   assignedTailorName: null,

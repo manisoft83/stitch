@@ -10,8 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
-import { CheckSquare, Palette, Scissors, Shirt, UploadCloud, XCircle, Save } from 'lucide-react';
-import type { DesignDetails } from '@/contexts/order-workflow-context';
+import { CheckSquare, Palette, Scissors, Shirt, UploadCloud, XCircle, Save, Ruler } from 'lucide-react';
+import type { DesignDetails, BlouseDetails } from '@/contexts/order-workflow-context';
 
 const fabricOptions = [
   { id: 'cotton', name: 'Cotton', image: 'https://placehold.co/100x100.png', dataAiHint: 'cotton fabric' },
@@ -47,6 +47,7 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [customNotes, setCustomNotes] = useState('');
   const [referenceImagePreviews, setReferenceImagePreviews] = useState<string[]>([]);
+  const [blouseDetails, setBlouseDetails] = useState<Partial<BlouseDetails>>({});
 
   useEffect(() => {
     if (initialDesign) {
@@ -55,6 +56,7 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
       setSelectedStyle(initialDesign.style || null);
       setCustomNotes(initialDesign.notes || '');
       setReferenceImagePreviews(initialDesign.referenceImages || []);
+      setBlouseDetails(initialDesign.blouseDetails || {});
     } else {
       // Reset fields if initialDesign is null (e.g. new item)
       setSelectedFabric(null);
@@ -62,8 +64,19 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
       setSelectedStyle(null);
       setCustomNotes('');
       setReferenceImagePreviews([]);
+      setBlouseDetails({});
     }
   }, [initialDesign]);
+  
+  const handleBlouseDetailChange = (
+    field: keyof BlouseDetails,
+    value: string
+  ) => {
+    setBlouseDetails((prev) => ({
+      ...prev,
+      [field]: field === 'type' ? value : (value ? Number(value) : undefined),
+    }));
+  };
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -98,6 +111,7 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
       style: selectedStyle,
       notes: customNotes,
       referenceImages: referenceImagePreviews,
+      blouseDetails: selectedStyle === 'fitted-blouse' ? blouseDetails : undefined,
       // Other fields like status, tailorId, dueDate are not part of item design itself
       // They are handled at order level or when editing an existing order context.
     };
@@ -127,6 +141,61 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
             </Select>
           </CardContent>
         </Card>
+        
+        {selectedStyle === 'fitted-blouse' && (
+          <Card>
+              <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Ruler className="h-6 w-6 text-primary" /> Blouse Measurements</CardTitle>
+                  <CardDescription>Provide specific measurements for the fitted blouse. All measurements are in inches.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div>
+                      <Label htmlFor="blouse-type">Blouse Type</Label>
+                      <Input id="blouse-type" placeholder="e.g., Princess Cut, Padded" value={blouseDetails.type || ''} onChange={(e) => handleBlouseDetailChange('type', e.target.value)} />
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                          <Label htmlFor="blouse-length">Length</Label>
+                          <Input id="blouse-length" type="number" placeholder="e.g., 15" value={blouseDetails.length || ''} onChange={(e) => handleBlouseDetailChange('length', e.target.value)} />
+                      </div>
+                      <div>
+                          <Label htmlFor="blouse-upper-chest">Upper Chest</Label>
+                          <Input id="blouse-upper-chest" type="number" placeholder="e.g., 34" value={blouseDetails.upperChest || ''} onChange={(e) => handleBlouseDetailChange('upperChest', e.target.value)} />
+                      </div>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                          <Label htmlFor="blouse-waist">Waist</Label>
+                          <Input id="blouse-waist" type="number" placeholder="e.g., 28" value={blouseDetails.waist || ''} onChange={(e) => handleBlouseDetailChange('waist', e.target.value)} />
+                      </div>
+                      <div>
+                          <Label htmlFor="blouse-shoulder">Shoulder</Label>
+                          <Input id="blouse-shoulder" type="number" placeholder="e.g., 14.5" value={blouseDetails.shoulder || ''} onChange={(e) => handleBlouseDetailChange('shoulder', e.target.value)} />
+                      </div>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                          <Label htmlFor="blouse-sleeve">Sleeve Length</Label>
+                          <Input id="blouse-sleeve" type="number" placeholder="e.g., 10" value={blouseDetails.sleeve || ''} onChange={(e) => handleBlouseDetailChange('sleeve', e.target.value)} />
+                      </div>
+                      <div>
+                          <Label htmlFor="blouse-front-neck">Front Neck Depth</Label>
+                          <Input id="blouse-front-neck" type="number" placeholder="e.g., 7.5" value={blouseDetails.frontNeck || ''} onChange={(e) => handleBlouseDetailChange('frontNeck', e.target.value)} />
+                      </div>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                          <Label htmlFor="blouse-back-neck">Back Neck Depth</Label>
+                          <Input id="blouse-back-neck" type="number" placeholder="e.g., 9" value={blouseDetails.backNeck || ''} onChange={(e) => handleBlouseDetailChange('backNeck', e.target.value)} />
+                      </div>
+                      <div>
+                          <Label htmlFor="blouse-dt">DT (Point)</Label>
+                          <Input id="blouse-dt" type="number" placeholder="e.g., 10.5" value={blouseDetails.dt || ''} onChange={(e) => handleBlouseDetailChange('dt', e.target.value)} />
+                      </div>
+                  </div>
+              </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -272,7 +341,7 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
             <Separator />
             <div>
               <Label>Color:</Label>
-              <p className="font-semibold" style={{color: selectedColor ? colorOptions.find(c=>c.id === selectedColor)?.hex : 'inherit'}}>
+              <p className="font-semibold" style={{color: selectedColor ? colorOptions.find(c => c.id === selectedColor)?.hex : 'inherit'}}>
                 {selectedColor ? colorOptions.find(c => c.id === selectedColor)?.name : 'Not selected'}
               </p>
             </div>

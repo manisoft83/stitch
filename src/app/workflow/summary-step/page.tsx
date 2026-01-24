@@ -209,6 +209,24 @@ export default function SummaryStepPage() {
                         <p><strong>Fabric:</strong> {itemDesign.fabric ? getDetailNameById(itemDesign.fabric, fabricOptionsForDisplay) : 'N/A'}</p>
                         <p><strong>Color:</strong> {itemDesign.color ? getDetailNameById(itemDesign.color, colorOptionsForDisplay) : 'N/A'}</p>
                         {itemDesign.notes && <p><strong>Notes:</strong> <span className="whitespace-pre-wrap">{itemDesign.notes}</span></p>}
+                        
+                        {itemDesign.style === 'fitted-blouse' && itemDesign.blouseDetails && Object.keys(itemDesign.blouseDetails).length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-muted/50">
+                                <p className="font-medium text-xs text-foreground">Blouse Specifics:</p>
+                                <ul className="list-disc list-inside pl-2 text-muted-foreground">
+                                    {itemDesign.blouseDetails.type && <li>Type: {itemDesign.blouseDetails.type}</li>}
+                                    {itemDesign.blouseDetails.length && <li>Length: {itemDesign.blouseDetails.length}"</li>}
+                                    {itemDesign.blouseDetails.upperChest && <li>Upper Chest: {itemDesign.blouseDetails.upperChest}"</li>}
+                                    {itemDesign.blouseDetails.waist && <li>Waist: {itemDesign.blouseDetails.waist}"</li>}
+                                    {itemDesign.blouseDetails.shoulder && <li>Shoulder: {itemDesign.blouseDetails.shoulder}"</li>}
+                                    {itemDesign.blouseDetails.sleeve && <li>Sleeve: {itemDesign.blouseDetails.sleeve}"</li>}
+                                    {itemDesign.blouseDetails.frontNeck && <li>Front Neck: {itemDesign.blouseDetails.frontNeck}"</li>}
+                                    {itemDesign.blouseDetails.backNeck && <li>Back Neck: {itemDesign.blouseDetails.backNeck}"</li>}
+                                    {itemDesign.blouseDetails.dt && <li>DT: {itemDesign.blouseDetails.dt}"</li>}
+                                </ul>
+                            </div>
+                        )}
+                        
                         {itemDesign.referenceImages && itemDesign.referenceImages.length > 0 && (
                         <div className="mt-1">
                             <strong className="flex items-center gap-1 text-xs"><ImageIcon className="h-3 w-3" />Ref Images:</strong>
