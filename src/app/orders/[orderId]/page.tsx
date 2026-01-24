@@ -277,14 +277,16 @@ export default function OrderDetailsPage() {
                                     <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
                                         <p className="font-medium text-xs text-foreground">Blouse Specifics:</p>
                                         <ul className="list-disc list-inside pl-4 text-muted-foreground">
-                                            {design.blouseDetails.yoke && <li>Type: {design.blouseDetails.yoke}</li>}
-                                            {design.blouseDetails.fl && <li>Length: {design.blouseDetails.fl}"</li>}
-                                            {design.blouseDetails.sh && <li>Upper Chest: {design.blouseDetails.sh}"</li>}
-                                            {design.blouseDetails.sl && <li>Waist: {design.blouseDetails.sl}"</li>}
-                                            {design.blouseDetails.cut && <li>Shoulder: {design.blouseDetails.cut}</li>}
-                                            {design.blouseDetails.neckType && <li>Sleeve: {design.blouseDetails.neckType}</li>}
-                                            {design.blouseDetails.fn && <li>Front Neck: {design.blouseDetails.fn}"</li>}
-                                            {design.blouseDetails.bn && <li>Back Neck: {design.blouseDetails.bn}"</li>}
+                                            {design.blouseDetails.yoke && <li>Yoke: {design.blouseDetails.yoke}</li>}
+                                            {design.blouseDetails.fl && <li>FL: {design.blouseDetails.fl}"</li>}
+                                            {design.blouseDetails.sh && <li>SH: {design.blouseDetails.sh}"</li>}
+                                            {design.blouseDetails.cut && <li>Cut: {design.blouseDetails.cut}</li>}
+                                            {design.blouseDetails.sl && <li>SL: {design.blouseDetails.sl}"</li>}
+                                            {design.blouseDetails.neckType && <li>Neck Type: {design.blouseDetails.neckType}</li>}
+                                            {design.blouseDetails.fn && <li>FN: {design.blouseDetails.fn}"</li>}
+                                            {design.blouseDetails.bn && <li>BN: {design.blouseDetails.bn}"</li>}
+                                            {design.blouseDetails.slit && <li>Slit: {design.blouseDetails.slit}</li>}
+                                            {design.blouseDetails.extra && <li>Extra: {design.blouseDetails.extra}</li>}
                                             {design.blouseDetails.dt && <li>DT: {design.blouseDetails.dt}</li>}
                                         </ul>
                                     </div>

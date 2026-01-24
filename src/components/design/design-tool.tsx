@@ -155,47 +155,57 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
                 <CardContent className="space-y-4">
                     <div className="grid md:grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="blouse-type">Type</Label>
-                            <Input id="blouse-type" placeholder="e.g., Princess cut, Padded" value={blouseDetails.yoke || ''} onChange={(e) => handleBlouseDetailChange('yoke', e.target.value)} />
+                            <Label htmlFor="blouse-yoke">Yoke</Label>
+                            <Input id="blouse-yoke" placeholder="e.g., Princess cut, Padded" value={blouseDetails.yoke || ''} onChange={(e) => handleBlouseDetailChange('yoke', e.target.value)} />
                         </div>
                         <div>
-                            <Label htmlFor="blouse-length">Length</Label>
-                            <Input id="blouse-length" type="number" placeholder="e.g., 15" value={blouseDetails.fl || ''} onChange={(e) => handleBlouseDetailChange('fl', e.target.value)} />
+                            <Label htmlFor="blouse-fl">FL</Label>
+                            <Input id="blouse-fl" type="number" placeholder="Full Length" value={blouseDetails.fl || ''} onChange={(e) => handleBlouseDetailChange('fl', e.target.value)} />
                         </div>
                     </div>
                      <div className="grid md:grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="blouse-upper-chest">Upper Chest</Label>
-                            <Input id="blouse-upper-chest" type="number" placeholder="e.g., 34" value={blouseDetails.sh || ''} onChange={(e) => handleBlouseDetailChange('sh', e.target.value)} />
+                            <Label htmlFor="blouse-sh">SH</Label>
+                            <Input id="blouse-sh" type="number" placeholder="Shoulder" value={blouseDetails.sh || ''} onChange={(e) => handleBlouseDetailChange('sh', e.target.value)} />
                         </div>
                         <div>
-                            <Label htmlFor="blouse-waist">Waist</Label>
-                            <Input id="blouse-waist" type="number" placeholder="e.g., 28" value={blouseDetails.sl || ''} onChange={(e) => handleBlouseDetailChange('sl', e.target.value)} />
+                            <Label htmlFor="blouse-cut">Cut</Label>
+                            <Input id="blouse-cut" placeholder="e.g., Regular" value={blouseDetails.cut || ''} onChange={(e) => handleBlouseDetailChange('cut', e.target.value)} />
                         </div>
-                    </div>
-                    <div>
-                        <Label htmlFor="blouse-shoulder">Shoulder</Label>
-                        <Input id="blouse-shoulder" placeholder="e.g., 14.5" value={blouseDetails.cut || ''} onChange={(e) => handleBlouseDetailChange('cut', e.target.value)} />
-                    </div>
-                    <div>
-                        <Label htmlFor="blouse-sleeve">Sleeve</Label>
-                        <Input id="blouse-sleeve" placeholder="e.g., Cap sleeves, 3/4th" value={blouseDetails.neckType || ''} onChange={(e) => handleBlouseDetailChange('neckType', e.target.value)} />
                     </div>
                     <div className="grid md:grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="blouse-front-neck">Front Neck</Label>
-                            <Input id="blouse-front-neck" type="number" placeholder="e.g., 7.5" value={blouseDetails.fn || ''} onChange={(e) => handleBlouseDetailChange('fn', e.target.value)} />
+                            <Label htmlFor="blouse-sl">SL</Label>
+                            <Input id="blouse-sl" type="number" placeholder="Sleeve Length" value={blouseDetails.sl || ''} onChange={(e) => handleBlouseDetailChange('sl', e.target.value)} />
                         </div>
                         <div>
-                            <Label htmlFor="blouse-back-neck">Back Neck</Label>
-                            <Input id="blouse-back-neck" type="number" placeholder="e.g., 9" value={blouseDetails.bn || ''} onChange={(e) => handleBlouseDetailChange('bn', e.target.value)} />
+                            <Label htmlFor="blouse-neck-type">Neck Type</Label>
+                            <Input id="blouse-neck-type" placeholder="e.g., Round, V-neck" value={blouseDetails.neckType || ''} onChange={(e) => handleBlouseDetailChange('neckType', e.target.value)} />
                         </div>
                     </div>
                     <div className="grid md:grid-cols-2 gap-4">
-                         <div>
-                            <Label htmlFor="blouse-dt">DT</Label>
-                            <Input id="blouse-dt" placeholder="DT details" value={blouseDetails.dt || ''} onChange={(e) => handleBlouseDetailChange('dt', e.target.value)} />
+                        <div>
+                            <Label htmlFor="blouse-fn">FN</Label>
+                            <Input id="blouse-fn" type="number" placeholder="Front Neck" value={blouseDetails.fn || ''} onChange={(e) => handleBlouseDetailChange('fn', e.target.value)} />
                         </div>
+                        <div>
+                            <Label htmlFor="blouse-bn">BN</Label>
+                            <Input id="blouse-bn" type="number" placeholder="Back Neck" value={blouseDetails.bn || ''} onChange={(e) => handleBlouseDetailChange('bn', e.target.value)} />
+                        </div>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="blouse-slit">Slit</Label>
+                            <Input id="blouse-slit" placeholder="Slit details" value={blouseDetails.slit || ''} onChange={(e) => handleBlouseDetailChange('slit', e.target.value)} />
+                        </div>
+                        <div>
+                            <Label htmlFor="blouse-extra">Extra</Label>
+                            <Input id="blouse-extra" placeholder="Extra details" value={blouseDetails.extra || ''} onChange={(e) => handleBlouseDetailChange('extra', e.target.value)} />
+                        </div>
+                    </div>
+                    <div>
+                        <Label htmlFor="blouse-dt">DT</Label>
+                        <Input id="blouse-dt" placeholder="DT details" value={blouseDetails.dt || ''} onChange={(e) => handleBlouseDetailChange('dt', e.target.value)} />
                     </div>
                 </CardContent>
             </Card>
@@ -230,6 +240,21 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
                 </CardContent>
             </Card>
         )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Custom Notes</CardTitle>
+            <CardDescription>Add any specific instructions or details for your design.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              placeholder="e.g., I'd like a slightly longer hem, specific button types..."
+              value={customNotes}
+              onChange={(e) => setCustomNotes(e.target.value)}
+              rows={4}
+            />
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
@@ -280,20 +305,6 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Custom Notes</CardTitle>
-            <CardDescription>Add any specific instructions or details for your design.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              placeholder="e.g., I'd like a slightly longer hem, specific button types..."
-              value={customNotes}
-              onChange={(e) => setCustomNotes(e.target.value)}
-              rows={4}
-            />
-          </CardContent>
-        </Card>
       </div>
 
       <div className="lg:col-span-1 space-y-6">
