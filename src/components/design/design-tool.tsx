@@ -31,6 +31,8 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
   const [customNotes, setCustomNotes] = useState('');
   const [referenceImagePreviews, setReferenceImagePreviews] = useState<string[]>([]);
   const [measurements, setMeasurements] = useState<{ [key: string]: string | number | undefined }>({});
+  const [autofilledStyleId, setAutofilledStyleId] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (initialDesign) {
@@ -38,12 +40,14 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
       setCustomNotes(initialDesign.notes || '');
       setReferenceImagePreviews(initialDesign.referenceImages || []);
       setMeasurements(initialDesign.measurements || {});
+      setAutofilledStyleId(null);
     } else {
       // Reset all fields for a new design
       setStyleId('');
       setCustomNotes('');
       setReferenceImagePreviews([]);
       setMeasurements({});
+      setAutofilledStyleId(null);
     }
   }, [initialDesign]);
 
@@ -53,11 +57,13 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
 
   const handleStyleChange = (newStyleId: string) => {
     setStyleId(newStyleId);
+    setAutofilledStyleId(null); // Reset autofill message on every style change
     
     // Autofill logic
     const savedMeasurements = currentCustomer?.savedMeasurements?.[newStyleId];
     if (savedMeasurements) {
         setMeasurements(savedMeasurements);
+        setAutofilledStyleId(newStyleId); // Set the style ID that was autofilled
         toast({
             title: "Measurements Autofilled",
             description: `Saved measurements for this style have been applied for ${currentCustomer.name}.`
@@ -146,6 +152,11 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
               })}
             </SelectContent>
           </Select>
+          {autofilledStyleId === styleId && styleId !== '' && (
+            <p className="text-sm text-green-700 dark:text-green-400 mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-700/50">
+                Latest saved measurements for {currentCustomer?.name} have been applied. You can update them below if needed.
+            </p>
+          )}
         </CardContent>
       </Card>
       
