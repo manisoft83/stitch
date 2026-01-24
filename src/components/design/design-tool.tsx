@@ -155,12 +155,12 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
                 <CardContent className="space-y-4">
                     <div className="grid md:grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="blouse-yoke">Yoke</Label>
-                            <Input id="blouse-yoke" placeholder="e.g., Princess cut, Padded" value={blouseDetails.yoke || ''} onChange={(e) => handleBlouseDetailChange('yoke', e.target.value)} />
-                        </div>
-                        <div>
                             <Label htmlFor="blouse-fl">FL</Label>
                             <Input id="blouse-fl" type="number" placeholder="Full Length" value={blouseDetails.fl || ''} onChange={(e) => handleBlouseDetailChange('fl', e.target.value)} />
+                        </div>
+                        <div>
+                            <Label htmlFor="blouse-yoke">Yoke</Label>
+                            <Input id="blouse-yoke" placeholder="e.g., Princess cut, Padded" value={blouseDetails.yoke || ''} onChange={(e) => handleBlouseDetailChange('yoke', e.target.value)} />
                         </div>
                     </div>
                      <div className="grid md:grid-cols-2 gap-4">
@@ -362,3 +362,5 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
     </div>
   );
 }
+
+    
