@@ -118,108 +118,109 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
         </Card>
         
         {selectedStyle === 'fitted-blouse' && (
-          <Card>
-              <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Ruler className="h-6 w-6 text-primary" /> Blouse Measurements</CardTitle>
-                  <CardDescription>Provide specific measurements for the fitted blouse. All measurements are in inches.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                  <div>
-                      <Label htmlFor="blouse-type">Blouse Type</Label>
-                      <Input id="blouse-type" placeholder="e.g., Princess Cut, Padded" value={blouseDetails.type || ''} onChange={(e) => handleBlouseDetailChange('type', e.target.value)} />
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                          <Label htmlFor="blouse-length">Length</Label>
-                          <Input id="blouse-length" type="number" placeholder="e.g., 15" value={blouseDetails.length || ''} onChange={(e) => handleBlouseDetailChange('length', e.target.value)} />
-                      </div>
-                      <div>
-                          <Label htmlFor="blouse-upper-chest">Upper Chest</Label>
-                          <Input id="blouse-upper-chest" type="number" placeholder="e.g., 34" value={blouseDetails.upperChest || ''} onChange={(e) => handleBlouseDetailChange('upperChest', e.target.value)} />
-                      </div>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                          <Label htmlFor="blouse-waist">Waist</Label>
-                          <Input id="blouse-waist" type="number" placeholder="e.g., 28" value={blouseDetails.waist || ''} onChange={(e) => handleBlouseDetailChange('waist', e.target.value)} />
-                      </div>
-                      <div>
-                          <Label htmlFor="blouse-shoulder">Shoulder</Label>
-                          <Input id="blouse-shoulder" type="number" placeholder="e.g., 14.5" value={blouseDetails.shoulder || ''} onChange={(e) => handleBlouseDetailChange('shoulder', e.target.value)} />
-                      </div>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                          <Label htmlFor="blouse-sleeve">Sleeve Length</Label>
-                          <Input id="blouse-sleeve" type="number" placeholder="e.g., 10" value={blouseDetails.sleeve || ''} onChange={(e) => handleBlouseDetailChange('sleeve', e.target.value)} />
-                      </div>
-                      <div>
-                          <Label htmlFor="blouse-front-neck">Front Neck Depth</Label>
-                          <Input id="blouse-front-neck" type="number" placeholder="e.g., 7.5" value={blouseDetails.frontNeck || ''} onChange={(e) => handleBlouseDetailChange('frontNeck', e.target.value)} />
-                      </div>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                          <Label htmlFor="blouse-back-neck">Back Neck Depth</Label>
-                          <Input id="blouse-back-neck" type="number" placeholder="e.g., 9" value={blouseDetails.backNeck || ''} onChange={(e) => handleBlouseDetailChange('backNeck', e.target.value)} />
-                      </div>
-                      <div>
-                          <Label htmlFor="blouse-dt">DT (Point)</Label>
-                          <Input id="blouse-dt" type="number" placeholder="e.g., 10.5" value={blouseDetails.dt || ''} onChange={(e) => handleBlouseDetailChange('dt', e.target.value)} />
-                      </div>
-                  </div>
-              </CardContent>
-          </Card>
-        )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><UploadCloud className="h-6 w-6 text-primary" /> Reference Images</CardTitle>
-            <CardDescription>Upload up to 5 images for design reference (e.g., inspiration, specific details).</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Input 
-              id="image-upload" 
-              type="file" 
-              accept="image/*" 
-              multiple
-              onChange={handleImageChange} 
-              className="text-sm file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-              disabled={referenceImagePreviews.length >= 5}
-            />
-            {referenceImagePreviews.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <Label className="text-xs text-muted-foreground">Image Previews:</Label>
-                <div className="flex flex-wrap gap-2">
-                  {referenceImagePreviews.map((src, index) => (
-                    <div key={index} className="relative group">
-                      <Image 
-                          src={src} 
-                          alt={`Reference ${index + 1}`} 
-                          width={80} 
-                          height={80} 
-                          className="rounded-md border object-cover" 
-                          data-ai-hint="design clothing reference"
-                      />
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => removeImage(index)}
-                        aria-label="Remove image"
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </Button>
+          <>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Ruler className="h-6 w-6 text-primary" /> Blouse Measurements</CardTitle>
+                    <CardDescription>Provide specific measurements for the fitted blouse. All measurements are in inches.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div>
+                        <Label htmlFor="blouse-type">Blouse Type</Label>
+                        <Input id="blouse-type" placeholder="e.g., Princess Cut, Padded" value={blouseDetails.type || ''} onChange={(e) => handleBlouseDetailChange('type', e.target.value)} />
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-             {referenceImagePreviews.length >= 5 && (
-                <p className="text-xs text-destructive mt-2">Maximum of 5 images reached.</p>
-            )}
-          </CardContent>
-        </Card>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="blouse-length">Length</Label>
+                            <Input id="blouse-length" type="number" placeholder="e.g., 15" value={blouseDetails.length || ''} onChange={(e) => handleBlouseDetailChange('length', e.target.value)} />
+                        </div>
+                        <div>
+                            <Label htmlFor="blouse-upper-chest">Upper Chest</Label>
+                            <Input id="blouse-upper-chest" type="number" placeholder="e.g., 34" value={blouseDetails.upperChest || ''} onChange={(e) => handleBlouseDetailChange('upperChest', e.target.value)} />
+                        </div>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="blouse-waist">Waist</Label>
+                            <Input id="blouse-waist" type="number" placeholder="e.g., 28" value={blouseDetails.waist || ''} onChange={(e) => handleBlouseDetailChange('waist', e.target.value)} />
+                        </div>
+                        <div>
+                            <Label htmlFor="blouse-shoulder">Shoulder</Label>
+                            <Input id="blouse-shoulder" type="number" placeholder="e.g., 14.5" value={blouseDetails.shoulder || ''} onChange={(e) => handleBlouseDetailChange('shoulder', e.target.value)} />
+                        </div>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="blouse-sleeve">Sleeve Length</Label>
+                            <Input id="blouse-sleeve" type="number" placeholder="e.g., 10" value={blouseDetails.sleeve || ''} onChange={(e) => handleBlouseDetailChange('sleeve', e.target.value)} />
+                        </div>
+                        <div>
+                            <Label htmlFor="blouse-front-neck">Front Neck Depth</Label>
+                            <Input id="blouse-front-neck" type="number" placeholder="e.g., 7.5" value={blouseDetails.frontNeck || ''} onChange={(e) => handleBlouseDetailChange('frontNeck', e.target.value)} />
+                        </div>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="blouse-back-neck">Back Neck Depth</Label>
+                            <Input id="blouse-back-neck" type="number" placeholder="e.g., 9" value={blouseDetails.backNeck || ''} onChange={(e) => handleBlouseDetailChange('backNeck', e.target.value)} />
+                        </div>
+                        <div>
+                            <Label htmlFor="blouse-dt">DT (Point)</Label>
+                            <Input id="blouse-dt" type="number" placeholder="e.g., 10.5" value={blouseDetails.dt || ''} onChange={(e) => handleBlouseDetailChange('dt', e.target.value)} />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><UploadCloud className="h-6 w-6 text-primary" /> Reference Images</CardTitle>
+                <CardDescription>Upload up to 5 images for design reference (e.g., inspiration, specific details).</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Input 
+                  id="image-upload" 
+                  type="file" 
+                  accept="image/*" 
+                  multiple
+                  onChange={handleImageChange} 
+                  className="text-sm file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+                  disabled={referenceImagePreviews.length >= 5}
+                />
+                {referenceImagePreviews.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <Label className="text-xs text-muted-foreground">Image Previews:</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {referenceImagePreviews.map((src, index) => (
+                        <div key={index} className="relative group">
+                          <Image 
+                              src={src} 
+                              alt={`Reference ${index + 1}`} 
+                              width={80} 
+                              height={80} 
+                              className="rounded-md border object-cover" 
+                              data-ai-hint="design clothing reference"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeImage(index)}
+                            aria-label="Remove image"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {referenceImagePreviews.length >= 5 && (
+                    <p className="text-xs text-destructive mt-2">Maximum of 5 images reached.</p>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         <Card>
           <CardHeader>
