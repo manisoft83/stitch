@@ -21,7 +21,6 @@ export default function SummaryStepPage() {
   const { toast } = useToast();
   const {
     currentCustomer,
-    currentMeasurements,
     orderItems,
     resetWorkflow,
     editingOrderId,
@@ -42,9 +41,6 @@ export default function SummaryStepPage() {
     if (!currentCustomer) {
       message = "Missing Customer. Please start from the customer step.";
       redirectTo = '/workflow/customer-step';
-    } else if (!currentMeasurements) {
-      message = "Missing Measurements. Please complete the measurement step.";
-      redirectTo = '/workflow/measurement-step';
     } else if (!orderItems || orderItems.length === 0) {
       message = "No items in order. Please add items in the design step.";
       redirectTo = '/workflow/design-step';
@@ -55,11 +51,11 @@ export default function SummaryStepPage() {
       router.replace(redirectTo);
       return;
     }
-  }, [currentCustomer, currentMeasurements, orderItems, router, toast, isSubmitting, workflowReturnPath, isNavigatingAfterSuccess]);
+  }, [currentCustomer, orderItems, router, toast, isSubmitting, workflowReturnPath, isNavigatingAfterSuccess]);
 
 
   const handleConfirmOrder = async () => {
-    if (!currentCustomer || !currentMeasurements || !orderItems || orderItems.length === 0) {
+    if (!currentCustomer || !orderItems || orderItems.length === 0) {
       toast({ title: "Error", description: "Missing order information or no items to submit.", variant: "destructive" });
       return;
     }
@@ -67,8 +63,6 @@ export default function SummaryStepPage() {
 
     const itemsSummaryList: string[] = orderItems.map(item => generateDesignSummary(item));
     
-    const measurementsSummaryText: string = `Bust: ${currentMeasurements.bust}, Waist: ${currentMeasurements.waist}, Hips: ${currentMeasurements.hips}, Height: ${currentMeasurements.height}`;
-
     const generalOrderNotes = orderItems.map((item, idx) => item.notes ? `Item ${idx+1} Notes: ${item.notes}`: '').filter(Boolean).join('\n') || `Custom order for ${currentCustomer.name}. Includes ${orderItems.length} item(s).`;
     
     const orderStatusToSet: FullOrderType['status'] = editingOrderId && orderItems[0]?.status ? orderItems[0].status : "Pending Assignment";
@@ -83,7 +77,6 @@ export default function SummaryStepPage() {
       items: itemsSummaryList,
       customerId: currentCustomer.id,
       customerName: currentCustomer.name,
-      measurementsSummary: measurementsSummaryText,
       detailedItems: orderItems,
       assignedTailorId: editingOrderId && orderItems[0]?.assignedTailorId ? orderItems[0].assignedTailorId : null,
       assignedTailorName: editingOrderId && orderItems[0]?.assignedTailorName ? orderItems[0].assignedTailorName : null,
@@ -123,7 +116,7 @@ export default function SummaryStepPage() {
   }; 
 
   if (!isSubmitting && !isNavigatingAfterSuccess) {
-    if (!currentCustomer || !currentMeasurements || !orderItems || orderItems.length === 0) {
+    if (!currentCustomer || !orderItems || orderItems.length === 0) {
         return (
             <div className="container mx-auto py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
                 <p className="text-muted-foreground">Loading workflow state or redirecting...</p>
@@ -177,22 +170,6 @@ export default function SummaryStepPage() {
             </>
           )}
           
-          <Separator />
-
-          {currentMeasurements && (
-            <Card className="bg-muted/30">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2"><Ruler className="h-5 w-5 text-primary"/>Measurements</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm space-y-1">
-                <p><strong>Bust:</strong> {currentMeasurements.bust} inches</p>
-                <p><strong>Waist:</strong> {currentMeasurements.waist} inches</p>
-                <p><strong>Hips:</strong> {currentMeasurements.hips} inches</p>
-                <p><strong>Height:</strong> {currentMeasurements.height} inches</p>
-              </CardContent>
-            </Card>
-          )}
-
           <Separator />
 
           {orderItems && orderItems.length > 0 && (
@@ -273,7 +250,7 @@ export default function SummaryStepPage() {
           <Button 
             onClick={handleConfirmOrder} 
             className="w-full sm:w-auto shadow-md hover:shadow-lg" 
-            disabled={isSubmitting || isNavigatingAfterSuccess || !currentCustomer || !currentMeasurements || !orderItems || orderItems.length === 0}
+            disabled={isSubmitting || isNavigatingAfterSuccess || !currentCustomer || !orderItems || orderItems.length === 0}
           >
             {isSubmitting ? (editingOrderId ? "Updating..." : "Placing Order...") : (
               <>

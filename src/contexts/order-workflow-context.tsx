@@ -34,7 +34,6 @@ export interface DesignDetails {
 
 interface OrderWorkflowState {
   currentCustomer: Customer | null;
-  currentMeasurements: MeasurementFormValues | null;
   activeDesign: DesignDetails | null; // Design for the item currently being configured
   orderItems: DesignDetails[]; // Array of designs for items added to the order
   editingItemIndex: number | null; // Index of the item being edited from orderItems
@@ -44,7 +43,6 @@ interface OrderWorkflowState {
 
 interface OrderWorkflowContextType extends OrderWorkflowState {
   setCustomer: (customer: Customer | null) => void;
-  setMeasurements: (measurements: MeasurementFormValues | null) => void;
   setActiveDesign: (design: DesignDetails | null) => void; // To set the design tool's current state
   addOrUpdateItemInOrder: (design: DesignDetails) => void;
   removeOrderItem: (index: number) => void;
@@ -71,7 +69,6 @@ export const initialSingleDesignState: DesignDetails = {
 
 const initialState: OrderWorkflowState = {
   currentCustomer: null,
-  currentMeasurements: null,
   activeDesign: null, 
   orderItems: [],
   editingItemIndex: null,
@@ -86,15 +83,10 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
     setWorkflowState(prevState => ({
       ...initialState, // Reset most of the workflow when customer changes, unless editing existing order
       currentCustomer: customer,
-      currentMeasurements: customer?.measurements || null,
       // If editing an order, customer change shouldn't wipe items yet, handle in calling component
       editingOrderId: customer?.id === prevState.currentCustomer?.id ? prevState.editingOrderId : null,
       workflowReturnPath: customer?.id === prevState.currentCustomer?.id ? prevState.workflowReturnPath : null,
     }));
-  }, []);
-
-  const setMeasurements = useCallback((measurements: MeasurementFormValues | null) => {
-    setWorkflowState(prevState => ({ ...prevState, currentMeasurements: measurements }));
   }, []);
 
   const setActiveDesign = useCallback((design: DesignDetails | null) => {
@@ -149,7 +141,6 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
       ...(orderId === null && prevState.currentCustomer ? { // Partial reset if customer exists
           ...initialState, 
           currentCustomer: prevState.currentCustomer, 
-          currentMeasurements: prevState.currentMeasurements
         } : {}) 
     }));
   }, []);
@@ -161,7 +152,6 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
   const loadOrderForEditing = useCallback((order: FullOrderType, customer: Customer) => { // Use FullOrderType
     setWorkflowState({
       currentCustomer: customer,
-      currentMeasurements: customer.measurements || null,
       orderItems: order.detailedItems || [], 
       activeDesign: null, // No active design initially when loading an order for edit
       editingItemIndex: null,
@@ -174,7 +164,6 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
   const contextValue: OrderWorkflowContextType = {
     ...workflowState,
     setCustomer,
-    setMeasurements,
     setActiveDesign,
     clearActiveDesign,
     addOrUpdateItemInOrder,

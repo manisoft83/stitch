@@ -151,8 +151,8 @@ export default function CustomerStepPage() {
           title: customerIdToUpdate ? "Customer Updated" : "New Customer Registered",
           description: `${actionResult.customer.name}'s details have been ${customerIdToUpdate ? 'updated' : 'registered'} in Firestore.`
         });
-        setWorkflowCustomer(customerToSetInWorkflow); // This will update currentCustomer and currentMeasurements
-        router.push('/workflow/measurement-step');
+        setWorkflowCustomer(customerToSetInWorkflow); // This will update currentCustomer
+        router.push('/workflow/design-step');
       } else {
         console.error("Client: saveCustomerAction failed.", actionResult.error);
         toast({
@@ -253,7 +253,7 @@ export default function CustomerStepPage() {
                         // This is a more complex scenario. For now, we'll update the form,
                         // and the save action will associate the order with this new customer.
                         // The OrderWorkflow context might need adjustment if this becomes a primary use case.
-                        // For now, setting the workflow customer here will change currentMeasurements etc.
+                        // For now, setting the workflow customer here will change other details.
                          setWorkflowCustomer(customer);
                     } else if (customer && editingOrderId && currentCustomer && customer.id === currentCustomer.id) {
                         // Re-selecting the same customer, ensure workflow reflects this.

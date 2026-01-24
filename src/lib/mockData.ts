@@ -18,7 +18,6 @@ export interface Customer {
   name: string;
   email: string;
   phone: string;
-  measurements?: MeasurementFormValues; 
   address?: Address; 
   // Optional: Timestamps if you want to track them on the client, though often managed by Firestore serverTimestamp
   // createdAt?: any; // Could be Firestore Timestamp or string/Date
@@ -34,8 +33,6 @@ export interface Order {
   customerId: string; 
   customerName?: string; // Denormalized for easy display
   
-  measurementsSummary?: string;
-
   // Store full design details for each item in the order
   detailedItems?: DesignDetails[]; 
   

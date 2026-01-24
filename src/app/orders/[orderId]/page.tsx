@@ -159,13 +159,13 @@ export default function OrderDetailsPage() {
 
 
   const handleEditOrder = () => {
-    if (customerForOrder && currentOrder && currentOrder.detailedItems && customerForOrder.measurements) {
+    if (customerForOrder && currentOrder && currentOrder.detailedItems) {
       loadOrderForEditing(currentOrder, customerForOrder);
       router.push('/workflow/customer-step');
     } else {
        toast({
             title: "Cannot Edit Order",
-            description: "Missing customer, measurements, or detailed item designs to start editing.",
+            description: "Missing customer or detailed item designs to start editing.",
             variant: "destructive"
         });
     }
@@ -260,25 +260,6 @@ export default function OrderDetailsPage() {
           )}
 
           <Separator />
-
-          {customerForOrder?.measurements && (
-            <>
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-semibold flex items-center"><Ruler className="mr-2 h-5 w-5 text-primary" />Customer Measurements</h3>
-                </div>
-                <Card className="bg-background/50 p-4 rounded-md text-sm">
-                    <p><strong>Profile:</strong> {customerForOrder.measurements.name || "Default"}</p>
-                    <p><strong>Bust:</strong> {customerForOrder.measurements.bust} inches</p>
-                    <p><strong>Waist:</strong> {customerForOrder.measurements.waist} inches</p>
-                    <p><strong>Hips:</strong> {customerForOrder.measurements.hips} inches</p>
-                    <p><strong>Height:</strong> {customerForOrder.measurements.height} inches</p>
-                </Card>
-              </div>
-              <Separator />
-            </>
-          )}
-
 
           {currentOrder.detailedItems && currentOrder.detailedItems.length > 0 && (
              <>

@@ -11,14 +11,13 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, ArrowRight, PlusCircle, Trash2, Edit3, Package, Shirt } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { getDetailNameById, fabricOptionsForDisplay, colorOptionsForDisplay, styleOptionsForDisplay, generateDesignSummary } from '@/lib/mockData';
+import { getDetailNameById, styleOptionsForDisplay, generateDesignSummary } from '@/lib/mockData';
 
 export default function DesignStepPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { 
     currentCustomer, 
-    currentMeasurements, 
     activeDesign, 
     setActiveDesign,
     clearActiveDesign,
@@ -33,14 +32,11 @@ export default function DesignStepPage() {
     if (!currentCustomer) {
       toast({ title: "No Customer Selected", description: "Please select or register a customer first.", variant: "destructive" });
       router.replace('/workflow/customer-step');
-    } else if (!currentMeasurements) {
-      toast({ title: "No Measurements Found", description: "Please provide measurements before designing.", variant: "destructive" });
-      router.replace('/workflow/measurement-step');
     } else if (!activeDesign && orderItems.length === 0 && editingItemIndex === null) {
       // If no active design, no items, and not editing, initialize a new design
       setActiveDesign({ ...initialSingleDesignState });
     }
-  }, [currentCustomer, currentMeasurements, router, toast, activeDesign, orderItems.length, editingItemIndex, setActiveDesign]);
+  }, [currentCustomer, router, toast, activeDesign, orderItems.length, editingItemIndex, setActiveDesign]);
 
   const handleSaveCurrentItem = (configuredDesign: DesignDetails) => {
     addOrUpdateItemInOrder(configuredDesign);
@@ -66,7 +62,7 @@ export default function DesignStepPage() {
 
   const canProceedToSummary = orderItems.length > 0;
 
-  if (!currentCustomer || !currentMeasurements) {
+  if (!currentCustomer) {
     return <div className="container mx-auto py-8 flex justify-center items-center min-h-[calc(100vh-200px)]"><p>Loading workflow state or redirecting...</p></div>;
   }
 
@@ -141,8 +137,8 @@ export default function DesignStepPage() {
       )}
       
       <div className="mt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <Button variant="outline" onClick={() => router.push('/workflow/measurement-step')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Measurements
+        <Button variant="outline" onClick={() => router.push('/workflow/customer-step')}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Customer
         </Button>
         <Button onClick={() => router.push('/workflow/summary-step')} disabled={!canProceedToSummary} className="shadow-md hover:shadow-lg">
           Proceed to Order Summary <ArrowRight className="ml-2 h-4 w-4" />

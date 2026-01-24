@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Ruler } from "lucide-react";
+import { Ruler, Ban } from "lucide-react";
 import { measurementFormSchema, type MeasurementFormValues } from "@/lib/schemas";
 import { useEffect } from "react";
 
@@ -29,23 +29,13 @@ export function MeasurementForm({ initialValues, onSave }: MeasurementFormProps)
   const { toast } = useToast();
   const form = useForm<MeasurementFormValues>({
     resolver: zodResolver(measurementFormSchema),
-    defaultValues: initialValues || {
-      bust: undefined,
-      waist: undefined,
-      hips: undefined,
-      height: undefined,
-    },
+    defaultValues: initialValues || {},
     mode: "onChange",
   });
 
   useEffect(() => {
     if (initialValues) {
-      form.reset({
-        bust: initialValues.bust,
-        waist: initialValues.waist,
-        hips: initialValues.hips,
-        height: initialValues.height,
-      });
+      form.reset(initialValues);
     }
   }, [initialValues, form]);
 
@@ -66,75 +56,11 @@ export function MeasurementForm({ initialValues, onSave }: MeasurementFormProps)
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <div className="grid md:grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="bust"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Bust (inches)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="e.g., 36" {...field} />
-                </FormControl>
-                <FormDescription>
-                  Measure around the fullest part of your bust, keeping the tape level.                  
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="waist"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Waist (inches)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="e.g., 28" {...field} />
-                </FormControl>
-                <FormDescription>
-                  Measure around the narrowest part of your natural waistline.
-                  <br />Tip: This is usually an inch or two above your belly button.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="grid md:grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="hips"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Hips (inches)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="e.g., 40" {...field} />
-                </FormControl>
-                <FormDescription>
-                  Measure around the fullest part of your hips and bottom, feet together.
-                  <br />Tip: Ensure the tape is parallel to the floor.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="height"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Height (inches)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="e.g., 65" {...field} />
-                </FormControl>
-                <FormDescription>Your total height without shoes. Stand straight.
-                <br />Tip: Stand against a wall for best results.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <div className="text-center p-4 border rounded-md bg-muted/50">
+            <Ban className="mx-auto h-10 w-10 text-muted-foreground"/>
+            <p className="mt-2 text-sm text-muted-foreground">
+                The measurement fields have been removed. This form is no longer active.
+            </p>
         </div>
         
         <Button type="submit" className="w-full md:w-auto shadow-md hover:shadow-lg transition-shadow">

@@ -6,7 +6,6 @@ import { db } from '@/lib/firebase/config';
 import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, Timestamp, query, where, getDoc, updateDoc, FieldValue, deleteField, orderBy, limit, writeBatch } from 'firebase/firestore';
 import type { TailorFormData } from '@/lib/mockData'; // Using TailorFormData specifically for the form
 import type { Tailor, Customer, Address, Order, OrderStatus } from '@/lib/mockData'; // Keep general types
-import type { MeasurementFormValues } from '@/lib/schemas';
 import { format } from 'date-fns';
 import type { DesignDetails } from '@/contexts/order-workflow-context';
 
@@ -31,7 +30,6 @@ const orderFromDoc = (docData: ReturnType<typeof docSnapshot.data> | undefined, 
         items: Array.isArray(data.items) ? data.items : [],
         customerId: data.customerId || '',
         customerName: data.customerName || '',
-        measurementsSummary: data.measurementsSummary || '',
         detailedItems: Array.isArray(data.detailedItems) ? data.detailedItems as DesignDetails[] : undefined,
         assignedTailorId: data.assignedTailorId || null,
         assignedTailorName: data.assignedTailorName || null,
@@ -170,7 +168,6 @@ export async function getCustomers(): Promise<Customer[]> {
         email: data.email || '',
         phone: data.phone || '',
         address: data.address || undefined,
-        measurements: data.measurements || undefined,
       } as Customer;
     });
     console.log(`DataService: Successfully fetched ${customersList.length} customers.`);
@@ -195,7 +192,6 @@ export async function getCustomerById(customerId: string): Promise<Customer | nu
         email: data.email || '',
         phone: data.phone || '',
         address: data.address || undefined,
-        measurements: data.measurements || undefined,
       } as Customer;
     } else {
       console.log(`DataService: Customer with ID ${customerId} not found.`);
@@ -229,7 +225,6 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
       updatedAt: FieldValue;
       createdAt?: FieldValue;
       address?: Address | FieldValue;
-      measurements?: MeasurementFormValues;
   } = {
       name,
       email,
@@ -278,7 +273,6 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
         email: updatedData.email || '',
         phone: updatedData.phone || '',
         address: updatedData.address || undefined,
-        measurements: updatedData.measurements || undefined,
       };
     } else {
       console.log(`DataService: Attempting to add new customer`);
@@ -300,7 +294,6 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
         email: savedData.email || '',
         phone: savedData.phone || '',
         address: savedData.address || undefined,
-        measurements: savedData.measurements || undefined,
       };
     }
   } catch (error) {
@@ -309,23 +302,6 @@ export async function saveCustomer(customerFormInput: CustomerFormInput, existin
         console.error("Error name:", error.name, "Message:", error.message, "Stack:", error.stack);
     }
     return null;
-  }
-}
-
-
-export async function updateCustomerMeasurements(customerId: string, measurements: MeasurementFormValues): Promise<boolean> {
-  console.log(`DataService: Updating measurements for customer ID ${customerId}`, measurements);
-  try {
-    const customerRef = doc(db, CUSTOMERS_COLLECTION, customerId);
-    await updateDoc(customerRef, {
-      measurements: measurements,
-      updatedAt: serverTimestamp(),
-    });
-    console.log(`DataService: Successfully updated measurements for customer ${customerId}`);
-    return true;
-  } catch (error) {
-    console.error(`DataService: Error updating measurements for customer ${customerId}:`, error);
-    return false;
   }
 }
 

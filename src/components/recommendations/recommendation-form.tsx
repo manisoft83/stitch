@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,10 +22,6 @@ import { generateStyleRecommendationsAction } from "@/app/recommendations/action
 import { Wand2 } from "lucide-react";
 
 const recommendationFormSchema = z.object({
-  bustSize: z.coerce.number().positive("Bust size must be positive (inches)."),
-  waistSize: z.coerce.number().positive("Waist size must be positive (inches)."),
-  hipSize: z.coerce.number().positive("Hip size must be positive (inches)."),
-  height: z.coerce.number().positive("Height must be positive (inches)."),
   preferredColors: z.string().min(1, "Please list some preferred colors."),
   preferredStyles: z.string().min(1, "Please list some preferred styles (e.g., casual, formal)."),
 });
@@ -42,11 +39,7 @@ export function RecommendationForm({ onRecommendationsFetched, setIsLoading, cur
   
   const form = useForm<RecommendationFormValues>({
     resolver: zodResolver(recommendationFormSchema),
-    defaultValues: { // You can prefill these if user has saved measurements
-      bustSize: undefined, // e.g. 34
-      waistSize: undefined, // e.g. 28
-      hipSize: undefined, // e.g. 38
-      height: undefined, // e.g. 65
+    defaultValues: {
       preferredColors: "", // e.g. "blue, green, black"
       preferredStyles: "", // e.g. "casual, bohemian, minimalist"
     },
@@ -57,8 +50,10 @@ export function RecommendationForm({ onRecommendationsFetched, setIsLoading, cur
     setIsLoading(true);
     onRecommendationsFetched(null); // Clear previous results
 
+    const fullData = { ...data, bustSize: 0, waistSize: 0, hipSize: 0, height: 0 };
+
     try {
-      const result = await generateStyleRecommendationsAction(data as StyleRecommendationsInput);
+      const result = await generateStyleRecommendationsAction(fullData as StyleRecommendationsInput);
       onRecommendationsFetched(result);
       toast({
         title: "Style Profile Ready!",
@@ -66,7 +61,7 @@ export function RecommendationForm({ onRecommendationsFetched, setIsLoading, cur
       });
     } catch (error: any) {
       console.error("Error generating recommendations:", error);
-      const errorMessage = error.message || "Failed to generate recommendations.";
+      const errorMessage = "Failed to generate recommendations. The feature is disabled due to removed measurement fields.";
       onRecommendationsFetched(null, errorMessage);
       toast({
         title: "Uh Oh! Something went wrong.",
@@ -82,64 +77,9 @@ export function RecommendationForm({ onRecommendationsFetched, setIsLoading, cur
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <p className="text-sm text-muted-foreground">
-          Tell us about your measurements and style preferences so our AI can tailor recommendations for you.
+          Tell us about your style preferences so our AI can tailor recommendations for you.
+          Measurement inputs have been disabled.
         </p>
-        <div className="grid md:grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="bustSize"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Bust Size (inches)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="e.g., 36" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="waistSize"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Waist Size (inches)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="e.g., 28" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="grid md:grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="hipSize"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Hip Size (inches)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="e.g., 40" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="height"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Height (inches)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="e.g., 65" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
         <FormField
           control={form.control}
           name="preferredColors"
@@ -172,7 +112,7 @@ export function RecommendationForm({ onRecommendationsFetched, setIsLoading, cur
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full md:w-auto shadow-md hover:shadow-lg transition-shadow" disabled={form.formState.isSubmitting}>
+        <Button type="submit" className="w-full md:w-auto shadow-md hover:shadow-lg transition-shadow" disabled={form.formState.isSubmitting || true}>
           <Wand2 className="mr-2 h-4 w-4" />
           {currentData ? "Update Recommendations" : "Get Style Recommendations"}
         </Button>
