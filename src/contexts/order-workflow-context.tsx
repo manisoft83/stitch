@@ -8,8 +8,8 @@ import type { MeasurementFormValues } from '@/lib/schemas';
 
 // Define the structure for blouse-specific details
 export interface BlouseDetails {
-  fl?: number;
   yoke?: string;
+  fl?: number;
   sh?: number;
   cut?: string;
   sl?: number;
