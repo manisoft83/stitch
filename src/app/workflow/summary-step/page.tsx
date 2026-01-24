@@ -13,7 +13,7 @@ import type { Order as FullOrderType } from '@/lib/mockData';
 import { format, addDays } from 'date-fns';
 import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon, MapPin, PackagePlus, Shirt } from 'lucide-react';
 import { saveOrderAction, type SaveOrderActionResult } from '@/app/orders/actions';
-import { getDetailNameById, fabricOptionsForDisplay, colorOptionsForDisplay, styleOptionsForDisplay, generateDesignSummary } from '@/lib/mockData';
+import { getDetailNameById, styleOptionsForDisplay, generateDesignSummary } from '@/lib/mockData';
 
 
 export default function SummaryStepPage() {
@@ -206,8 +206,6 @@ export default function SummaryStepPage() {
                      <h4 className="text-md font-semibold mb-1 flex items-center gap-2"><Shirt className="h-4 w-4 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(itemDesign)}</h4>
                     <div className="text-xs space-y-0.5 pl-2">
                         <p><strong>Style:</strong> {itemDesign.style ? getDetailNameById(itemDesign.style, styleOptionsForDisplay) : 'N/A'}</p>
-                        <p><strong>Fabric:</strong> {itemDesign.fabric ? getDetailNameById(itemDesign.fabric, fabricOptionsForDisplay) : 'N/A'}</p>
-                        <p><strong>Color:</strong> {itemDesign.color ? getDetailNameById(itemDesign.color, colorOptionsForDisplay) : 'N/A'}</p>
                         {itemDesign.notes && <p><strong>Notes:</strong> <span className="whitespace-pre-wrap">{itemDesign.notes}</span></p>}
                         
                         {itemDesign.style === 'fitted-blouse' && itemDesign.blouseDetails && Object.keys(itemDesign.blouseDetails).length > 0 && (

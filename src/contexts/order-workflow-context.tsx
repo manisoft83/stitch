@@ -21,8 +21,6 @@ export interface BlouseDetails {
 
 // Define the structure for design details of a single item
 export interface DesignDetails {
-  fabric: string | null;
-  color: string | null;
   style: string | null;
   notes: string;
   referenceImages?: string[]; 
@@ -61,8 +59,6 @@ interface OrderWorkflowContextType extends OrderWorkflowState {
 const OrderWorkflowContext = createContext<OrderWorkflowContextType | undefined>(undefined);
 
 export const initialSingleDesignState: DesignDetails = {
-  fabric: null,
-  color: null,
   style: null,
   notes: '',
   referenceImages: [],

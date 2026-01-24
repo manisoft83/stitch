@@ -21,7 +21,7 @@ import { format, parseISO } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
 import { useAuth } from '@/hooks/use-auth'; // Added useAuth
-import { getDetailNameById, fabricOptionsForDisplay, colorOptionsForDisplay, styleOptionsForDisplay, generateDesignSummary } from '@/lib/mockData';
+import { getDetailNameById, styleOptionsForDisplay, generateDesignSummary } from '@/lib/mockData';
 import type { DesignDetails } from '@/contexts/order-workflow-context';
 
 
@@ -291,9 +291,7 @@ export default function OrderDetailsPage() {
                             <Card key={index} className="bg-background/50 p-4 rounded-md text-sm space-y-1">
                                 <h4 className="font-medium text-md flex items-center gap-1.5"><Shirt className="h-4 w-4 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(design)}</h4>
                                 <p><strong>Style:</strong> {getDetailNameById(design.style, styleOptionsForDisplay)}</p>
-                                <p><strong>Fabric:</strong> {getDetailNameById(design.fabric, fabricOptionsForDisplay)}</p>
-                                <p><strong>Color:</strong> {getDetailNameById(design.color, colorOptionsForDisplay)}</p>
-
+                                
                                 {design.style === 'fitted-blouse' && design.blouseDetails && Object.keys(design.blouseDetails).length > 0 && (
                                     <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
                                         <p className="font-medium text-xs text-foreground">Blouse Specifics:</p>

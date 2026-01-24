@@ -80,21 +80,6 @@ export const statusFilterOptions: { value: StatusFilterValue; label: string }[] 
 ];
 
 // Helper to get style/fabric/color names - used in summary, might be needed elsewhere
-export const fabricOptionsForDisplay = [
-  { id: 'cotton', name: 'Cotton' },
-  { id: 'silk', name: 'Silk' },
-  { id: 'linen', name: 'Linen' },
-  { id: 'wool', name: 'Wool' },
-];
-
-export const colorOptionsForDisplay = [
-  { id: 'red', name: 'Red', hex: '#FF0000' },
-  { id: 'blue', name: 'Blue', hex: '#0000FF' },
-  { id: 'green', name: 'Green', hex: '#00FF00' },
-  { id: 'black', name: 'Black', hex: '#000000' },
-  { id: 'white', name: 'White', hex: '#FFFFFF' },
-];
-
 export const styleOptionsForDisplay = [
   { id: 'a-line-dress', name: 'A-Line Dress' },
   { id: 'fitted-blouse', name: 'Fitted Blouse' },
@@ -110,7 +95,5 @@ export const getDetailNameById = (id: string | null, options: Array<{id: string,
 // Function to generate a summary string for a design
 export const generateDesignSummary = (design: DesignDetails): string => {
   const styleName = design.style ? getDetailNameById(design.style, styleOptionsForDisplay) : 'N/A';
-  const fabricName = design.fabric ? getDetailNameById(design.fabric, fabricOptionsForDisplay) : 'N/A';
-  const colorName = design.color ? getDetailNameById(design.color, colorOptionsForDisplay) : 'N/A';
-  return `${styleName} (${fabricName}, ${colorName})`;
+  return styleName;
 };
