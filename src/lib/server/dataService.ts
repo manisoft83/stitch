@@ -471,8 +471,18 @@ export async function getOrdersFromDb(limitCount: number = 50): Promise<Order[]>
     // Sort by 'updatedAt' to show the most recently modified orders first.
     const ordersQuery = query(collection(db, ORDERS_COLLECTION), orderBy("updatedAt", "desc"), limit(limitCount));
     const orderSnapshot = await getDocs(ordersQuery);
-    const ordersList = orderSnapshot.docs.map(docSnap => orderFromDoc(docSnap.data(), docSnap.id) as Order).filter(o => o !== null);
-    console.log(`DataService: Successfully fetched ${ordersList.length} orders.`);
+    const ordersList: Order[] = [];
+    orderSnapshot.docs.forEach(docSnap => {
+        try {
+            const order = orderFromDoc(docSnap.data(), docSnap.id);
+            if (order) {
+                ordersList.push(order);
+            }
+        } catch (e) {
+            console.error(`DataService: Failed to parse order document ${docSnap.id}. Skipping.`, e);
+        }
+    });
+    console.log(`DataService: Successfully fetched and parsed ${ordersList.length} orders.`);
     return ordersList;
   } catch (error) {
     console.error("DataService: Error fetching orders from Firestore:", error);
@@ -490,8 +500,18 @@ export async function getOrdersForCustomer(customerId: string): Promise<Order[]>
       orderBy("updatedAt", "desc")
     );
     const orderSnapshot = await getDocs(ordersQuery);
-    const ordersList = orderSnapshot.docs.map(docSnap => orderFromDoc(docSnap.data(), docSnap.id) as Order).filter(o => o !== null);
-    console.log(`DataService: Successfully fetched ${ordersList.length} orders for customer ${customerId}.`);
+    const ordersList: Order[] = [];
+    orderSnapshot.docs.forEach(docSnap => {
+        try {
+            const order = orderFromDoc(docSnap.data(), docSnap.id);
+            if (order) {
+                ordersList.push(order);
+            }
+        } catch (e) {
+            console.error(`DataService: Failed to parse order document ${docSnap.id}. Skipping.`, e);
+        }
+    });
+    console.log(`DataService: Successfully fetched and parsed ${ordersList.length} orders for customer ${customerId}.`);
     return ordersList;
   } catch (error) {
     console.error(`DataService: Error fetching orders for customer ${customerId}:`, error);
