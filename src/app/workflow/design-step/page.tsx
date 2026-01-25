@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -12,9 +11,20 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, ArrowRight, PlusCircle, Trash2, Edit3, Package, Shirt, FileClock } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { getGarmentStyles } from '@/lib/server/dataService';
-import { generateDesignSummary, type GarmentStyle, type Order } from '@/lib/mockData';
+import { generateDesignSummary, type GarmentStyle } from '@/lib/mockData';
 import { getPastOrdersAction } from '../actions';
 import { format, parseISO } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function DesignStepPage() {
   const router = useRouter();
@@ -35,6 +45,7 @@ export default function DesignStepPage() {
   const [isLoadingStyles, setIsLoadingStyles] = useState(true);
   const [pastDesigns, setPastDesigns] = useState<{ design: DesignDetails; orderNumber: number; orderDate: string }[]>([]);
   const [isLoadingPastDesigns, setIsLoadingPastDesigns] = useState(false);
+  const [designToConfirm, setDesignToConfirm] = useState<DesignDetails | null>(null);
 
   useEffect(() => {
     async function fetchStyles() {
@@ -77,9 +88,22 @@ export default function DesignStepPage() {
                     orderNumber: order.orderNumber,
                     orderDate: order.date
                 }))
-            );
-            setPastDesigns(allDesigns);
+            ).filter(item => item.design && item.orderNumber && item.orderDate); // Filter out any malformed items
+            
+            // Deduplicate designs based on a summary
+            const uniqueDesigns = new Map<string, { design: DesignDetails; orderNumber: number; orderDate: string }>();
+            allDesigns.forEach(item => {
+                const summary = generateDesignSummary(item.design);
+                // We can decide to keep the most recent one if needed, but for now, first one wins.
+                if (!uniqueDesigns.has(summary)) {
+                    uniqueDesigns.set(summary, item);
+                }
+            });
+            
+            setPastDesigns(Array.from(uniqueDesigns.values()));
+
         } catch (error) {
+            console.error("Design step: failed to fetch past orders", error)
             toast({ title: "Error", description: "Could not load past designs.", variant: "destructive" });
         } finally {
             setIsLoadingPastDesigns(false);
@@ -149,9 +173,34 @@ export default function DesignStepPage() {
                                 <p className="font-semibold">{generateDesignSummary(past.design)}</p>
                                 <p className="text-xs text-muted-foreground">From Order #{past.orderNumber} on {format(parseISO(past.orderDate), "PPP")}</p>
                             </div>
-                            <Button size="sm" variant="secondary" onClick={() => handleUsePastDesign(past.design)}>
-                                Use this Design
-                            </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="secondary" onClick={() => setDesignToConfirm(past.design)}>
+                                        Use this Design
+                                    </Button>
+                                </AlertDialogTrigger>
+                                {designToConfirm === past.design && (
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Add this design to your order?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                You are about to add the following design to your current order:
+                                                <br/>
+                                                <strong className="text-foreground mt-2 inline-block">{generateDesignSummary(past.design)}</strong>
+                                                <br/>
+                                                This will add it as a new item. You can edit it after adding.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel onClick={() => setDesignToConfirm(null)}>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => {
+                                                if(designToConfirm) handleUsePastDesign(designToConfirm);
+                                                setDesignToConfirm(null);
+                                            }}>Confirm & Add</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                )}
+                            </AlertDialog>
                         </Card>
                     ))}
                 </div>
