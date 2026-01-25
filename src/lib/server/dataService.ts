@@ -60,26 +60,31 @@ const orderFromDoc = (docSnapshot: DocumentData, id: string): Order | null => {
     if (!docSnapshot) return null;
     const data = docSnapshot;
 
-    return {
-        id: id,
-        orderNumber: data.orderNumber || 0,
-        date: safeToFormattedDate(data.date) || format(new Date(), "yyyy-MM-dd"), // Fallback to today if date is invalid/missing
-        status: data.status || 'Pending Assignment',
-        total: data.total || "Pricing TBD",
-        items: Array.isArray(data.items) ? data.items : [],
-        customerId: data.customerId || '',
-        customerName: data.customerName || '',
-        detailedItems: Array.isArray(data.detailedItems) ? data.detailedItems as DesignDetails[] : undefined,
-        assignedTailorId: data.assignedTailorId || null,
-        assignedTailorName: data.assignedTailorName || null,
-        dueDate: safeToFormattedDate(data.dueDate), // Can be undefined
-        shippingAddress: data.shippingAddress || undefined,
-        notes: data.notes || '',
-        assignmentInstructions: data.assignmentInstructions || '',
-        assignmentImage: data.assignmentImage || '',
-        createdAt: safeToISOString(data.createdAt),
-        updatedAt: safeToISOString(data.updatedAt),
-    } as Order;
+    try {
+        return {
+            id: id,
+            orderNumber: data.orderNumber || 0,
+            date: safeToFormattedDate(data.date) || format(new Date(), "yyyy-MM-dd"), // Fallback to today if date is invalid/missing
+            status: data.status || 'Pending Assignment',
+            total: data.total || "Pricing TBD",
+            items: Array.isArray(data.items) ? data.items : [],
+            customerId: data.customerId || '',
+            customerName: data.customerName || '',
+            detailedItems: Array.isArray(data.detailedItems) ? data.detailedItems as DesignDetails[] : undefined,
+            assignedTailorId: data.assignedTailorId || null,
+            assignedTailorName: data.assignedTailorName || null,
+            dueDate: safeToFormattedDate(data.dueDate), // Can be undefined
+            shippingAddress: data.shippingAddress || undefined,
+            notes: data.notes || '',
+            assignmentInstructions: data.assignmentInstructions || '',
+            assignmentImage: data.assignmentImage || '',
+            createdAt: safeToISOString(data.createdAt),
+            updatedAt: safeToISOString(data.updatedAt),
+        } as Order;
+    } catch (e) {
+        console.error(`DataService: Failed to parse a field in order document ${id}. Skipping.`, e);
+        return null;
+    }
 };
 
 
@@ -468,7 +473,6 @@ export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 
 export async function getOrdersFromDb(limitCount: number = 50): Promise<Order[]> {
   console.log("DataService: Fetching orders from Firestore");
   try {
-    // Sort by 'updatedAt' to show the most recently modified orders first.
     const ordersQuery = query(collection(db, ORDERS_COLLECTION), orderBy("updatedAt", "desc"), limit(limitCount));
     const orderSnapshot = await getDocs(ordersQuery);
     const ordersList: Order[] = [];
@@ -493,24 +497,27 @@ export async function getOrdersFromDb(limitCount: number = 50): Promise<Order[]>
 export async function getOrdersForCustomer(customerId: string): Promise<Order[]> {
   console.log(`DataService: Fetching orders for customer ID ${customerId}`);
   try {
+    // Perform a simple query without ordering to avoid needing a composite index.
     const ordersQuery = query(
       collection(db, ORDERS_COLLECTION),
-      where("customerId", "==", customerId),
-      // Sort by 'updatedAt' to ensure all orders, new or edited, are included and sorted correctly.
-      orderBy("updatedAt", "desc")
+      where("customerId", "==", customerId)
     );
     const orderSnapshot = await getDocs(ordersQuery);
     const ordersList: Order[] = [];
     orderSnapshot.docs.forEach(docSnap => {
-        try {
-            const order = orderFromDoc(docSnap.data(), docSnap.id);
-            if (order) {
-                ordersList.push(order);
-            }
-        } catch (e) {
-            console.error(`DataService: Failed to parse order document ${docSnap.id}. Skipping.`, e);
+        const order = orderFromDoc(docSnap.data(), docSnap.id);
+        if (order) {
+            ordersList.push(order);
         }
     });
+    
+    // Sort the results in application code instead of in the query.
+    ordersList.sort((a, b) => {
+        const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return dateB - dateA; // Descending order (newest first)
+    });
+
     console.log(`DataService: Successfully fetched and parsed ${ordersList.length} orders for customer ${customerId}.`);
     return ordersList;
   } catch (error) {
