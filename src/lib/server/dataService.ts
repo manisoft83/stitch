@@ -3,64 +3,61 @@
 'use server';
 
 import { db } from '@/lib/firebase/config';
-import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, Timestamp, query, where, getDoc, updateDoc, FieldValue, deleteField, orderBy, limit, writeBatch, runTransaction } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, Timestamp, query, where, getDoc, updateDoc, FieldValue, deleteField, orderBy, limit, writeBatch, runTransaction, type DocumentData } from 'firebase/firestore';
 import type { TailorFormData } from '@/lib/mockData'; // Using TailorFormData specifically for the form
 import type { Tailor, Customer, Address, Order, OrderStatus, GarmentStyle, DesignDetails } from '@/lib/mockData';
 import { format } from 'date-fns';
 
 
-const TAILORS_COLLECTION = 'tailors';
-const CUSTOMERS_COLLECTION = 'customers';
-const ORDERS_COLLECTION = 'orders';
-const GARMENT_STYLES_COLLECTION = 'garmentStyles';
-const COUNTERS_COLLECTION = 'counters';
+// --- Timestamp Converters & Safe Parsers ---
 
-// --- Timestamp Converters ---
-const fromFirestoreTimestamp = (timestamp: Timestamp | undefined | null): string | undefined => {
-  return timestamp ? timestamp.toDate().toISOString() : undefined;
+/**
+ * Safely converts a value from Firestore (which could be a Timestamp, string, or number)
+ * into a full ISO 8601 string (e.g., "2023-01-01T12:00:00.000Z").
+ * Returns undefined if the input is invalid or missing.
+ */
+const safeToISOString = (value: any): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  if (value instanceof Timestamp) {
+    return value.toDate().toISOString();
+  }
+  try {
+    const date = new Date(value);
+    // Ensure the created date is valid
+    if (!isNaN(date.getTime())) {
+      return date.toISOString();
+    }
+  } catch (e) {
+    // Value was not a valid date constructor argument
+    console.warn("Could not parse value to date:", value);
+  }
+  return undefined;
 };
 
-const orderFromDoc = (docSnapshot: ReturnType<typeof doc.data>, id: string): Order | null => {
+/**
+ * Safely converts a value from Firestore into a "yyyy-MM-dd" formatted string.
+ * Returns undefined if the input is invalid or missing.
+ */
+const safeToFormattedDate = (value: any): string | undefined => {
+    const isoString = safeToISOString(value);
+    if (!isoString) {
+        return undefined;
+    }
+    // new Date(isoString) is safe because we know it's a valid ISO string
+    return format(new Date(isoString), "yyyy-MM-dd");
+};
+
+
+const orderFromDoc = (docSnapshot: DocumentData, id: string): Order | null => {
     if (!docSnapshot) return null;
     const data = docSnapshot;
-
-    let formattedDate: string;
-    if (data.date) {
-        if (data.date instanceof Timestamp) {
-            formattedDate = format(data.date.toDate(), "yyyy-MM-dd");
-        } else {
-            // It's not a timestamp, could be a string. Let's try to parse it.
-            try {
-                // We'll re-format it to a consistent "yyyy-MM-dd" to ensure parseISO works on client
-                formattedDate = format(new Date(data.date), "yyyy-MM-dd");
-            } catch (e) {
-                // If parsing fails, fallback to today's date
-                console.warn(`Could not parse date "${data.date}" for order ${id}. Falling back to today.`);
-                formattedDate = format(new Date(), "yyyy-MM-dd");
-            }
-        }
-    } else {
-        formattedDate = format(new Date(), "yyyy-MM-dd");
-    }
-
-    let formattedDueDate: string | null = null;
-    if (data.dueDate) {
-         if (data.dueDate instanceof Timestamp) {
-            formattedDueDate = format(data.dueDate.toDate(), "yyyy-MM-dd");
-        } else {
-            try {
-                formattedDueDate = format(new Date(data.dueDate), "yyyy-MM-dd");
-            } catch (e) {
-                console.warn(`Could not parse due date "${data.dueDate}" for order ${id}.`);
-                formattedDueDate = null;
-            }
-        }
-    }
 
     return {
         id: id,
         orderNumber: data.orderNumber || 0,
-        date: formattedDate,
+        date: safeToFormattedDate(data.date) || format(new Date(), "yyyy-MM-dd"), // Fallback to today if date is invalid/missing
         status: data.status || 'Pending Assignment',
         total: data.total || "Pricing TBD",
         items: Array.isArray(data.items) ? data.items : [],
@@ -69,13 +66,13 @@ const orderFromDoc = (docSnapshot: ReturnType<typeof doc.data>, id: string): Ord
         detailedItems: Array.isArray(data.detailedItems) ? data.detailedItems as DesignDetails[] : undefined,
         assignedTailorId: data.assignedTailorId || null,
         assignedTailorName: data.assignedTailorName || null,
-        dueDate: formattedDueDate,
+        dueDate: safeToFormattedDate(data.dueDate), // Can be undefined
         shippingAddress: data.shippingAddress || undefined,
         notes: data.notes || '',
         assignmentInstructions: data.assignmentInstructions || '',
         assignmentImage: data.assignmentImage || '',
-        createdAt: data.createdAt ? fromFirestoreTimestamp(data.createdAt as Timestamp) : undefined,
-        updatedAt: data.updatedAt ? fromFirestoreTimestamp(data.updatedAt as Timestamp) : undefined,
+        createdAt: safeToISOString(data.createdAt),
+        updatedAt: safeToISOString(data.updatedAt),
     } as Order;
 };
 
@@ -596,6 +593,7 @@ export async function getGarmentStyles(): Promise<GarmentStyle[]> {
     const styleSnapshot = await getDocs(query(stylesCollection, orderBy("name")));
     const stylesList = styleSnapshot.docs.map(docSnap => {
       const data = docSnap.data();
+      // Only return serializable, plain data
       return {
         id: docSnap.id,
         name: data.name || '',
