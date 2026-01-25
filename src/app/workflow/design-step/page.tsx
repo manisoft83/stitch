@@ -265,7 +265,7 @@ export default function DesignStepPage() {
                    )}
                 </div>
                 <div className="flex gap-2 self-start sm:self-center shrink-0">
-                  <Button variant="outline" size="sm" onClick={() => handleEditItem(index)} disabled={editingItemIndex === index || activeDesign === null}>
+                  <Button variant="outline" size="sm" onClick={() => handleEditItem(index)} disabled={activeDesign !== null}>
                     <Edit3 className="mr-1.5 h-4 w-4" /> Edit
                   </Button>
                   <Button variant="destructive" size="sm" onClick={() => handleRemoveItem(index)}>
@@ -276,7 +276,7 @@ export default function DesignStepPage() {
             ))}
              <Separator className="my-4"/>
              <div className="flex justify-end">
-                <Button onClick={handleDesignNewItem} variant="outline" disabled={activeDesign === null && editingItemIndex === null}>
+                <Button onClick={handleDesignNewItem} variant="outline" disabled={activeDesign !== null}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Another Item
                 </Button>
              </div>
