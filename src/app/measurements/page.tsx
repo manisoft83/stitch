@@ -1,21 +1,17 @@
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Ban } from 'lucide-react';
 
-export default function MeasurementsPage() {
-  return (
-    <div className="container mx-auto py-8">
-      <Card className="max-w-2xl mx-auto shadow-xl">
-        <CardHeader className="text-center">
-          <Ban className="h-12 w-12 text-muted-foreground mx-auto" />
-          <CardTitle className="text-2xl font-bold text-primary">Feature Not Available</CardTitle>
-          <CardDescription>
-            The measurements feature has been disabled.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-           <p className="text-center text-muted-foreground">This component of the application is no longer in use.</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
+import { getCustomers, getGarmentStyles } from '@/lib/server/dataService';
+import MeasurementsClientPage from './client';
+import type { Metadata } from 'next';
+import type { Customer, GarmentStyle } from '@/lib/mockData';
+
+export const metadata: Metadata = {
+  title: 'Customer Measurements - StitchStyle',
+  description: 'Manage customer measurement profiles for all garment styles.',
+};
+
+export default async function MeasurementsPage() {
+  const customers: Customer[] = await getCustomers();
+  const styles: GarmentStyle[] = await getGarmentStyles();
+  
+  return <MeasurementsClientPage initialCustomers={customers} initialStyles={styles} />;
 }

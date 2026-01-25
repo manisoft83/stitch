@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Palette, ShoppingCart, PackageSearch, Users, Contact, Wand2, Tag } from 'lucide-react'; // Added Tag for styles
+import { Home, Palette, ShoppingCart, PackageSearch, Users, Contact, Wand2, Tag, Ruler } from 'lucide-react'; // Added Ruler
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
@@ -23,6 +23,7 @@ const allNavItems: NavItem[] = [
   { href: '/customers', label: 'Customers', icon: Contact, roles: ['admin']},
   { href: '/tailors', label: 'Tailor Hub', icon: Users, roles: ['admin'] },
   { href: '/admin/styles', label: 'Style Management', icon: Tag, roles: ['admin'] },
+  { href: '/measurements', label: 'Measurements', icon: Ruler, roles: ['admin'] },
 ];
 
 export default function SidebarNav() {

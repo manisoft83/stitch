@@ -3,7 +3,7 @@
 "use server";
 
 import type { Customer } from '@/lib/mockData';
-import { saveCustomer as saveCustomerToDb, type CustomerFormInput } from '@/lib/server/dataService';
+import { saveCustomer as saveCustomerToDb, type CustomerFormInput, saveMeasurementsForCustomer } from '@/lib/server/dataService';
 import { revalidatePath } from 'next/cache';
 
 export interface SaveCustomerActionResult {
@@ -49,5 +49,21 @@ export async function deleteCustomerAction(customerId: string): Promise<boolean>
   } catch (error) {
     console.error("Server Action: Unexpected error during deleteCustomerAction execution:", error);
     return false;
+  }
+}
+
+export async function saveCustomerMeasurementsAction(customerId: string, styleId: string, measurements: { [key: string]: string | number }): Promise<{ success: boolean; error?: string }> {
+  console.log(`Server Action: saveCustomerMeasurementsAction for customer ${customerId}, style ${styleId}`);
+  try {
+    const success = await saveMeasurementsForCustomer(customerId, styleId, measurements);
+    if (success) {
+      revalidatePath('/measurements');
+      revalidatePath('/workflow/design-step'); // In case a workflow is active for this customer
+      return { success: true };
+    }
+    return { success: false, error: 'Database operation failed.' };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'An unknown error occurred';
+    return { success: false, error: message };
   }
 }

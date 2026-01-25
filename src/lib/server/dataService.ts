@@ -325,6 +325,24 @@ export async function deleteCustomerById(customerId: string): Promise<boolean> {
   }
 }
 
+export async function saveMeasurementsForCustomer(customerId: string, styleId: string, measurements: { [key: string]: string | number }): Promise<boolean> {
+  console.log(`DataService: Saving measurements for customer ${customerId}, style ${styleId}`);
+  try {
+    const customerRef = doc(db, CUSTOMERS_COLLECTION, customerId);
+    // Use dot notation to update a specific field within the 'savedMeasurements' map.
+    const updatePath = `savedMeasurements.${styleId}`;
+    await updateDoc(customerRef, {
+      [updatePath]: measurements,
+      updatedAt: serverTimestamp(),
+    });
+    console.log(`DataService: Successfully updated measurements for customer ${customerId}.`);
+    return true;
+  } catch (error) {
+    console.error("DataService: Error saving customer measurements:", error);
+    return false;
+  }
+}
+
 // --- Order Functions ---
 
 export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'orderNumber'>, existingOrderId?: string): Promise<Order | null> {
