@@ -431,7 +431,8 @@ export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 
 export async function getOrdersFromDb(limitCount: number = 50): Promise<Order[]> {
   console.log("DataService: Fetching orders from Firestore");
   try {
-    const ordersQuery = query(collection(db, ORDERS_COLLECTION), orderBy("date", "desc"), limit(limitCount));
+    // Sort by 'updatedAt' to show the most recently modified orders first.
+    const ordersQuery = query(collection(db, ORDERS_COLLECTION), orderBy("updatedAt", "desc"), limit(limitCount));
     const orderSnapshot = await getDocs(ordersQuery);
     const ordersList = orderSnapshot.docs.map(docSnap => orderFromDoc(docSnap.data(), docSnap.id) as Order).filter(o => o !== null);
     console.log(`DataService: Successfully fetched ${ordersList.length} orders.`);
@@ -448,7 +449,8 @@ export async function getOrdersForCustomer(customerId: string): Promise<Order[]>
     const ordersQuery = query(
       collection(db, ORDERS_COLLECTION),
       where("customerId", "==", customerId),
-      orderBy("date", "desc")
+      // Sort by 'updatedAt' to ensure all orders, new or edited, are included and sorted correctly.
+      orderBy("updatedAt", "desc")
     );
     const orderSnapshot = await getDocs(ordersQuery);
     const ordersList = orderSnapshot.docs.map(docSnap => orderFromDoc(docSnap.data(), docSnap.id) as Order).filter(o => o !== null);
