@@ -129,39 +129,37 @@ export default function DesignStepPage() {
   return (
     <div className="container mx-auto py-8">
 
-      {pastDesigns.length > 0 && (
-          <Card className="shadow-xl mb-8">
-            <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-2 text-primary">
-                    <FileClock className="h-6 w-6"/> Start from a Previous Design
-                </CardTitle>
-                <CardDescription>
-                    Quickly add an item from {currentCustomer?.name}'s order history to the new order.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                {isLoadingPastDesigns ? (
-                    <p>Loading past designs...</p>
-                ) : pastDesigns.length > 0 ? (
-                    <div className="space-y-3 max-h-72 overflow-y-auto">
-                        {pastDesigns.map((past, index) => (
-                            <Card key={index} className="p-3 flex justify-between items-center bg-muted/20">
-                                <div>
-                                    <p className="font-semibold">{generateDesignSummary(past.design)}</p>
-                                    <p className="text-xs text-muted-foreground">From Order #{past.orderNumber} on {format(parseISO(past.orderDate), "PPP")}</p>
-                                </div>
-                                <Button size="sm" variant="secondary" onClick={() => handleUsePastDesign(past.design)}>
-                                    Use this Design
-                                </Button>
-                            </Card>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-center text-muted-foreground py-4">This customer has no previous designs saved in their order history.</p>
-                )}
-            </CardContent>
-        </Card>
-      )}
+      <Card className="shadow-xl mb-8">
+        <CardHeader>
+            <CardTitle className="text-xl flex items-center gap-2 text-primary">
+                <FileClock className="h-6 w-6"/> Start from a Previous Design
+            </CardTitle>
+            <CardDescription>
+                Quickly add an item from {currentCustomer?.name}'s order history to the new order.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            {isLoadingPastDesigns ? (
+                <p className="text-center text-muted-foreground py-4">Loading past designs...</p>
+            ) : pastDesigns.length > 0 ? (
+                <div className="space-y-3 max-h-72 overflow-y-auto">
+                    {pastDesigns.map((past, index) => (
+                        <Card key={index} className="p-3 flex justify-between items-center bg-muted/20">
+                            <div>
+                                <p className="font-semibold">{generateDesignSummary(past.design)}</p>
+                                <p className="text-xs text-muted-foreground">From Order #{past.orderNumber} on {format(parseISO(past.orderDate), "PPP")}</p>
+                            </div>
+                            <Button size="sm" variant="secondary" onClick={() => handleUsePastDesign(past.design)}>
+                                Use this Design
+                            </Button>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+                <p className="text-center text-muted-foreground py-4">This customer has no previous designs saved in their order history.</p>
+            )}
+        </CardContent>
+    </Card>
 
 
       <Card className="shadow-xl mb-8">
