@@ -23,10 +23,44 @@ const fromFirestoreTimestamp = (timestamp: Timestamp | undefined | null): string
 const orderFromDoc = (docData: ReturnType<typeof docSnapshot.data> | undefined, id: string): Order | null => {
     if (!docData) return null;
     const data = docData;
+
+    let formattedDate: string;
+    if (data.date) {
+        if (data.date instanceof Timestamp) {
+            formattedDate = format(data.date.toDate(), "yyyy-MM-dd");
+        } else {
+            // It's not a timestamp, could be a string. Let's try to parse it.
+            try {
+                // We'll re-format it to a consistent "yyyy-MM-dd" to ensure parseISO works on client
+                formattedDate = format(new Date(data.date), "yyyy-MM-dd");
+            } catch (e) {
+                // If parsing fails, fallback to today's date
+                console.warn(`Could not parse date "${data.date}" for order ${id}. Falling back to today.`);
+                formattedDate = format(new Date(), "yyyy-MM-dd");
+            }
+        }
+    } else {
+        formattedDate = format(new Date(), "yyyy-MM-dd");
+    }
+
+    let formattedDueDate: string | null = null;
+    if (data.dueDate) {
+         if (data.dueDate instanceof Timestamp) {
+            formattedDueDate = format(data.dueDate.toDate(), "yyyy-MM-dd");
+        } else {
+            try {
+                formattedDueDate = format(new Date(data.dueDate), "yyyy-MM-dd");
+            } catch (e) {
+                console.warn(`Could not parse due date "${data.dueDate}" for order ${id}.`);
+                formattedDueDate = null;
+            }
+        }
+    }
+
     return {
         id: id,
         orderNumber: data.orderNumber || 0,
-        date: data.date ? (data.date instanceof Timestamp ? format(data.date.toDate(), "yyyy-MM-dd") : data.date) : format(new Date(), "yyyy-MM-dd"),
+        date: formattedDate,
         status: data.status || 'Pending Assignment',
         total: data.total || "Pricing TBD",
         items: Array.isArray(data.items) ? data.items : [],
@@ -35,7 +69,7 @@ const orderFromDoc = (docData: ReturnType<typeof docSnapshot.data> | undefined, 
         detailedItems: Array.isArray(data.detailedItems) ? data.detailedItems as DesignDetails[] : undefined,
         assignedTailorId: data.assignedTailorId || null,
         assignedTailorName: data.assignedTailorName || null,
-        dueDate: data.dueDate ? (data.dueDate instanceof Timestamp ? format(data.dueDate.toDate(), "yyyy-MM-dd") : data.dueDate) : null,
+        dueDate: formattedDueDate,
         shippingAddress: data.shippingAddress || undefined,
         notes: data.notes || '',
         assignmentInstructions: data.assignmentInstructions || '',
