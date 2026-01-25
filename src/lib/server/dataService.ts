@@ -348,10 +348,11 @@ export async function saveMeasurementsForCustomer(customerId: string, styleId: s
 export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'orderNumber'>, existingOrderId?: string): Promise<Order | null> {
   console.log(`DataService: Saving order to Firestore. Order ID: ${existingOrderId || 'NEW'}, Item count: ${orderData.items.length}`);
 
+  // Storing dates as native Date objects so Firestore converts them to Timestamps for reliable sorting.
   const dataToSave: any = {
     ...orderData,
-    date: orderData.date ? format(new Date(orderData.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"), // Ensure date is just yyyy-MM-dd
-    dueDate: orderData.dueDate ? format(new Date(orderData.dueDate), "yyyy-MM-dd") : null, // Ensure dueDate is yyyy-MM-dd
+    date: orderData.date ? new Date(orderData.date) : new Date(), 
+    dueDate: orderData.dueDate ? new Date(orderData.dueDate) : null,
     updatedAt: serverTimestamp(),
   };
 
