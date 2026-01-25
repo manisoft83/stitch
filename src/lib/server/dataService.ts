@@ -20,9 +20,9 @@ const fromFirestoreTimestamp = (timestamp: Timestamp | undefined | null): string
   return timestamp ? timestamp.toDate().toISOString() : undefined;
 };
 
-const orderFromDoc = (docData: ReturnType<typeof docSnapshot.data> | undefined, id: string): Order | null => {
-    if (!docData) return null;
-    const data = docData;
+const orderFromDoc = (docSnapshot: ReturnType<typeof doc.data>, id: string): Order | null => {
+    if (!docSnapshot) return null;
+    const data = docSnapshot;
 
     let formattedDate: string;
     if (data.date) {
@@ -594,10 +594,14 @@ export async function getGarmentStyles(): Promise<GarmentStyle[]> {
   try {
     const stylesCollection = collection(db, GARMENT_STYLES_COLLECTION);
     const styleSnapshot = await getDocs(query(stylesCollection, orderBy("name")));
-    const stylesList = styleSnapshot.docs.map(docSnap => ({
-      id: docSnap.id,
-      ...docSnap.data(),
-    } as GarmentStyle));
+    const stylesList = styleSnapshot.docs.map(docSnap => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        name: data.name || '',
+        requiredMeasurements: data.requiredMeasurements || [],
+      } as GarmentStyle;
+    });
     console.log(`DataService: Successfully fetched ${stylesList.length} garment styles.`);
     return stylesList;
   } catch (error) {
@@ -621,14 +625,14 @@ export async function saveGarmentStyle(
       const styleRef = doc(db, GARMENT_STYLES_COLLECTION, existingStyleId);
       await updateDoc(styleRef, dataToSave);
       const updatedDoc = await getDoc(styleRef);
-      return { id: updatedDoc.id, ...updatedDoc.data() } as GarmentStyle;
+      return { id: updatedDoc.id, name: updatedDoc.data()?.name, requiredMeasurements: updatedDoc.data()?.requiredMeasurements } as GarmentStyle;
     } else {
       const docRef = await addDoc(collection(db, GARMENT_STYLES_COLLECTION), {
         ...dataToSave,
         createdAt: serverTimestamp(),
       });
       const newDoc = await getDoc(docRef);
-      return { id: newDoc.id, ...newDoc.data() } as GarmentStyle;
+      return { id: newDoc.id, name: newDoc.data()?.name, requiredMeasurements: newDoc.data()?.requiredMeasurements } as GarmentStyle;
     }
   } catch (error) {
     console.error(`DataService: Error saving garment style:`, error);
