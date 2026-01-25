@@ -441,6 +441,24 @@ export async function getOrdersFromDb(limitCount: number = 50): Promise<Order[]>
   }
 }
 
+export async function getOrdersForCustomer(customerId: string): Promise<Order[]> {
+  console.log(`DataService: Fetching orders for customer ID ${customerId}`);
+  try {
+    const ordersQuery = query(
+      collection(db, ORDERS_COLLECTION),
+      where("customerId", "==", customerId),
+      orderBy("createdAt", "desc")
+    );
+    const orderSnapshot = await getDocs(ordersQuery);
+    const ordersList = orderSnapshot.docs.map(docSnap => orderFromDoc(docSnap.data(), docSnap.id) as Order).filter(o => o !== null);
+    console.log(`DataService: Successfully fetched ${ordersList.length} orders for customer ${customerId}.`);
+    return ordersList;
+  } catch (error) {
+    console.error(`DataService: Error fetching orders for customer ${customerId}:`, error);
+    return [];
+  }
+}
+
 export async function getOrderByIdFromDb(orderId: string): Promise<Order | null> {
   console.log(`DataService: Fetching order by ID ${orderId} from Firestore`);
   try {

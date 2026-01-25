@@ -9,10 +9,12 @@ import { DesignTool } from '@/components/design/design-tool';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, ArrowRight, PlusCircle, Trash2, Edit3, Package, Shirt } from 'lucide-react';
+import { ArrowLeft, ArrowRight, PlusCircle, Trash2, Edit3, Package, Shirt, FileClock } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { getGarmentStyles } from '@/lib/server/dataService';
-import { generateDesignSummary, type GarmentStyle } from '@/lib/mockData';
+import { generateDesignSummary, type GarmentStyle, type Order } from '@/lib/mockData';
+import { getPastOrdersAction } from '../actions';
+import { format, parseISO } from 'date-fns';
 
 export default function DesignStepPage() {
   const router = useRouter();
@@ -31,6 +33,8 @@ export default function DesignStepPage() {
   
   const [availableStyles, setAvailableStyles] = useState<GarmentStyle[]>([]);
   const [isLoadingStyles, setIsLoadingStyles] = useState(true);
+  const [pastDesigns, setPastDesigns] = useState<{ design: DesignDetails; orderNumber: number; orderDate: string }[]>([]);
+  const [isLoadingPastDesigns, setIsLoadingPastDesigns] = useState(false);
 
   useEffect(() => {
     async function fetchStyles() {
@@ -57,6 +61,35 @@ export default function DesignStepPage() {
     }
   }, [currentCustomer, router, toast, activeDesign, orderItems.length, editingItemIndex, setActiveDesign]);
 
+  useEffect(() => {
+    const fetchPastOrders = async () => {
+        if (!currentCustomer) {
+            setPastDesigns([]);
+            setIsLoadingPastDesigns(false);
+            return;
+        }
+        setIsLoadingPastDesigns(true);
+        try {
+            const pastOrders = await getPastOrdersAction(currentCustomer.id);
+            const allDesigns = pastOrders.flatMap(order => 
+                (order.detailedItems || []).map(design => ({
+                    design,
+                    orderNumber: order.orderNumber,
+                    orderDate: order.date
+                }))
+            );
+            setPastDesigns(allDesigns);
+        } catch (error) {
+            toast({ title: "Error", description: "Could not load past designs.", variant: "destructive" });
+        } finally {
+            setIsLoadingPastDesigns(false);
+        }
+    };
+
+    fetchPastOrders();
+  }, [currentCustomer, toast]);
+
+
   const handleSaveCurrentItem = (configuredDesign: DesignDetails) => {
     addOrUpdateItemInOrder(configuredDesign);
     toast({
@@ -79,6 +112,14 @@ export default function DesignStepPage() {
     toast({ title: "Item Removed", description: "The item has been removed from your order." });
   };
 
+  const handleUsePastDesign = (design: DesignDetails) => {
+    addOrUpdateItemInOrder(design);
+    toast({
+        title: "Design Added",
+        description: `${generateDesignSummary(design)} has been added to your current order.`
+    });
+  };
+
   const canProceedToSummary = orderItems.length > 0;
 
   if (!currentCustomer || isLoadingStyles) {
@@ -87,6 +128,42 @@ export default function DesignStepPage() {
 
   return (
     <div className="container mx-auto py-8">
+
+      {pastDesigns.length > 0 && (
+          <Card className="shadow-xl mb-8">
+            <CardHeader>
+                <CardTitle className="text-xl flex items-center gap-2 text-primary">
+                    <FileClock className="h-6 w-6"/> Start from a Previous Design
+                </CardTitle>
+                <CardDescription>
+                    Quickly add an item from {currentCustomer?.name}'s order history to the new order.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoadingPastDesigns ? (
+                    <p>Loading past designs...</p>
+                ) : pastDesigns.length > 0 ? (
+                    <div className="space-y-3 max-h-72 overflow-y-auto">
+                        {pastDesigns.map((past, index) => (
+                            <Card key={index} className="p-3 flex justify-between items-center bg-muted/20">
+                                <div>
+                                    <p className="font-semibold">{generateDesignSummary(past.design)}</p>
+                                    <p className="text-xs text-muted-foreground">From Order #{past.orderNumber} on {format(parseISO(past.orderDate), "PPP")}</p>
+                                </div>
+                                <Button size="sm" variant="secondary" onClick={() => handleUsePastDesign(past.design)}>
+                                    Use this Design
+                                </Button>
+                            </Card>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-center text-muted-foreground py-4">This customer has no previous designs saved in their order history.</p>
+                )}
+            </CardContent>
+        </Card>
+      )}
+
+
       <Card className="shadow-xl mb-8">
         <CardHeader>
           <div className="flex items-center gap-2 mb-1">
