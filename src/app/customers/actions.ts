@@ -3,7 +3,7 @@
 "use server";
 
 import type { Customer } from '@/lib/mockData';
-import { saveCustomer as saveCustomerToDb, type CustomerFormInput, saveMeasurementsForCustomer } from '@/lib/server/dataService';
+import { saveCustomer as saveCustomerToDb, type CustomerFormInput, saveMeasurementsForCustomer, deleteCustomerById as deleteCustomerFromDb } from '@/lib/server/dataService';
 import { revalidatePath } from 'next/cache';
 
 export interface SaveCustomerActionResult {

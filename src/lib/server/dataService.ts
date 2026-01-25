@@ -8,6 +8,12 @@ import type { TailorFormData } from '@/lib/mockData'; // Using TailorFormData sp
 import type { Tailor, Customer, Address, Order, OrderStatus, GarmentStyle, DesignDetails } from '@/lib/mockData';
 import { format } from 'date-fns';
 
+const TAILORS_COLLECTION = 'tailors';
+const CUSTOMERS_COLLECTION = 'customers';
+const ORDERS_COLLECTION = 'orders';
+const COUNTERS_COLLECTION = 'counters';
+const GARMENT_STYLES_COLLECTION = 'garmentStyles';
+
 
 // --- Timestamp Converters & Safe Parsers ---
 
