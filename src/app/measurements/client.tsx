@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Customer, GarmentStyle } from '@/lib/mockData';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +24,10 @@ export default function MeasurementsClientPage({ initialCustomers, initialStyles
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   
   const [styleIdToAdd, setStyleIdToAdd] = useState<string>('');
+
+  useEffect(() => {
+    setCustomers(initialCustomers);
+  }, [initialCustomers]);
 
   const selectedCustomer = useMemo(() => {
     return customers.find(c => c.id === selectedCustomerId);
@@ -54,12 +58,14 @@ export default function MeasurementsClientPage({ initialCustomers, initialStyles
       // Optimistically update the local customer state
       setCustomers(prevCustomers => prevCustomers.map(c => {
         if (c.id === selectedCustomerId) {
+          const newSavedMeasurements = { ...c.savedMeasurements, [styleId]: cleanedMeasurements };
+          // If the cleaned measurements are empty, it means user cleared all fields. We should remove the profile.
+          if (Object.keys(cleanedMeasurements).length === 0) {
+              delete newSavedMeasurements[styleId];
+          }
           return {
             ...c,
-            savedMeasurements: {
-              ...c.savedMeasurements,
-              [styleId]: cleanedMeasurements,
-            }
+            savedMeasurements: newSavedMeasurements,
           };
         }
         return c;
@@ -75,7 +81,11 @@ export default function MeasurementsClientPage({ initialCustomers, initialStyles
 
   const savedStylesForCustomer = useMemo(() => {
     if (!selectedCustomer?.savedMeasurements) return [];
-    return initialStyles.filter(style => selectedCustomer.savedMeasurements![style.id]);
+    // Filter styles where there is a corresponding non-empty measurement object
+    return initialStyles.filter(style => {
+        const measurements = selectedCustomer.savedMeasurements?.[style.id];
+        return measurements && Object.keys(measurements).length > 0;
+    });
   }, [selectedCustomer, initialStyles]);
   
   const availableStylesToAdd = useMemo(() => {
