@@ -430,7 +430,7 @@ export async function saveOrderToDb(orderData: Omit<Order, 'id' | 'createdAt' | 
 export async function getOrdersFromDb(limitCount: number = 50): Promise<Order[]> {
   console.log("DataService: Fetching orders from Firestore");
   try {
-    const ordersQuery = query(collection(db, ORDERS_COLLECTION), orderBy("createdAt", "desc"), limit(limitCount));
+    const ordersQuery = query(collection(db, ORDERS_COLLECTION), orderBy("date", "desc"), limit(limitCount));
     const orderSnapshot = await getDocs(ordersQuery);
     const ordersList = orderSnapshot.docs.map(docSnap => orderFromDoc(docSnap.data(), docSnap.id) as Order).filter(o => o !== null);
     console.log(`DataService: Successfully fetched ${ordersList.length} orders.`);
@@ -447,7 +447,7 @@ export async function getOrdersForCustomer(customerId: string): Promise<Order[]>
     const ordersQuery = query(
       collection(db, ORDERS_COLLECTION),
       where("customerId", "==", customerId),
-      orderBy("createdAt", "desc")
+      orderBy("date", "desc")
     );
     const orderSnapshot = await getDocs(ordersQuery);
     const ordersList = orderSnapshot.docs.map(docSnap => orderFromDoc(docSnap.data(), docSnap.id) as Order).filter(o => o !== null);
