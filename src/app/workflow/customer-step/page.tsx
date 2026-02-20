@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -17,7 +16,6 @@ import type { Customer } from '@/lib/mockData';
 import { getCustomers as fetchAllCustomers } from '@/lib/server/dataService';
 import { saveCustomerAction, type SaveCustomerActionResult } from '@/app/customers/actions';
 import { UserPlus, Users, Edit3, ArrowRight, Search, MapPin, Truck } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const customerFormSchema = z.object({
@@ -36,7 +34,7 @@ const customerFormSchema = z.object({
     return true;
 }, {
     message: "Full address is required for courier delivery.",
-    path: ["street"] // We'll attach the main error here
+    path: ["street"] 
 });
 
 type CustomerFormValues = z.infer<typeof customerFormSchema>;
@@ -91,7 +89,7 @@ export default function CustomerStepPage() {
       setIsLoadingCustomers(false);
     };
 
-    if (customerType === 'existing' || (!currentCustomer && !editingOrderId) ) { 
+    if (customerType === 'existing' || (!currentCustomer && !editingOrderId)) { 
       loadCustomers();
     }
     
@@ -110,16 +108,13 @@ export default function CustomerStepPage() {
             zipCode: currentCustomer.address?.zipCode || '',
             country: currentCustomer.address?.country || '',
         });
-        if (customerType === 'existing' && !allCustomers.find(c => c.id === currentCustomer.id)) {
-            if (!isLoadingCustomers) loadCustomers(); 
-        }
     } else if (!editingOrderId) {
         if (customerType === 'new' && (selectedCustomerId !== '' || initialCustomerType === 'existing')) {
           reset({ name: '', email: '', phone: '', isCourier: false, street: '', city: '', zipCode: '', country: '' });
         }
         setSelectedCustomerId(''); 
     }
-  }, [customerType, currentCustomer, reset, toast, initialCustomerType, editingOrderId, workflowIsCourier, allCustomers, isLoadingCustomers]);
+  }, [customerType, currentCustomer, reset, toast, initialCustomerType, editingOrderId, workflowIsCourier]);
 
   const filteredCustomers = allCustomers.filter(customer =>
     customer.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
@@ -162,10 +157,10 @@ export default function CustomerStepPage() {
     <div className="container mx-auto py-8">
       <Card className="max-w-2xl mx-auto shadow-xl">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary">Customer Details & Address</CardTitle>
+          <CardTitle className="text-2xl font-bold text-primary">Customer Details & Options</CardTitle>
           <CardDescription>
             {editingOrderId ? `Editing order for ${currentCustomer?.name || 'customer'}. ` : ""}
-            Manage customer information. Data is stored in Firestore.
+            Manage customer information and delivery preferences.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -291,37 +286,40 @@ export default function CustomerStepPage() {
                 </Label>
               </div>
 
-              <Separator className="my-6"/>
-              <h3 className="text-lg font-medium text-foreground mb-3 flex items-center">
-                <MapPin className="mr-2 h-5 w-5 text-primary"/> Delivery Address {isCourierChecked ? "(Required)" : "(Optional)"}
-              </h3>
-              <div>
-                <Label htmlFor="street">Street Address</Label>
-                <Input id="street" {...register("street")} placeholder="e.g., 123 Main St" />
-                {errors.street && <p className="text-sm text-destructive mt-1">{errors.street.message}</p>}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input id="city" {...register("city")} placeholder="e.g., Anytown" />
-                    {errors.city && <p className="text-sm text-destructive mt-1">{errors.city.message}</p>}
+              {isCourierChecked && (
+                <div className="space-y-4 border-t pt-6 mt-6 border-dashed animate-in fade-in slide-in-from-top-2">
+                  <h3 className="text-lg font-medium text-foreground mb-3 flex items-center">
+                    <MapPin className="mr-2 h-5 w-5 text-primary"/> Delivery Address (Required)
+                  </h3>
+                  <div>
+                    <Label htmlFor="street">Street Address</Label>
+                    <Input id="street" {...register("street")} placeholder="e.g., 123 Main St" />
+                    {errors.street && <p className="text-sm text-destructive mt-1">{errors.street.message}</p>}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
+                        <Label htmlFor="city">City</Label>
+                        <Input id="city" {...register("city")} placeholder="e.g., Anytown" />
+                        {errors.city && <p className="text-sm text-destructive mt-1">{errors.city.message}</p>}
+                    </div>
+                    <div>
+                        <Label htmlFor="zipCode">Zip / Postal Code</Label>
+                        <Input id="zipCode" {...register("zipCode")} placeholder="e.g., 12345" />
+                        {errors.zipCode && <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>}
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="country">Country</Label>
+                    <Input id="country" {...register("country")} placeholder="e.g., USA" />
+                    {errors.country && <p className="text-sm text-destructive mt-1">{errors.country.message}</p>}
+                  </div>
                 </div>
-                <div>
-                    <Label htmlFor="zipCode">Zip / Postal Code</Label>
-                    <Input id="zipCode" {...register("zipCode")} placeholder="e.g., 12345" />
-                    {errors.zipCode && <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>}
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="country">Country</Label>
-                <Input id="country" {...register("country")} placeholder="e.g., USA" />
-                {errors.country && <p className="text-sm text-destructive mt-1">{errors.country.message}</p>}
-              </div>
+              )}
               
               <Button 
                 type="submit" 
-                className="w-full mt-6 !mb-2" 
-                disabled={ (customerType === 'existing' && !selectedCustomerId && !currentCustomer ) || isSubmitting}
+                className="w-full mt-6" 
+                disabled={(customerType === 'existing' && !selectedCustomerId && !currentCustomer) || isSubmitting}
               >
                 {(customerType === 'existing' && selectedCustomerId) || (editingOrderId && currentCustomer) ? "Update Details & Proceed" : "Register & Proceed"} 
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -331,7 +329,7 @@ export default function CustomerStepPage() {
         </CardContent>
          <CardFooter>
             <p className="text-xs text-muted-foreground text-center w-full">
-                {isCourierChecked ? "Full address is required for courier delivery." : "Address is optional if courier is not requested."}
+                {isCourierChecked ? "Full address is required for courier delivery." : "Address capture is enabled for courier services."}
             </p>
         </CardFooter>
       </Card>
