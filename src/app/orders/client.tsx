@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ShoppingCart, PackagePlus, Users, UserCog, CalendarClock, Tag, Filter, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingCart, PackagePlus, Users, UserCog, CalendarClock, Tag, Filter, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Hash, User } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -357,12 +357,25 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {currentOrdersToDisplay.map(order => (
               <Card key={order.id} className="shadow-lg hover:shadow-xl transition-shadow flex flex-col">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0 pr-4">
-                      <CardTitle className="text-lg text-primary truncate">Order #{order.orderNumber}</CardTitle>
-                      <CardDescription>Date: {order.date ? format(parseISO(order.date), "PPP") : "N/A"}</CardDescription>
-                      {order.customerName && <CardDescription className="truncate">Customer: {order.customerName}</CardDescription>}
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Hash className="h-4 w-4 text-primary/70" />
+                        <CardTitle className="text-lg text-primary truncate">Order #{order.orderNumber}</CardTitle>
+                      </div>
+                      <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <CalendarIcon className="h-3.5 w-3.5" />
+                          <span>{order.date ? format(parseISO(order.date), "PPP") : "N/A"}</span>
+                        </div>
+                        {order.customerName && (
+                          <div className="flex items-center gap-1.5 truncate">
+                            <User className="h-3.5 w-3.5" />
+                            <span className="truncate">{order.customerName}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="flex flex-col items-end gap-2 shrink-0">
                       <Select 
