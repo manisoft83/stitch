@@ -13,7 +13,7 @@ import { type Order as FullOrderType, generateDesignSummary, allPossibleMeasurem
 import { format, addDays } from 'date-fns';
 import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, Images, MapPin, PackagePlus, Shirt, Truck } from 'lucide-react';
 import { saveOrderAction, type SaveOrderActionResult } from '@/app/orders/actions';
-import { Badge } from '@/badge';
+import { Badge } from '@/components/ui/badge';
 
 export default function SummaryStepPage() {
   const router = useRouter();

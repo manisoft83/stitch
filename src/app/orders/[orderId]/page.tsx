@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CalendarDays, User, Users, MapPin, Tag, DollarSign, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck, Hash, Key, Images } from "lucide-react";
+import { ArrowLeft, CalendarDays, User, Users, MapPin, Tag, DollarSign, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck, Hash, Key, Images, Ruler } from "lucide-react";
 import { format, parseISO } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
