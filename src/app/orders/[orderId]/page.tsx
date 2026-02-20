@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck, Hash, Key } from "lucide-react";
+import { ArrowLeft, CalendarDays, User, Users, MapPin, Tag, DollarSign, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck, Hash, Key, Images } from "lucide-react";
 import { format, parseISO } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
@@ -173,7 +173,7 @@ export default function OrderDetailsPage() {
                  </div>
             </Card>
             <Card className="bg-muted/30 p-4">
-                <CardTitle className="text-md mb-3 flex items-center gap-2"><MapPinIcon className="h-4 w-4 text-primary" /> {currentOrder.isCourier ? 'Delivery' : 'Pickup'} Address</CardTitle>
+                <CardTitle className="text-md mb-3 flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> {currentOrder.isCourier ? 'Delivery' : 'Pickup'} Address</CardTitle>
                 {currentOrder.shippingAddress?.street ? (
                     <address className="text-sm not-italic text-muted-foreground">
                         {currentOrder.shippingAddress.street}<br />
@@ -245,7 +245,7 @@ export default function OrderDetailsPage() {
 
                                 <div className="space-y-4">
                                     <h5 className="text-sm font-semibold flex items-center gap-2 mb-2 text-primary">
-                                        <ImageIcon className="h-4 w-4"/> Reference Images
+                                        <Images className="h-4 w-4"/> Reference Images
                                     </h5>
                                     {design.referenceImages && design.referenceImages.length > 0 ? (
                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -263,7 +263,7 @@ export default function OrderDetailsPage() {
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed rounded-lg bg-muted/10 text-muted-foreground">
-                                            <ImageIcon className="h-8 w-8 mb-2 opacity-20" />
+                                            <Images className="h-8 w-8 mb-2 opacity-20" />
                                             <p className="text-xs">No reference images uploaded.</p>
                                         </div>
                                     )}

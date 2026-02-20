@@ -11,9 +11,9 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { type Order as FullOrderType, generateDesignSummary, allPossibleMeasurements } from '@/lib/mockData';
 import { format, addDays } from 'date-fns';
-import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon, MapPin, PackagePlus, Shirt, Truck } from 'lucide-react';
+import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, Images, MapPin, PackagePlus, Shirt, Truck } from 'lucide-react';
 import { saveOrderAction, type SaveOrderActionResult } from '@/app/orders/actions';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/badge';
 
 export default function SummaryStepPage() {
   const router = useRouter();
