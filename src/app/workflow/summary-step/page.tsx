@@ -11,8 +11,9 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { type Order as FullOrderType, generateDesignSummary, allPossibleMeasurements } from '@/lib/mockData';
 import { format, addDays } from 'date-fns';
-import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon, MapPin, PackagePlus, Shirt } from 'lucide-react';
+import { ArrowLeft, CheckCircle, User, Ruler, Palette, Info, ImageIcon, MapPin, PackagePlus, Shirt, Truck } from 'lucide-react';
 import { saveOrderAction, type SaveOrderActionResult } from '@/app/orders/actions';
+import { Badge } from '@/components/ui/badge';
 
 export default function SummaryStepPage() {
   const router = useRouter();
@@ -23,15 +24,14 @@ export default function SummaryStepPage() {
     resetWorkflow,
     editingOrderId,
     workflowReturnPath,
+    isCourier
   } = useOrderWorkflow();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isNavigatingAfterSuccess, setIsNavigatingAfterSuccess] = useState(false);
 
   useEffect(() => {
-    if (isNavigatingAfterSuccess || isSubmitting) {
-      return;
-    }
+    if (isNavigatingAfterSuccess || isSubmitting) return;
 
     let message = '';
     let redirectTo = '';
@@ -47,21 +47,20 @@ export default function SummaryStepPage() {
     if (redirectTo) {
       toast({ title: "Workflow Incomplete", description: message, variant: "destructive" });
       router.replace(redirectTo);
-      return;
     }
-  }, [currentCustomer, orderItems, router, toast, isSubmitting, workflowReturnPath, isNavigatingAfterSuccess]);
+  }, [currentCustomer, orderItems, router, toast, isSubmitting, isNavigatingAfterSuccess]);
 
 
   const handleConfirmOrder = async () => {
     if (!currentCustomer || !orderItems || orderItems.length === 0) {
-      toast({ title: "Error", description: "Missing order information or no items to submit.", variant: "destructive" });
+      toast({ title: "Error", description: "Missing order information.", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
 
     const itemsSummaryList: string[] = orderItems.map(item => generateDesignSummary(item));
     
-    const generalOrderNotes = orderItems.map((item, idx) => item.notes ? `Item ${idx+1} Notes: ${item.notes}`: '').filter(Boolean).join('\n') || `Custom order for ${currentCustomer.name}. Includes ${orderItems.length} item(s).`;
+    const generalOrderNotes = orderItems.map((item, idx) => item.notes ? `Item ${idx+1} Notes: ${item.notes}`: '').filter(Boolean).join('\n') || `Custom order for ${currentCustomer.name}.`;
     
     const orderStatusToSet: FullOrderType['status'] = editingOrderId && orderItems[0]?.status ? orderItems[0].status : "Pending Assignment";
     const orderDueDateToSet: string = editingOrderId && orderItems[0]?.dueDate 
@@ -80,6 +79,7 @@ export default function SummaryStepPage() {
       assignedTailorName: editingOrderId && orderItems[0]?.assignedTailorName ? orderItems[0].assignedTailorName : null,
       dueDate: orderDueDateToSet,
       shippingAddress: currentCustomer.address || undefined,
+      isCourier: isCourier,
       notes: generalOrderNotes,
     };
     
@@ -90,7 +90,7 @@ export default function SummaryStepPage() {
         setIsNavigatingAfterSuccess(true); 
         toast({
           title: editingOrderId ? "Order Updated!" : "Order Placed!",
-          description: `Order #${result.order.orderNumber} has been successfully ${editingOrderId ? 'updated' : 'submitted'}.`,
+          description: `Order #${result.order.orderNumber} successfully ${editingOrderId ? 'updated' : 'submitted'}.`,
         });
         const pathAfterConfirm = workflowReturnPath || `/orders/${result.order.id}`;
         resetWorkflow();
@@ -98,14 +98,14 @@ export default function SummaryStepPage() {
       } else {
         toast({
           title: "Error Submitting Order",
-          description: result.error || `Failed to ${editingOrderId ? 'update' : 'place'} order.`,
+          description: result.error || "Failed to process order.",
           variant: "destructive",
         });
       }
     } catch (e: unknown) { 
        toast({
         title: "Submission Error",
-        description: e instanceof Error ? e.message : "An unexpected error occurred during submission.",
+        description: e instanceof Error ? e.message : "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -117,149 +117,119 @@ export default function SummaryStepPage() {
     return allPossibleMeasurements.find(m => m.id === id)?.label || id;
   }
 
-  if (!isSubmitting && !isNavigatingAfterSuccess) {
-    if (!currentCustomer || !orderItems || orderItems.length === 0) {
-        return (
-            <div className="container mx-auto py-8 flex justify-center items-center min-h-[calc(100vh-200px)]">
-                <p className="text-muted-foreground">Loading workflow state or redirecting...</p>
-            </div>
-        );
-    }
+  if ((!isSubmitting && !isNavigatingAfterSuccess) && (!currentCustomer || !orderItems || orderItems.length === 0)) {
+    return <div className="container mx-auto py-8 text-center">Redirecting...</div>;
   }
   
   return (
     <div className="container mx-auto py-8">
       <Card className="max-w-3xl mx-auto shadow-xl">
         <CardHeader>
-          <div className="flex items-center gap-2 mb-1">
-            <CheckCircle className="h-7 w-7 text-primary" />
-            <CardTitle className="text-2xl font-bold text-primary">
-              {editingOrderId ? `Review Updated Order #${editingOrderId}` : "Order Summary & Confirmation"}
-            </CardTitle>
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-2 mb-1">
+                <CheckCircle className="h-7 w-7 text-primary" />
+                <CardTitle className="text-2xl font-bold text-primary">
+                {editingOrderId ? `Review Updated Order #${editingOrderId}` : "Order Summary"}
+                </CardTitle>
+            </div>
+            {isCourier && (
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1.5 py-1 px-3">
+                    <Truck className="h-4 w-4" /> Courier Delivery
+                </Badge>
+            )}
           </div>
           <CardDescription>
-            Please review all details before {editingOrderId ? "updating" : "placing"} your custom order for {currentCustomer?.name || 'the customer'}.
-            This order contains {orderItems.length} item(s).
+            Please review all details for {currentCustomer?.name}.
+            Contains {orderItems.length} item(s).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {currentCustomer && (
-            <Card className="bg-muted/30">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2"><User className="h-5 w-5 text-primary"/>Customer Details</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm space-y-1">
-                <p><strong>Name:</strong> {currentCustomer.name}</p>
-                <p><strong>Email:</strong> {currentCustomer.email}</p>
-                <p><strong>Phone:</strong> {currentCustomer.phone}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {currentCustomer?.address && (currentCustomer.address.street || currentCustomer.address.city) && (
-            <>
-              <Separator />
+          <div className="grid md:grid-cols-2 gap-4">
               <Card className="bg-muted/30">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2"><MapPin className="h-5 w-5 text-primary"/>Shipping Address</CardTitle>
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-md flex items-center gap-2"><User className="h-4 w-4 text-primary"/>Customer</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm space-y-1 not-italic">
-                  {currentCustomer.address.street && <p>{currentCustomer.address.street}</p>}
-                  {(currentCustomer.address.city || currentCustomer.address.zipCode) && <p>{currentCustomer.address.city}{currentCustomer.address.city && currentCustomer.address.zipCode ? ", " : ""}{currentCustomer.address.zipCode}</p>}
-                  {currentCustomer.address.country && <p>{currentCustomer.address.country}</p>}
+                <CardContent className="text-sm">
+                    <p className="font-semibold">{currentCustomer?.name}</p>
+                    <p>{currentCustomer?.email}</p>
+                    <p>{currentCustomer?.phone}</p>
                 </CardContent>
               </Card>
-            </>
-          )}
+
+              <Card className={`bg-muted/30 ${isCourier ? 'border-primary/50 ring-1 ring-primary/20' : ''}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-md flex items-center gap-2"><MapPin className="h-4 w-4 text-primary"/>{isCourier ? 'Delivery Address (Required)' : 'Address (Optional)'}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm">
+                  {currentCustomer?.address?.street ? (
+                    <address className="not-italic">
+                      {currentCustomer.address.street}<br />
+                      {currentCustomer.address.city}, {currentCustomer.address.zipCode}<br />
+                      {currentCustomer.address.country}
+                    </address>
+                  ) : (
+                    <p className="text-muted-foreground italic">No address provided.</p>
+                  )}
+                </CardContent>
+              </Card>
+          </div>
           
           <Separator />
 
-          {orderItems && orderItems.length > 0 && (
-            <Card className="bg-muted/30">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2"><PackagePlus className="h-5 w-5 text-primary"/>Order Items ({orderItems.length})</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {orderItems.map((itemDesign, index) => {
-                  const hasMeasurementsToShow = itemDesign.measurements && Object.values(itemDesign.measurements).some(v => v !== undefined && v !== null && v !== '');
-                  return (
-                  <div key={index} className="border-b pb-3 last:border-b-0 last:pb-0">
-                     <h4 className="text-md font-semibold mb-1 flex items-center gap-2"><Shirt className="h-4 w-4 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(itemDesign)}</h4>
-                     
-                     {hasMeasurementsToShow && (
-                        <div className="mt-2 pt-2 border-t border-muted/50 text-xs">
-                            <p className="font-medium text-xs text-foreground">Measurements:</p>
-                            <ul className="list-disc list-inside pl-2 text-muted-foreground grid grid-cols-2 gap-x-4">
+          {orderItems.map((itemDesign, index) => {
+            const hasMeasurementsToShow = itemDesign.measurements && Object.values(itemDesign.measurements).some(v => v !== undefined && v !== null && v !== '');
+            return (
+            <Card key={index} className="bg-muted/10 border-muted/50">
+                <CardHeader className="py-3">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2"><Shirt className="h-4 w-4 text-muted-foreground"/>Item {index + 1}: {generateDesignSummary(itemDesign)}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm space-y-3 pb-4">
+                    {hasMeasurementsToShow && (
+                        <div>
+                            <p className="font-medium text-xs text-muted-foreground mb-1">Measurements:</p>
+                            <ul className="grid grid-cols-2 gap-x-4 text-xs">
                                 {Object.entries(itemDesign.measurements).map(([key, value]) => {
-                                    if (value !== undefined && value !== null && value !== '') {
-                                        return (
-                                            <li key={key}><strong>{getMeasurementLabel(key)}:</strong> {String(value)}</li>
-                                        );
-                                    }
+                                    if (value) return <li key={key}><strong>{getMeasurementLabel(key)}:</strong> {String(value)}</li>;
                                     return null;
                                 })}
                             </ul>
                         </div>
-                     )}
-
-
-                    {itemDesign.notes && <p className="mt-2 text-sm"><strong>Notes:</strong> <span className="whitespace-pre-wrap">{itemDesign.notes}</span></p>}
-                        
-                    {itemDesign.referenceImages && itemDesign.referenceImages.length > 0 && (
-                    <div className="mt-1">
-                        <strong className="flex items-center gap-1 text-sm"><ImageIcon className="h-4 w-4" />Ref Images:</strong>
-                        <div className="flex flex-wrap gap-1 mt-0.5">
-                        {itemDesign.referenceImages.map((src, imgIdx) => (
-                            <Image
-                            key={imgIdx}
-                            src={src}
-                            alt={`Ref ${index + 1}-${imgIdx + 1}`}
-                            width={30}
-                            height={30}
-                            className="rounded border object-cover shadow-sm"
-                            data-ai-hint="design reference thumbnail"
-                            />
-                        ))}
-                        </div>
-                    </div>
                     )}
-                  </div>
-                )})}
-              </CardContent>
+                    {itemDesign.notes && <p className="text-xs"><strong>Notes:</strong> {itemDesign.notes}</p>}
+                    {itemDesign.referenceImages && itemDesign.referenceImages.length > 0 && (
+                        <div className="flex gap-2">
+                            {itemDesign.referenceImages.slice(0, 5).map((src, i) => (
+                                <Image key={i} src={src} alt="Ref" width={40} height={40} className="rounded border bg-background" />
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
             </Card>
-          )}
+          )})}
           
           <Separator />
 
-           <Card className="border-primary/50 bg-primary/5">
-             <CardHeader>
-                <CardTitle className="text-md flex items-center gap-2"><Info className="h-5 w-5 text-primary"/>Next Steps</CardTitle>
-             </CardHeader>
-             <CardContent className="text-sm">
-                <p>
-                  Upon confirmation, your order will be {editingOrderId ? "updated" : "submitted to Firestore and will appear in 'My Orders'"}.
-                  {editingOrderId ? "" : " It will then await assignment to one of our skilled tailors."} You can track its progress from there.
-                  {!editingOrderId && <span className="block mt-1">The estimated due date will be {format(addDays(new Date(), 7), "PPP")}.</span>}
+           <div className="bg-primary/5 p-4 rounded-lg border border-primary/10 text-sm">
+                <p className="flex items-start gap-2">
+                  <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                  <span>
+                    Upon confirmation, your order will be submitted to Firestore. 
+                    {isCourier ? " Our courier team will use the address provided for delivery." : " The order will be held for pickup at our facility unless updated."}
+                  </span>
                 </p>
-                <p className="mt-2 text-xs text-muted-foreground">Order {editingOrderId ? "updates are" : "placement is"} saved to Firestore. The total displayed is currently a placeholder.</p>
-             </CardContent>
-           </Card>
+           </div>
         </CardContent>
         <CardFooter className="flex flex-col sm:flex-row justify-between gap-3">
-          <Button variant="outline" onClick={() => router.push('/workflow/design-step')} className="w-full sm:w-auto" disabled={isSubmitting || isNavigatingAfterSuccess}>
+          <Button variant="outline" onClick={() => router.push('/workflow/design-step')} className="w-full sm:w-auto" disabled={isSubmitting}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Design
           </Button>
           <Button 
             onClick={handleConfirmOrder} 
-            className="w-full sm:w-auto shadow-md hover:shadow-lg" 
-            disabled={isSubmitting || isNavigatingAfterSuccess || !currentCustomer || !orderItems || orderItems.length === 0}
+            className="w-full sm:w-auto shadow-md" 
+            disabled={isSubmitting || !currentCustomer || orderItems.length === 0}
           >
-            {isSubmitting ? (editingOrderId ? "Updating..." : "Placing Order...") : (
-              <>
-                <CheckCircle className="mr-2 h-4 w-4" />
-                {editingOrderId ? "Confirm & Update Order" : "Confirm & Place Order"}
-              </>
-            )}
+            {isSubmitting ? "Processing..." : (editingOrderId ? "Update Order" : "Place Order")}
+            <CheckCircle className="ml-2 h-4 w-4" />
           </Button>
         </CardFooter>
       </Card>

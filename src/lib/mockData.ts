@@ -89,6 +89,7 @@ export interface Order {
   dueDate?: string | null; // Should be string like "yyyy-MM-dd" for client
   
   shippingAddress?: Address; 
+  isCourier?: boolean; // New field for courier delivery
   notes?: string; // General order notes
   assignmentInstructions?: string; // Specific instructions for the tailor for this assignment
   assignmentImage?: string; // A reference image Data URL for this assignment

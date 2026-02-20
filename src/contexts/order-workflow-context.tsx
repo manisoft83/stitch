@@ -12,6 +12,7 @@ interface OrderWorkflowState {
   editingItemIndex: number | null; // Index of the item being edited from orderItems
   workflowReturnPath: string | null; 
   editingOrderId: string | null; 
+  isCourier: boolean; // Tracking courier preference
 }
 
 interface OrderWorkflowContextType extends OrderWorkflowState {
@@ -23,6 +24,7 @@ interface OrderWorkflowContextType extends OrderWorkflowState {
   clearActiveDesign: () => void; // To reset design tool for a new item
   setWorkflowReturnPath: (path: string | null) => void;
   setEditingOrderId: (orderId: string | null) => void;
+  setIsCourier: (isCourier: boolean) => void;
   resetWorkflow: () => void;
   loadOrderForEditing: (order: FullOrderType, customer: Customer) => void; // Use FullOrderType
 }
@@ -48,6 +50,7 @@ const initialState: OrderWorkflowState = {
   editingItemIndex: null,
   workflowReturnPath: null,
   editingOrderId: null,
+  isCourier: false,
 };
 
 export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
@@ -57,6 +60,7 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
     setWorkflowState(prevState => ({
       ...initialState, // Reset most of the workflow when customer changes, unless editing existing order
       currentCustomer: customer,
+      isCourier: prevState.isCourier, // Maintain courier state during customer selection if needed
       // If editing an order, customer change shouldn't wipe items yet, handle in calling component
       editingOrderId: customer?.id === prevState.currentCustomer?.id ? prevState.editingOrderId : null,
       workflowReturnPath: customer?.id === prevState.currentCustomer?.id ? prevState.workflowReturnPath : null,
@@ -119,6 +123,10 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const setIsCourier = useCallback((isCourier: boolean) => {
+    setWorkflowState(prevState => ({ ...prevState, isCourier }));
+  }, []);
+
   const resetWorkflow = useCallback(() => {
     setWorkflowState({...initialState});
   }, []);
@@ -131,6 +139,7 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
       editingItemIndex: null,
       editingOrderId: order.id,
       workflowReturnPath: `/orders/${order.id}`, 
+      isCourier: order.isCourier || false,
     });
   }, []);
 
@@ -145,6 +154,7 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
     startEditingOrderItem,
     setWorkflowReturnPath,
     setEditingOrderId,
+    setIsCourier,
     resetWorkflow,
     loadOrderForEditing,
   };

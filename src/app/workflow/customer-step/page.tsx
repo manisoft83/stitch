@@ -14,19 +14,29 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
 import type { Customer } from '@/lib/mockData';
-import { getCustomers as fetchAllCustomers, type CustomerFormInput } from '@/lib/server/dataService';
+import { getCustomers as fetchAllCustomers } from '@/lib/server/dataService';
 import { saveCustomerAction, type SaveCustomerActionResult } from '@/app/customers/actions';
-import { UserPlus, Users, Edit3, ArrowRight, Search, MapPin } from 'lucide-react';
+import { UserPlus, Users, Edit3, ArrowRight, Search, MapPin, Truck } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const customerFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Invalid email address." }),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
+  isCourier: z.boolean().default(false),
   street: z.string().optional(),
   city: z.string().optional(),
   zipCode: z.string().optional(),
   country: z.string().optional(),
+}).refine((data) => {
+    if (data.isCourier) {
+        return !!data.street && !!data.city && !!data.zipCode && !!data.country;
+    }
+    return true;
+}, {
+    message: "Full address is required for courier delivery.",
+    path: ["street"] // We'll attach the main error here
 });
 
 type CustomerFormValues = z.infer<typeof customerFormSchema>;
@@ -38,10 +48,11 @@ export default function CustomerStepPage() {
     currentCustomer, 
     setCustomer: setWorkflowCustomer, 
     resetWorkflow, 
-    editingOrderId // Get editingOrderId from context
+    editingOrderId,
+    isCourier: workflowIsCourier,
+    setIsCourier
   } = useOrderWorkflow();
   
-  // If currentCustomer exists AND we are editing an order, default to 'existing'
   const initialCustomerType = currentCustomer && editingOrderId ? 'existing' : (currentCustomer ? 'existing' : 'new');
   const [customerType, setCustomerType] = useState<'new' | 'existing'>(initialCustomerType);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(currentCustomer?.id || '');
@@ -49,20 +60,23 @@ export default function CustomerStepPage() {
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue } = useForm<CustomerFormValues>({
+  const { register, handleSubmit, formState: { errors, isSubmitting }, reset, watch, setValue } = useForm<CustomerFormValues>({
     resolver: zodResolver(customerFormSchema),
     defaultValues: currentCustomer 
       ? { 
           name: currentCustomer.name, 
           email: currentCustomer.email, 
           phone: currentCustomer.phone,
+          isCourier: workflowIsCourier,
           street: currentCustomer.address?.street || '',
           city: currentCustomer.address?.city || '',
           zipCode: currentCustomer.address?.zipCode || '',
           country: currentCustomer.address?.country || '',
         }
-      : { name: '', email: '', phone: '', street: '', city: '', zipCode: '', country: '' },
+      : { name: '', email: '', phone: '', isCourier: false, street: '', city: '', zipCode: '', country: '' },
   });
+
+  const isCourierChecked = watch("isCourier");
 
   useEffect(() => {
     const loadCustomers = async () => {
@@ -82,9 +96,6 @@ export default function CustomerStepPage() {
     }
     
     if (currentCustomer) {
-        // If editingOrderId is present, this implies we are in an edit flow.
-        // The customerType should already be 'existing' if currentCustomer came from loadOrderForEditing.
-        // If it was 'new' and currentCustomer just got set (e.g. after creating one), then switch to 'existing'.
         if (customerType === 'new' || (editingOrderId && customerType !== 'existing')) {
             setCustomerType('existing');
         }
@@ -93,6 +104,7 @@ export default function CustomerStepPage() {
             name: currentCustomer.name,
             email: currentCustomer.email,
             phone: currentCustomer.phone,
+            isCourier: workflowIsCourier,
             street: currentCustomer.address?.street || '',
             city: currentCustomer.address?.city || '',
             zipCode: currentCustomer.address?.zipCode || '',
@@ -101,31 +113,13 @@ export default function CustomerStepPage() {
         if (customerType === 'existing' && !allCustomers.find(c => c.id === currentCustomer.id)) {
             if (!isLoadingCustomers) loadCustomers(); 
         }
-    } else if (!editingOrderId) { // Only fully reset to new if not editing an order
+    } else if (!editingOrderId) {
         if (customerType === 'new' && (selectedCustomerId !== '' || initialCustomerType === 'existing')) {
-          reset({ name: '', email: '', phone: '', street: '', city: '', zipCode: '', country: '' });
+          reset({ name: '', email: '', phone: '', isCourier: false, street: '', city: '', zipCode: '', country: '' });
         }
         setSelectedCustomerId(''); 
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerType, currentCustomer, reset, toast, initialCustomerType, editingOrderId]); // Added editingOrderId
-
- useEffect(() => {
-    if (customerType === 'existing' && selectedCustomerId) {
-      const customer = allCustomers.find(c => c.id === selectedCustomerId);
-      if (customer) {
-        reset({ 
-          name: customer.name, 
-          email: customer.email, 
-          phone: customer.phone,
-          street: customer.address?.street || '',
-          city: customer.address?.city || '',
-          zipCode: customer.address?.zipCode || '',
-          country: customer.address?.country || '',
-        });
-      }
-    }
-  }, [selectedCustomerId, customerType, allCustomers, reset]);
+  }, [customerType, currentCustomer, reset, toast, initialCustomerType, editingOrderId, workflowIsCourier, allCustomers, isLoadingCustomers]);
 
   const filteredCustomers = allCustomers.filter(customer =>
     customer.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
@@ -134,38 +128,31 @@ export default function CustomerStepPage() {
   );
 
   const handleFormSubmit = async (data: CustomerFormValues) => {
-    let customerToSetInWorkflow: Customer | null = null;
-    // If editing an order, customerIdToUpdate should be the currentCustomer's ID from the workflow context,
-    // unless the user has explicitly chosen to create a new customer or selected a *different* existing one.
-    // For simplicity, if `editingOrderId` is set, we assume the `saveCustomerAction` is for the `currentCustomer.id`.
-    // If the user wants to change the customer FOR an existing order, that's a more complex flow.
-    // Here, `selectedCustomerId` will be set to `currentCustomer.id` if editing.
     const customerIdToUpdate = (customerType === 'existing' && selectedCustomerId) ? selectedCustomerId : undefined;
 
     try {
-      const actionResult: SaveCustomerActionResult = await saveCustomerAction(data, customerIdToUpdate);
+      const { isCourier, ...customerData } = data;
+      const actionResult: SaveCustomerActionResult = await saveCustomerAction(customerData, customerIdToUpdate);
 
       if (actionResult.success && actionResult.customer) {
-        customerToSetInWorkflow = actionResult.customer;
         toast({
           title: customerIdToUpdate ? "Customer Updated" : "New Customer Registered",
-          description: `${actionResult.customer.name}'s details have been ${customerIdToUpdate ? 'updated' : 'registered'} in Firestore.`
+          description: `${actionResult.customer.name}'s details have been updated.`
         });
-        setWorkflowCustomer(customerToSetInWorkflow); // This will update currentCustomer
+        setIsCourier(isCourier);
+        setWorkflowCustomer(actionResult.customer);
         router.push('/workflow/design-step');
       } else {
-        console.error("Client: saveCustomerAction failed.", actionResult.error);
         toast({
           title: "Error Saving Customer",
-          description: actionResult.error || "Failed to save customer details. Check server logs.",
+          description: actionResult.error || "Failed to save customer details.",
           variant: "destructive"
         });
       }
     } catch (error) {
-      console.error("Client: Error in handleFormSubmit:", error);
       toast({
         title: "Client Error",
-        description: (error instanceof Error ? error.message : "An unexpected error occurred while trying to save."),
+        description: (error instanceof Error ? error.message : "An unexpected error occurred."),
         variant: "destructive"
       });
     }
@@ -185,20 +172,15 @@ export default function CustomerStepPage() {
           <RadioGroup
             value={customerType}
             onValueChange={(value: 'new' | 'existing') => {
-              if (customerType !== value && !editingOrderId) { // Only reset workflow if NOT editing an existing order
+              if (customerType !== value && !editingOrderId) {
                 resetWorkflow(); 
               }
               setCustomerType(value);
               if (value === 'new') {
                 setSelectedCustomerId(''); 
-                reset({ name: '', email: '', phone: '', street: '', city: '', zipCode: '', country: '' });
-                // If not editing an order, also clear the customer from the workflow context.
-                // If editing, keep the original customer in context for now.
-                if(!editingOrderId) {
-                  setWorkflowCustomer(null); 
-                }
+                reset({ name: '', email: '', phone: '', isCourier: false, street: '', city: '', zipCode: '', country: '' });
+                if(!editingOrderId) setWorkflowCustomer(null); 
               } else if (value === 'existing' && editingOrderId && currentCustomer) {
-                // If switching back to existing while editing, re-select the original customer.
                 setSelectedCustomerId(currentCustomer.id);
               }
             }}
@@ -246,19 +228,7 @@ export default function CustomerStepPage() {
                   onValueChange={(id) => {
                     setSelectedCustomerId(id);
                     const customer = allCustomers.find(c => c.id === id);
-                    if (customer && !editingOrderId) { // If not editing, set customer in workflow
-                        setWorkflowCustomer(customer);
-                    } else if (customer && editingOrderId && currentCustomer && customer.id !== currentCustomer.id) {
-                        // If editing an order and selecting a *different* customer.
-                        // This is a more complex scenario. For now, we'll update the form,
-                        // and the save action will associate the order with this new customer.
-                        // The OrderWorkflow context might need adjustment if this becomes a primary use case.
-                        // For now, setting the workflow customer here will change other details.
-                         setWorkflowCustomer(customer);
-                    } else if (customer && editingOrderId && currentCustomer && customer.id === currentCustomer.id) {
-                        // Re-selecting the same customer, ensure workflow reflects this.
-                        setWorkflowCustomer(customer);
-                    }
+                    if (customer) setWorkflowCustomer(customer);
                   }}
                   className="space-y-1 max-h-60 overflow-y-auto border p-3 rounded-md bg-muted/30"
                 >
@@ -276,7 +246,7 @@ export default function CustomerStepPage() {
                 </RadioGroup>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No customers match your search criteria or none found in the database.
+                  No customers match your search criteria.
                 </p>
               )}
             </div>
@@ -291,25 +261,39 @@ export default function CustomerStepPage() {
                   <><UserPlus className="mr-2 h-5 w-5"/>Register New Customer</>
                 )}
               </h3>
-              <div>
-                <Label htmlFor="name">Full Name</Label>
-                <Input id="name" {...register("name")} placeholder="e.g., Jane Doe" />
-                {errors.name && <p className="text-sm text-destructive mt-1">{errors.name.message}</p>}
+              
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input id="name" {...register("name")} placeholder="e.g., Jane Doe" />
+                    {errors.name && <p className="text-sm text-destructive mt-1">{errors.name.message}</p>}
+                </div>
+                <div>
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input id="phone" type="tel" {...register("phone")} placeholder="e.g., (555) 123-4567" />
+                    {errors.phone && <p className="text-sm text-destructive mt-1">{errors.phone.message}</p>}
+                </div>
               </div>
               <div>
                 <Label htmlFor="email">Email Address</Label>
                 <Input id="email" type="email" {...register("email")} placeholder="e.g., jane.doe@example.com" />
                 {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
               </div>
-              <div>
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" type="tel" {...register("phone")} placeholder="e.g., (555) 123-4567" />
-                {errors.phone && <p className="text-sm text-destructive mt-1">{errors.phone.message}</p>}
+
+              <div className="flex items-center space-x-2 py-4 bg-muted/20 p-4 rounded-lg">
+                <Checkbox 
+                    id="isCourier" 
+                    checked={isCourierChecked}
+                    onCheckedChange={(checked) => setValue("isCourier", !!checked)}
+                />
+                <Label htmlFor="isCourier" className="text-base font-semibold flex items-center gap-2 cursor-pointer">
+                    <Truck className="h-5 w-5 text-primary" /> Courier Delivery Requested
+                </Label>
               </div>
 
               <Separator className="my-6"/>
               <h3 className="text-lg font-medium text-foreground mb-3 flex items-center">
-                <MapPin className="mr-2 h-5 w-5 text-primary"/> Address (Optional)
+                <MapPin className="mr-2 h-5 w-5 text-primary"/> Delivery Address {isCourierChecked ? "(Required)" : "(Optional)"}
               </h3>
               <div>
                 <Label htmlFor="street">Street Address</Label>
@@ -347,12 +331,10 @@ export default function CustomerStepPage() {
         </CardContent>
          <CardFooter>
             <p className="text-xs text-muted-foreground text-center w-full">
-                Customer data is stored in Firestore. {editingOrderId ? "Order context is preserved." : ""}
+                {isCourierChecked ? "Full address is required for courier delivery." : "Address is optional if courier is not requested."}
             </p>
         </CardFooter>
       </Card>
     </div>
   );
 }
-
-    
