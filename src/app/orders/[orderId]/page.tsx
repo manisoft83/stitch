@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CalendarDays, User, Users, MapPin, Tag, DollarSign, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck, Hash, Key, Images, Ruler } from "lucide-react";
+import { ArrowLeft, CalendarDays, User, Users, MapPin, Tag, IndianRupee, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck, Hash, Key, Images, Ruler } from "lucide-react";
 import { format, parseISO } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
@@ -64,7 +64,7 @@ export default function OrderDetailsPage() {
       }
 
       setCurrentOrder(fetchedOrder);
-      setPriceInput(fetchedOrder.total === "Pricing TBD" ? "" : fetchedOrder.total.replace('$', ''));
+      setPriceInput(fetchedOrder.total === "Pricing TBD" ? "" : fetchedOrder.total.replace('₹', ''));
 
       if (fetchedOrder.customerId) {
         const customer = await getCustomerById(fetchedOrder.customerId);
@@ -102,7 +102,7 @@ export default function OrderDetailsPage() {
   };
 
   const handlePriceUpdate = async () => {
-    const formattedPrice = priceInput.startsWith('$') ? priceInput : `$${parseFloat(priceInput).toFixed(2)}`;
+    const formattedPrice = priceInput.startsWith('₹') ? priceInput : `₹${parseFloat(priceInput).toFixed(2)}`;
     const result = await updateOrderPriceAction(currentOrder.id, formattedPrice);
     if (result.success) {
       setCurrentOrder(prev => prev ? { ...prev, total: formattedPrice } : null);
@@ -189,7 +189,7 @@ export default function OrderDetailsPage() {
                 <CardTitle className="text-md mb-3 flex items-center gap-2"><Pencil className="h-4 w-4" /> Update Price (Admin)</CardTitle>
                 <div className="flex gap-2">
                     <div className="relative flex-grow">
-                        <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input type="number" step="0.01" value={priceInput} onChange={(e) => setPriceInput(e.target.value)} className="pl-8" />
                     </div>
                     <Button onClick={handlePriceUpdate}>Update</Button>

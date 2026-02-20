@@ -74,13 +74,12 @@ export async function getOrderDetailsAction(orderId: string): Promise<{order: Or
 
 export async function updateOrderPriceAction(orderId: string, newPrice: string): Promise<{success: boolean, error?: string}> {
   console.log(`Server Action: updateOrderPriceAction for order ID ${orderId} to price ${newPrice}`);
-  // Basic validation for price format (e.g., "$123.45" or "123.45")
-  // More robust validation might be needed depending on requirements
-  if (!/^\$?\d+(\.\d{1,2})?$/.test(newPrice) && newPrice !== "Pricing TBD") {
-    return { success: false, error: "Invalid price format. Use format like $123.45 or 123.45." };
+  // Basic validation for price format (e.g., "₹123.45" or "123.45")
+  if (!/^₹?\d+(\.\d{1,2})?$/.test(newPrice) && newPrice !== "Pricing TBD") {
+    return { success: false, error: "Invalid price format. Use format like ₹123.45 or 123.45." };
   }
   
-  const priceToStore = newPrice.startsWith('$') ? newPrice : `$${newPrice}`;
+  const priceToStore = newPrice.startsWith('₹') ? newPrice : `₹${newPrice}`;
 
   try {
     const success = await updateOrderPriceInDb(orderId, priceToStore);
