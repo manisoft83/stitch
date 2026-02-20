@@ -2,7 +2,7 @@
 // src/app/orders/client.tsx
 "use client";
 
-import { useState, useEffect, useMemo } from "react"; // Added useMemo
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -12,24 +12,27 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, subDays, startOfDay, endOfDay, parseISO } from "date-fns"; // Added parseISO
+import { format, subDays, startOfDay, endOfDay, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import { statusFilterOptions, type Order, type OrderStatus, type StatusFilterValue, type Tailor } from "@/lib/mockData"; // Removed mockOrders
+import { statusFilterOptions, type Order, type OrderStatus, type StatusFilterValue, type Tailor, allOrderStatuses } from "@/lib/mockData";
 import { useAuth } from "@/hooks/use-auth";
+import { updateOrderStatusAction } from "./actions";
+import { useToast } from "@/hooks/use-toast";
 
 const NO_TAILOR_SELECTED_VALUE = "__NO_TAILOR__";
 
 interface OrdersClientPageProps {
   initialTailors: Tailor[];
-  initialOrders: Order[]; // Added initialOrders prop
+  initialOrders: Order[];
 }
 
 export default function OrdersClientPage({ initialTailors, initialOrders }: OrdersClientPageProps) {
   const auth = useAuth();
+  const { toast } = useToast();
   const [viewMode, setViewMode] = useState<"admin" | "tailor">("admin"); 
   const [selectedTailorId, setSelectedTailorId] = useState<string | null>(null); 
   
-  const [orders, setOrders] = useState<Order[]>(initialOrders); // Initialize with prop
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
 
   const [adminTailorFilterId, setAdminTailorFilterId] = useState<string | "all">("all"); 
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("active_default");
@@ -45,14 +48,12 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
     setAvailableTailors(initialTailors);
   }, [initialTailors]);
 
-  // This effect ensures that if the server sends new data (e.g., after a revalidation),
-  // the component's state is updated to reflect it.
   useEffect(() => {
     setOrders(initialOrders);
   }, [initialOrders]);
 
   const filteredOrders = useMemo(() => {
-    let tempOrders = [...orders]; // Use local 'orders' state for filtering
+    let tempOrders = [...orders];
     const { role, tailorId: loggedInUserTailorId } = auth;
 
     if (role === 'tailor' && loggedInUserTailorId) {
@@ -93,7 +94,7 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
 
       tempOrders = tempOrders.filter(order => {
         if (!order.date) return false;
-        const orderDate = startOfDay(parseISO(order.date)); // Parse ISO string date from Firestore
+        const orderDate = startOfDay(parseISO(order.date));
         return orderDate >= rangeStart && orderDate <= rangeEnd;
       });
     } else if (!dateRange.from && !dateRange.to && statusFilter === "active_default") { 
@@ -101,18 +102,33 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
       const today = endOfDay(new Date());
       tempOrders = tempOrders.filter(order => {
         if (!order.date) return false;
-        const orderDate = startOfDay(parseISO(order.date)); // Parse ISO string date
+        const orderDate = startOfDay(parseISO(order.date));
         return orderDate >= fifteenDaysAgo && orderDate <= today;
       });
     }
     return tempOrders;
   }, [orders, auth, viewMode, selectedTailorId, adminTailorFilterId, statusFilter, customerNameFilter, dateRange]);
 
-  // Reset page if filtered orders change
   useEffect(() => {
     setCurrentPage(1);
   }, [filteredOrders.length]);
 
+  const handleStatusUpdate = async (orderId: string, newStatus: OrderStatus) => {
+    const result = await updateOrderStatusAction(orderId, newStatus);
+    if (result.success) {
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+      toast({
+        title: "Status Updated",
+        description: `Order has been updated to ${newStatus}.`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: result.error || "Failed to update status.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getStatusBadgeColor = (status: OrderStatus) => {
     switch (status) {
@@ -327,7 +343,7 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
             </CardDescription>
           </CardHeader>
           { (auth.role === 'admin' || (auth.role === 'tailor' && auth.tailorId)) && (
-             filteredOrders.length === 0 && orders.length === 0 && ( // Show CTA if no orders *at all* and filters are clear
+             filteredOrders.length === 0 && orders.length === 0 && (
                 <CardContent>
                 <Button asChild size="lg">
                     <Link href="/workflow/customer-step">Design Your First Item</Link>
@@ -343,26 +359,41 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
               <Card key={order.id} className="shadow-lg hover:shadow-xl transition-shadow flex flex-col">
                 <CardHeader>
                   <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg text-primary">Order #{order.orderNumber}</CardTitle>
+                    <div className="flex-1 min-w-0 pr-4">
+                      <CardTitle className="text-lg text-primary truncate">Order #{order.orderNumber}</CardTitle>
                       <CardDescription>Date: {order.date ? format(parseISO(order.date), "PPP") : "N/A"}</CardDescription>
-                      {order.customerName && <CardDescription>Customer: {order.customerName}</CardDescription>}
+                      {order.customerName && <CardDescription className="truncate">Customer: {order.customerName}</CardDescription>}
                     </div>
-                    <Badge className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(order.status)}`}>
-                      {order.status}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <Select 
+                        value={order.status} 
+                        onValueChange={(value: OrderStatus) => handleStatusUpdate(order.id, value)}
+                      >
+                        <SelectTrigger className="h-8 w-[140px] text-xs">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allOrderStatuses.map(status => (
+                            <SelectItem key={status} value={status} className="text-xs">{status}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Badge className={`px-2 py-0.5 text-[10px] font-semibold rounded-full whitespace-nowrap ${getStatusBadgeColor(order.status)}`}>
+                        {order.status}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-grow space-y-2">
                   <div>
                     <p className="font-medium mb-1 text-sm text-muted-foreground flex items-center"><Tag className="mr-1 h-4 w-4"/>Items:</p>
                     <ul className="list-disc list-inside text-sm text-foreground/90">
-                      {order.items.map((item, index) => <li key={index}>{item}</li>)}
+                      {order.items.map((item, index) => <li key={index} className="truncate">{item}</li>)}
                     </ul>
                   </div>
                   {order.assignedTailorName && (
                     <p className="text-sm text-muted-foreground flex items-center">
-                      <Users className="mr-1 h-4 w-4 text-primary/70"/> Assigned to: <span className="font-medium text-foreground/80 ml-1">{order.assignedTailorName}</span>
+                      <Users className="mr-1 h-4 w-4 text-primary/70"/> Assigned to: <span className="font-medium text-foreground/80 ml-1 truncate">{order.assignedTailorName}</span>
                     </p>
                   )}
                   {order.dueDate && (
