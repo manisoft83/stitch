@@ -345,7 +345,7 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-lg text-primary">Order #{order.orderNumber}</CardTitle>
-                      <CardDescription>Date: {order.date ? format(parseISO(order.date), "PPP") : "N/A"} | Total: {order.total}</CardDescription>
+                      <CardDescription>Date: {order.date ? format(parseISO(order.date), "PPP") : "N/A"}</CardDescription>
                       {order.customerName && <CardDescription>Customer: {order.customerName}</CardDescription>}
                     </div>
                     <Badge className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(order.status)}`}>

@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck } from "lucide-react";
+import { ArrowLeft, CalendarDays, User, Users, MapPinIcon, Tag, DollarSign, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck, Hash, Key } from "lucide-react";
 import { format, parseISO } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
@@ -129,14 +129,19 @@ export default function OrderDetailsPage() {
 
       <Card className="shadow-xl">
         <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
+          <div className="space-y-1">
             <div className="flex items-center gap-3">
-                <CardTitle className="text-2xl font-bold text-primary">Order #{currentOrder.orderNumber}</CardTitle>
+                <CardTitle className="text-2xl font-bold text-primary flex items-center gap-2">
+                    <Hash className="h-6 w-6" /> Order #{currentOrder.orderNumber}
+                </CardTitle>
                 {currentOrder.isCourier && (
                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1.5">
                         <Truck className="h-3.5 w-3.5" /> Courier
                     </Badge>
                 )}
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono bg-muted/50 px-2 py-1 rounded w-fit">
+                <Key className="h-3 w-3" /> Record Key: {currentOrder.id}
             </div>
             <CardDescription>Order details and status tracking.</CardDescription>
           </div>
@@ -196,34 +201,83 @@ export default function OrderDetailsPage() {
 
           <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Palette className="h-5 w-5 text-primary" /> Ordered Items</h3>
-            <div className="space-y-4">
+            <div className="space-y-6">
                 {currentOrder.detailedItems?.map((design, index) => (
-                    <Card key={index} className="p-4 bg-background/50">
-                        <h4 className="font-medium flex items-center gap-2 mb-3"><Shirt className="h-4 w-4"/>Item {index + 1}: {generateDesignSummary(design)}</h4>
-                        <div className="grid sm:grid-cols-2 gap-4 text-xs">
-                            {design.measurements && (
-                                <div>
-                                    <p className="font-semibold mb-1 flex items-center gap-1"><Tag className="h-3 w-3"/>Measurements:</p>
-                                    <ul className="grid grid-cols-2 gap-x-2">
-                                        {Object.entries(design.measurements).map(([k, v]) => v ? <li key={k}><strong>{getMeasurementLabel(k)}:</strong> {v}</li> : null)}
-                                    </ul>
+                    <Card key={index} className="overflow-hidden border-2 border-muted">
+                        <CardHeader className="bg-muted/50 py-3 flex flex-row items-center justify-between">
+                            <CardTitle className="text-md font-bold flex items-center gap-2">
+                                <Shirt className="h-5 w-5 text-primary"/>
+                                Item {index + 1}: {generateDesignSummary(design)}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                            <div className="grid md:grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <div>
+                                        <h5 className="text-sm font-semibold flex items-center gap-2 mb-2 text-primary">
+                                            <Ruler className="h-4 w-4"/> Measurements
+                                        </h5>
+                                        {design.measurements && Object.keys(design.measurements).length > 0 ? (
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm bg-muted/20 p-3 rounded-lg">
+                                                {Object.entries(design.measurements).map(([k, v]) => (
+                                                    v ? (
+                                                        <div key={k} className="flex justify-between border-b border-muted py-1 last:border-0">
+                                                            <span className="text-muted-foreground">{getMeasurementLabel(k)}:</span>
+                                                            <span className="font-medium">{v}</span>
+                                                        </div>
+                                                    ) : null
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground italic">No measurements recorded.</p>
+                                        )}
+                                    </div>
+                                    
+                                    <div>
+                                        <h5 className="text-sm font-semibold flex items-center gap-2 mb-2 text-primary">
+                                            <FileText className="h-4 w-4"/> Designer Notes
+                                        </h5>
+                                        <div className="text-sm text-foreground bg-accent/5 p-3 rounded-lg min-h-[60px] whitespace-pre-wrap">
+                                            {design.notes || "No special instructions provided."}
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
-                            {design.notes && (
-                                <div>
-                                    <p className="font-semibold mb-1 flex items-center gap-1"><FileText className="h-3 w-3"/>Notes:</p>
-                                    <p className="text-muted-foreground whitespace-pre-wrap">{design.notes}</p>
+
+                                <div className="space-y-4">
+                                    <h5 className="text-sm font-semibold flex items-center gap-2 mb-2 text-primary">
+                                        <ImageIcon className="h-4 w-4"/> Reference Images
+                                    </h5>
+                                    {design.referenceImages && design.referenceImages.length > 0 ? (
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                            {design.referenceImages.map((img, imgIdx) => (
+                                                <div key={imgIdx} className="relative aspect-square rounded-lg overflow-hidden border group">
+                                                    <Image 
+                                                        src={img} 
+                                                        alt={`Ref ${imgIdx+1}`} 
+                                                        fill 
+                                                        className="object-cover transition-transform group-hover:scale-105" 
+                                                        data-ai-hint="clothing design photo"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed rounded-lg bg-muted/10 text-muted-foreground">
+                                            <ImageIcon className="h-8 w-8 mb-2 opacity-20" />
+                                            <p className="text-xs">No reference images uploaded.</p>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        </CardContent>
                     </Card>
                 ))}
             </div>
           </div>
         </CardContent>
         <CardFooter className="border-t pt-6 flex justify-between">
-            <Button variant="outline" onClick={handleEditOrder}><Edit3 className="mr-2 h-4 w-4" /> Edit Order</Button>
-            <Button asChild><Link href="/orders">Back to List</Link></Button>
+            <Button variant="outline" onClick={handleEditOrder}><Edit3 className="mr-2 h-4 w-4" /> Edit Order Details</Button>
+            <Button asChild><Link href="/orders">Return to List</Link></Button>
         </CardFooter>
       </Card>
     </div>

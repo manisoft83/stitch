@@ -176,7 +176,7 @@ export default function DesignStepPage() {
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                     <Button size="sm" variant="secondary" onClick={() => setDesignToConfirm(past.design)}>
-                                        Use this Design
+                                        Use this Measurement
                                     </Button>
                                 </AlertDialogTrigger>
                                 {designToConfirm === past.design && (
