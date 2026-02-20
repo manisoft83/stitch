@@ -18,6 +18,16 @@ import { statusFilterOptions, type Order, type OrderStatus, type StatusFilterVal
 import { useAuth } from "@/hooks/use-auth";
 import { updateOrderStatusAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const NO_TAILOR_SELECTED_VALUE = "__NO_TAILOR__";
 
@@ -43,6 +53,10 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
   const ordersPerPage = 10;
 
   const [availableTailors, setAvailableTailors] = useState<Tailor[]>(initialTailors);
+
+  // Status update confirmation state
+  const [statusUpdateConfirm, setStatusUpdateConfirm] = useState<{ orderId: string; status: OrderStatus } | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   
   useEffect(() => {
     setAvailableTailors(initialTailors);
@@ -113,13 +127,24 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
     setCurrentPage(1);
   }, [filteredOrders.length]);
 
-  const handleStatusUpdate = async (orderId: string, newStatus: OrderStatus) => {
-    const result = await updateOrderStatusAction(orderId, newStatus);
+  const initiateStatusUpdate = (orderId: string, newStatus: OrderStatus) => {
+    const currentOrder = orders.find(o => o.id === orderId);
+    if (currentOrder && currentOrder.status === newStatus) return;
+    setStatusUpdateConfirm({ orderId, status: newStatus });
+  };
+
+  const confirmStatusUpdate = async () => {
+    if (!statusUpdateConfirm) return;
+    
+    setIsUpdatingStatus(true);
+    const { orderId, status } = statusUpdateConfirm;
+    const result = await updateOrderStatusAction(orderId, status);
+    
     if (result.success) {
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
       toast({
         title: "Status Updated",
-        description: `Order has been updated to ${newStatus}.`,
+        description: `Order has been updated to ${status}.`,
       });
     } else {
       toast({
@@ -128,6 +153,9 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
         variant: "destructive",
       });
     }
+    
+    setIsUpdatingStatus(false);
+    setStatusUpdateConfirm(null);
   };
 
   const getStatusBadgeColor = (status: OrderStatus) => {
@@ -404,7 +432,7 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
                   <div className="w-full">
                     <Select 
                       value={order.status} 
-                      onValueChange={(value: OrderStatus) => handleStatusUpdate(order.id, value)}
+                      onValueChange={(value: OrderStatus) => initiateStatusUpdate(order.id, value)}
                     >
                       <SelectTrigger className="h-9 w-full text-xs bg-background">
                         <SelectValue placeholder="Update Order Status" />
@@ -458,6 +486,25 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
           )}
         </>
       )}
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!statusUpdateConfirm} onOpenChange={(open) => !open && setStatusUpdateConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update Order Status?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to change the status of this order to <strong>{statusUpdateConfirm?.status}</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUpdatingStatus}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmStatusUpdate} disabled={isUpdatingStatus}>
+              {isUpdatingStatus ? "Updating..." : "Confirm Update"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
        <Card className="mt-8 p-6 text-center bg-secondary/30 dark:bg-secondary/20">
         <CardTitle className="text-lg">Secure Payments &amp; Order System</CardTitle>
         <CardDescription className="mt-2">

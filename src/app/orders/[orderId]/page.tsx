@@ -22,6 +22,16 @@ import { Separator } from '@/components/ui/separator';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
 import { useAuth } from '@/hooks/use-auth';
 import { generateDesignSummary } from '@/lib/mockData';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const getStatusBadgeColor = (status: OrderStatus | undefined) => {
     if (!status) return "bg-gray-100 text-gray-700 border border-gray-300";
@@ -47,6 +57,10 @@ export default function OrderDetailsPage() {
   const [customerForOrder, setCustomerForOrder] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [priceInput, setPriceInput] = useState<string>("");
+
+  // Confirmation state
+  const [pendingStatus, setPendingStatus] = useState<OrderStatus | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const { loadOrderForEditing } = useOrderWorkflow();
 
@@ -91,14 +105,24 @@ export default function OrderDetailsPage() {
     );
   }
 
-  const handleStatusChange = async (newStatus: OrderStatus) => {
-    const result = await updateOrderStatusAction(currentOrder.id, newStatus);
+  const handleStatusChangeInitiate = (newStatus: OrderStatus) => {
+    if (newStatus === currentOrder.status) return;
+    setPendingStatus(newStatus);
+  };
+
+  const confirmStatusUpdate = async () => {
+    if (!pendingStatus) return;
+    
+    setIsUpdatingStatus(true);
+    const result = await updateOrderStatusAction(currentOrder.id, pendingStatus);
     if (result.success) {
-      setCurrentOrder(prev => prev ? { ...prev, status: newStatus } : null);
-      toast({ title: "Status Updated", description: `Order status changed to ${newStatus}.` });
+      setCurrentOrder(prev => prev ? { ...prev, status: pendingStatus } : null);
+      toast({ title: "Status Updated", description: `Order status changed to ${pendingStatus}.` });
     } else {
       toast({ title: "Error", description: result.error || "Failed to update status.", variant: "destructive" });
     }
+    setIsUpdatingStatus(false);
+    setPendingStatus(null);
   };
 
   const handlePriceUpdate = async () => {
@@ -194,7 +218,7 @@ export default function OrderDetailsPage() {
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Quick Status Update</Label>
-                      <Select value={currentOrder.status} onValueChange={(value: OrderStatus) => handleStatusChange(value)}>
+                      <Select value={currentOrder.status} onValueChange={(value: OrderStatus) => handleStatusChangeInitiate(value)}>
                           <SelectTrigger className="w-full h-10 bg-background">
                               <SelectValue placeholder="Change status..." />
                           </SelectTrigger>
@@ -329,6 +353,24 @@ export default function OrderDetailsPage() {
             </div>
         </CardFooter>
       </Card>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!pendingStatus} onOpenChange={(open) => !open && setPendingStatus(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change Order Status?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to update the status of order #{currentOrder.orderNumber} to <strong>{pendingStatus}</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUpdatingStatus}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmStatusUpdate} disabled={isUpdatingStatus}>
+              {isUpdatingStatus ? "Updating..." : "Confirm Update"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
