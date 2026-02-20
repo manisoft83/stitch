@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ShoppingCart, PackagePlus, Users, UserCog, CalendarClock, Tag, Filter, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Hash, User } from "lucide-react";
+import { ShoppingCart, PackagePlus, Users, UserCog, CalendarClock, Tag, Filter, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Hash, User, Edit3 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -357,7 +357,7 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {currentOrdersToDisplay.map(order => (
               <Card key={order.id} className="shadow-lg hover:shadow-xl transition-shadow flex flex-col">
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-3 border-b bg-muted/20">
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
@@ -377,45 +377,45 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
                         )}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <Select 
-                        value={order.status} 
-                        onValueChange={(value: OrderStatus) => handleStatusUpdate(order.id, value)}
-                      >
-                        <SelectTrigger className="h-8 w-[140px] text-xs">
-                          <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {allOrderStatuses.map(status => (
-                            <SelectItem key={status} value={status} className="text-xs">{status}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Badge className={`px-2 py-0.5 text-[10px] font-semibold rounded-full whitespace-nowrap ${getStatusBadgeColor(order.status)}`}>
+                    <Badge className={`px-2 py-1 text-[10px] font-semibold rounded-full whitespace-nowrap shadow-sm shrink-0 ${getStatusBadgeColor(order.status)}`}>
                         {order.status}
-                      </Badge>
-                    </div>
+                    </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-grow space-y-2">
+                <CardContent className="flex-grow space-y-3 pt-4">
                   <div>
-                    <p className="font-medium mb-1 text-sm text-muted-foreground flex items-center"><Tag className="mr-1 h-4 w-4"/>Items:</p>
-                    <ul className="list-disc list-inside text-sm text-foreground/90">
+                    <p className="font-medium mb-1 text-xs text-muted-foreground flex items-center uppercase tracking-wider"><Tag className="mr-1 h-3.5 w-3.5"/>Garment Items</p>
+                    <ul className="list-disc list-inside text-sm text-foreground/90 space-y-0.5">
                       {order.items.map((item, index) => <li key={index} className="truncate">{item}</li>)}
                     </ul>
                   </div>
                   {order.assignedTailorName && (
                     <p className="text-sm text-muted-foreground flex items-center">
-                      <Users className="mr-1 h-4 w-4 text-primary/70"/> Assigned to: <span className="font-medium text-foreground/80 ml-1 truncate">{order.assignedTailorName}</span>
+                      <Users className="mr-1.5 h-4 w-4 text-primary/70"/> Tailor: <span className="font-medium text-foreground/80 ml-1 truncate">{order.assignedTailorName}</span>
                     </p>
                   )}
                   {order.dueDate && (
                     <p className="text-sm text-muted-foreground flex items-center">
-                       <CalendarClock className="mr-1 h-4 w-4 text-primary/70"/> Due: <span className="font-medium text-foreground/80 ml-1">{format(parseISO(order.dueDate), "PPP")}</span>
+                       <CalendarClock className="mr-1.5 h-4 w-4 text-primary/70"/> Due: <span className="font-medium text-foreground/80 ml-1">{format(parseISO(order.dueDate), "PPP")}</span>
                     </p>
                   )}
                 </CardContent>
-                <CardFooter className="mt-auto">
+                <CardFooter className="mt-auto flex-col gap-3 pt-4 border-t bg-muted/5">
+                  <div className="w-full">
+                    <Select 
+                      value={order.status} 
+                      onValueChange={(value: OrderStatus) => handleStatusUpdate(order.id, value)}
+                    >
+                      <SelectTrigger className="h-9 w-full text-xs bg-background">
+                        <SelectValue placeholder="Update Order Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allOrderStatuses.map(status => (
+                          <SelectItem key={status} value={status} className="text-xs">{status}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="flex gap-2 w-full">
                     <Button variant="outline" size="sm" className="flex-1" asChild>
                         <Link href={`/orders/${order.id}`}>View Details</Link>

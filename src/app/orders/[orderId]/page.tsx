@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CalendarDays, User, Users, MapPin, Tag, IndianRupee, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck, Hash, Key, Images, Ruler } from "lucide-react";
+import { ArrowLeft, CalendarDays, User, Users, MapPin, Tag, IndianRupee, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck, Hash, Key, Images, Ruler, Settings2 } from "lucide-react";
 import { format, parseISO } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
@@ -149,28 +149,9 @@ export default function OrderDetailsPage() {
                 <Key className="h-3 w-3" /> Record Key: {currentOrder.id}
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-             <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground">Order Status</Label>
-                <div className="flex items-center gap-3">
-                    <Select value={currentOrder.status} onValueChange={(value: OrderStatus) => handleStatusChange(value)}>
-                        <SelectTrigger className="w-[200px] h-10">
-                            <SelectValue placeholder="Update Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {allOrderStatuses.map(status => (
-                                <SelectItem key={status} value={status}>
-                                    {status}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Badge className={`px-3 py-1.5 whitespace-nowrap ${getStatusBadgeColor(currentOrder.status)}`}>
-                        {currentOrder.status}
-                    </Badge>
-                </div>
-             </div>
-           </div>
+          <Badge className={`px-4 py-2 text-sm font-bold shadow-sm ${getStatusBadgeColor(currentOrder.status)}`}>
+              {currentOrder.status}
+          </Badge>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
           <div className="grid md:grid-cols-3 gap-6">
@@ -207,24 +188,49 @@ export default function OrderDetailsPage() {
           </div>
 
           {role === 'admin' && (
-            <Card className="bg-primary/5 p-4 border-dashed border-primary/30">
-                <CardTitle className="text-md mb-3 flex items-center gap-2"><IndianRupee className="h-4 w-4 text-primary" /> Manage Order Price</CardTitle>
-                <div className="flex gap-2 max-w-sm">
-                    <div className="relative flex-grow">
-                        <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="Enter amount"
-                            value={priceInput} 
-                            onChange={(e) => setPriceInput(e.target.value)} 
-                            className="pl-8" 
-                        />
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card className="bg-primary/5 p-5 border-dashed border-primary/30">
+                  <CardTitle className="text-md mb-4 flex items-center gap-2 font-bold"><Settings2 className="h-4 w-4 text-primary" /> Order Management</CardTitle>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Quick Status Update</Label>
+                      <Select value={currentOrder.status} onValueChange={(value: OrderStatus) => handleStatusChange(value)}>
+                          <SelectTrigger className="w-full h-10 bg-background">
+                              <SelectValue placeholder="Change status..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                              {allOrderStatuses.map(status => (
+                                  <SelectItem key={status} value={status}>
+                                      {status}
+                                  </SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
                     </div>
-                    <Button onClick={handlePriceUpdate}>Update Price</Button>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-2 italic">Updating the price will be visible to all staff members.</p>
-            </Card>
+                  </div>
+              </Card>
+
+              <Card className="bg-primary/5 p-5 border-dashed border-primary/30">
+                  <CardTitle className="text-md mb-4 flex items-center gap-2 font-bold"><IndianRupee className="h-4 w-4 text-primary" /> Financial Details</CardTitle>
+                  <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Set Order Price</Label>
+                      <div className="flex gap-2">
+                          <div className="relative flex-grow">
+                              <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input 
+                                  type="number" 
+                                  step="0.01" 
+                                  placeholder="Enter amount"
+                                  value={priceInput} 
+                                  onChange={(e) => setPriceInput(e.target.value)} 
+                                  className="pl-8 bg-background" 
+                              />
+                          </div>
+                          <Button onClick={handlePriceUpdate}>Update</Button>
+                      </div>
+                  </div>
+              </Card>
+            </div>
           )}
 
           <Separator />
@@ -326,4 +332,3 @@ export default function OrderDetailsPage() {
     </div>
   );
 }
-
