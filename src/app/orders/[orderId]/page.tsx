@@ -102,7 +102,12 @@ export default function OrderDetailsPage() {
   };
 
   const handlePriceUpdate = async () => {
-    const formattedPrice = priceInput.startsWith('₹') ? priceInput : `₹${parseFloat(priceInput).toFixed(2)}`;
+    const priceValue = parseFloat(priceInput);
+    if (isNaN(priceValue)) {
+        toast({ title: "Invalid Price", description: "Please enter a valid numeric price.", variant: "destructive" });
+        return;
+    }
+    const formattedPrice = `₹${priceValue.toFixed(2)}`;
     const result = await updateOrderPriceAction(currentOrder.id, formattedPrice);
     if (result.success) {
       setCurrentOrder(prev => prev ? { ...prev, total: formattedPrice } : null);
@@ -128,7 +133,7 @@ export default function OrderDetailsPage() {
       </Button>
 
       <Card className="shadow-xl">
-        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
                 <CardTitle className="text-2xl font-bold text-primary flex items-center gap-2">
@@ -143,39 +148,56 @@ export default function OrderDetailsPage() {
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono bg-muted/50 px-2 py-1 rounded w-fit">
                 <Key className="h-3 w-3" /> Record Key: {currentOrder.id}
             </div>
-            <CardDescription>Order details and status tracking.</CardDescription>
           </div>
-          <div className="flex items-center gap-3">
-             <Select value={currentOrder.status} onValueChange={(value: OrderStatus) => handleStatusChange(value)}>
-                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
-                <SelectContent>
-                    {allOrderStatuses.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
-                </SelectContent>
-             </Select>
-             <Badge className={`px-3 py-1.5 ${getStatusBadgeColor(currentOrder.status)}`}>{currentOrder.status}</Badge>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+             <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground">Order Status</Label>
+                <div className="flex items-center gap-3">
+                    <Select value={currentOrder.status} onValueChange={(value: OrderStatus) => handleStatusChange(value)}>
+                        <SelectTrigger className="w-[200px] h-10">
+                            <SelectValue placeholder="Update Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {allOrderStatuses.map(status => (
+                                <SelectItem key={status} value={status}>
+                                    {status}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Badge className={`px-3 py-1.5 whitespace-nowrap ${getStatusBadgeColor(currentOrder.status)}`}>
+                        {currentOrder.status}
+                    </Badge>
+                </div>
+             </div>
            </div>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pt-6">
           <div className="grid md:grid-cols-3 gap-6">
-            <Card className="bg-muted/30 p-4">
-                <CardTitle className="text-md mb-3 flex items-center gap-2"><Info className="h-4 w-4 text-primary" /> Info</CardTitle>
+            <Card className="bg-muted/30 p-4 border-none shadow-none">
+                <CardTitle className="text-md mb-3 flex items-center gap-2 text-primary"><Info className="h-4 w-4" /> Order Info</CardTitle>
                 <div className="space-y-2 text-sm">
-                    <p><strong>Date:</strong> {currentOrder.date ? format(parseISO(currentOrder.date), "PPP") : 'N/A'}</p>
-                    <p><strong>Total:</strong> {currentOrder.total}</p>
-                    {customerForOrder && <p><strong>Customer:</strong> <Link href={`/customers`} className="text-primary hover:underline">{customerForOrder.name}</Link></p>}
+                    <p className="flex justify-between"><strong>Date:</strong> <span>{currentOrder.date ? format(parseISO(currentOrder.date), "PPP") : 'N/A'}</span></p>
+                    <p className="flex justify-between"><strong>Price:</strong> <span className="text-primary font-bold">{currentOrder.total}</span></p>
+                    {customerForOrder && (
+                        <p className="flex justify-between">
+                            <strong>Customer:</strong> 
+                            <Link href={`/customers`} className="text-primary hover:underline font-medium">{customerForOrder.name}</Link>
+                        </p>
+                    )}
                 </div>
             </Card>
-            <Card className="bg-muted/30 p-4">
-                <CardTitle className="text-md mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Production</CardTitle>
+            <Card className="bg-muted/30 p-4 border-none shadow-none">
+                <CardTitle className="text-md mb-3 flex items-center gap-2 text-primary"><Users className="h-4 w-4" /> Production</CardTitle>
                  <div className="space-y-2 text-sm">
-                    <p><strong>Tailor:</strong> {currentOrder.assignedTailorName || 'Pending Assignment'}</p>
-                    <p><strong>Due Date:</strong> {currentOrder.dueDate ? format(parseISO(currentOrder.dueDate), "PPP") : 'TBD'}</p>
+                    <p className="flex justify-between"><strong>Tailor:</strong> <span>{currentOrder.assignedTailorName || 'Pending Assignment'}</span></p>
+                    <p className="flex justify-between"><strong>Due Date:</strong> <span>{currentOrder.dueDate ? format(parseISO(currentOrder.dueDate), "PPP") : 'TBD'}</span></p>
                  </div>
             </Card>
-            <Card className="bg-muted/30 p-4">
-                <CardTitle className="text-md mb-3 flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> {currentOrder.isCourier ? 'Delivery' : 'Pickup'} Address</CardTitle>
+            <Card className="bg-muted/30 p-4 border-none shadow-none">
+                <CardTitle className="text-md mb-3 flex items-center gap-2 text-primary"><MapPin className="h-4 w-4" /> {currentOrder.isCourier ? 'Delivery' : 'Pickup'} Address</CardTitle>
                 {currentOrder.shippingAddress?.street ? (
-                    <address className="text-sm not-italic text-muted-foreground">
+                    <address className="text-sm not-italic text-muted-foreground leading-relaxed">
                         {currentOrder.shippingAddress.street}<br />
                         {currentOrder.shippingAddress.city}, {currentOrder.shippingAddress.zipCode}<br />
                         {currentOrder.shippingAddress.country}
@@ -185,86 +207,96 @@ export default function OrderDetailsPage() {
           </div>
 
           {role === 'admin' && (
-            <Card className="bg-secondary/10 p-4 border-dashed border-primary/20">
-                <CardTitle className="text-md mb-3 flex items-center gap-2"><Pencil className="h-4 w-4" /> Update Price (Admin)</CardTitle>
-                <div className="flex gap-2">
+            <Card className="bg-primary/5 p-4 border-dashed border-primary/30">
+                <CardTitle className="text-md mb-3 flex items-center gap-2"><IndianRupee className="h-4 w-4 text-primary" /> Manage Order Price</CardTitle>
+                <div className="flex gap-2 max-w-sm">
                     <div className="relative flex-grow">
                         <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input type="number" step="0.01" value={priceInput} onChange={(e) => setPriceInput(e.target.value)} className="pl-8" />
+                        <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="Enter amount"
+                            value={priceInput} 
+                            onChange={(e) => setPriceInput(e.target.value)} 
+                            className="pl-8" 
+                        />
                     </div>
-                    <Button onClick={handlePriceUpdate}>Update</Button>
+                    <Button onClick={handlePriceUpdate}>Update Price</Button>
                 </div>
+                <p className="text-[10px] text-muted-foreground mt-2 italic">Updating the price will be visible to all staff members.</p>
             </Card>
           )}
 
           <Separator />
 
           <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Palette className="h-5 w-5 text-primary" /> Ordered Items</h3>
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-primary">
+                <Palette className="h-5 w-5" /> Detailed Order Items
+            </h3>
             <div className="space-y-6">
                 {currentOrder.detailedItems?.map((design, index) => (
-                    <Card key={index} className="overflow-hidden border-2 border-muted">
+                    <Card key={index} className="overflow-hidden border-2 border-muted shadow-sm hover:shadow-md transition-shadow">
                         <CardHeader className="bg-muted/50 py-3 flex flex-row items-center justify-between">
                             <CardTitle className="text-md font-bold flex items-center gap-2">
                                 <Shirt className="h-5 w-5 text-primary"/>
-                                Item {index + 1}: {generateDesignSummary(design)}
+                                Item #{index + 1}: {generateDesignSummary(design)}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-6">
                             <div className="grid md:grid-cols-2 gap-8">
-                                <div className="space-y-4">
+                                <div className="space-y-6">
                                     <div>
-                                        <h5 className="text-sm font-semibold flex items-center gap-2 mb-2 text-primary">
-                                            <Ruler className="h-4 w-4"/> Measurements
+                                        <h5 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 mb-3 text-primary/70">
+                                            <Ruler className="h-3.5 w-3.5"/> Measurements Details
                                         </h5>
                                         {design.measurements && Object.keys(design.measurements).length > 0 ? (
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm bg-muted/20 p-3 rounded-lg">
+                                            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm bg-muted/20 p-4 rounded-lg border">
                                                 {Object.entries(design.measurements).map(([k, v]) => (
                                                     v ? (
-                                                        <div key={k} className="flex justify-between border-b border-muted py-1 last:border-0">
-                                                            <span className="text-muted-foreground">{getMeasurementLabel(k)}:</span>
-                                                            <span className="font-medium">{v}</span>
+                                                        <div key={k} className="flex justify-between border-b border-muted/50 py-1.5 last:border-0">
+                                                            <span className="text-muted-foreground">{getMeasurementLabel(k)}</span>
+                                                            <span className="font-semibold text-foreground">{v}</span>
                                                         </div>
                                                     ) : null
                                                 ))}
                                             </div>
                                         ) : (
-                                            <p className="text-sm text-muted-foreground italic">No measurements recorded.</p>
+                                            <p className="text-sm text-muted-foreground italic p-4 bg-muted/10 rounded-lg border border-dashed">No measurements recorded for this item.</p>
                                         )}
                                     </div>
                                     
                                     <div>
-                                        <h5 className="text-sm font-semibold flex items-center gap-2 mb-2 text-primary">
-                                            <FileText className="h-4 w-4"/> Designer Notes
+                                        <h5 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 mb-3 text-primary/70">
+                                            <FileText className="h-3.5 w-3.5"/> Tailoring Instructions
                                         </h5>
-                                        <div className="text-sm text-foreground bg-accent/5 p-3 rounded-lg min-h-[60px] whitespace-pre-wrap">
-                                            {design.notes || "No special instructions provided."}
+                                        <div className="text-sm text-foreground bg-accent/5 p-4 rounded-lg min-h-[80px] border leading-relaxed">
+                                            {design.notes || "No special instructions provided for this garment."}
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <h5 className="text-sm font-semibold flex items-center gap-2 mb-2 text-primary">
-                                        <Images className="h-4 w-4"/> Reference Images
+                                    <h5 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 mb-3 text-primary/70">
+                                        <Images className="h-3.5 w-3.5"/> Reference & Inspiration Images
                                     </h5>
                                     {design.referenceImages && design.referenceImages.length > 0 ? (
                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                             {design.referenceImages.map((img, imgIdx) => (
-                                                <div key={imgIdx} className="relative aspect-square rounded-lg overflow-hidden border group">
+                                                <div key={imgIdx} className="relative aspect-square rounded-lg overflow-hidden border shadow-sm group">
                                                     <Image 
                                                         src={img} 
-                                                        alt={`Ref ${imgIdx+1}`} 
+                                                        alt={`Item ${index+1} Reference ${imgIdx+1}`} 
                                                         fill 
-                                                        className="object-cover transition-transform group-hover:scale-105" 
+                                                        className="object-cover transition-transform group-hover:scale-110" 
                                                         data-ai-hint="clothing design photo"
                                                     />
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed rounded-lg bg-muted/10 text-muted-foreground">
-                                            <Images className="h-8 w-8 mb-2 opacity-20" />
-                                            <p className="text-xs">No reference images uploaded.</p>
+                                        <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg bg-muted/5 text-muted-foreground">
+                                            <Images className="h-10 w-10 mb-2 opacity-20" />
+                                            <p className="text-xs font-medium">No visual references uploaded.</p>
                                         </div>
                                     )}
                                 </div>
@@ -275,11 +307,23 @@ export default function OrderDetailsPage() {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="border-t pt-6 flex justify-between">
-            <Button variant="outline" onClick={handleEditOrder}><Edit3 className="mr-2 h-4 w-4" /> Edit Order Details</Button>
-            <Button asChild><Link href="/orders">Return to List</Link></Button>
+        <CardFooter className="border-t pt-6 flex flex-col sm:flex-row justify-between gap-4 bg-muted/10">
+            <Button variant="outline" onClick={handleEditOrder} className="w-full sm:w-auto">
+                <Edit3 className="mr-2 h-4 w-4" /> Edit Order Details
+            </Button>
+            <div className="flex gap-3 w-full sm:w-auto">
+                <Button variant="ghost" asChild className="flex-1 sm:flex-none">
+                    <Link href="/orders">Back to Orders</Link>
+                </Button>
+                <Button asChild className="flex-1 sm:flex-none shadow-md">
+                    <Link href={`/tracking?orderId=${currentOrder.id}`}>
+                        <Truck className="mr-2 h-4 w-4" /> Track Status
+                    </Link>
+                </Button>
+            </div>
         </CardFooter>
       </Card>
     </div>
   );
 }
+
