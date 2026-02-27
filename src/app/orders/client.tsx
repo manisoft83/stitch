@@ -65,6 +65,8 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
     const statusParam = searchParams.get('status');
     if (statusParam) {
       setStatusFilter(statusParam as StatusFilterValue);
+    } else {
+      setStatusFilter("all");
     }
   }, [searchParams]);
 
@@ -79,6 +81,7 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
   const filteredOrders = useMemo(() => {
     let tempOrders = [...orders];
     const { role, tailorId: loggedInUserTailorId } = auth;
+    const today = startOfDay(new Date());
 
     if (role === 'tailor' && loggedInUserTailorId) {
       tempOrders = tempOrders.filter(order => order.assignedTailorId === loggedInUserTailorId);
@@ -98,9 +101,12 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
 
     if (statusFilter === "active_default") {
       const defaultActiveStatuses: OrderStatus[] = ["Pending Assignment", "Assigned", "Processing"];
-      tempOrders = tempOrders.filter(order => defaultActiveStatuses.includes(order.status));
+      tempOrders = tempOrders.filter(order => {
+        const matchesStatus = defaultActiveStatuses.includes(order.status);
+        const isNotOverdue = !order.dueDate || !isBefore(startOfDay(parseISO(order.dueDate)), today);
+        return matchesStatus && isNotOverdue;
+      });
     } else if (statusFilter === "overdue") {
-      const today = startOfDay(new Date());
       tempOrders = tempOrders.filter(order => {
         if (!order.dueDate || order.status === "Delivered" || order.status === "Cancelled") return false;
         return isBefore(startOfDay(parseISO(order.dueDate)), today);
