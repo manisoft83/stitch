@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Palette, ShoppingCart, PackageSearch, Users, Contact, Wand2, Tag, Ruler } from 'lucide-react'; // Added Ruler
+import { Home, Palette, ShoppingCart, PackageSearch, Users, Contact, Tag, Ruler, Clock, AlertCircle } from 'lucide-react';
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
@@ -19,6 +19,8 @@ const allNavItems: NavItem[] = [
   { href: '/', label: 'Home', icon: Home, roles: ['admin', 'tailor'] },
   { href: '/workflow/customer-step', label: 'Place Order', icon: Palette, roles: ['admin', 'tailor'] },
   { href: '/orders', label: 'Order Management', icon: ShoppingCart, roles: ['admin', 'tailor'] },
+  { href: '/orders?status=active_default', label: 'Pending Orders', icon: Clock, roles: ['admin', 'tailor'] },
+  { href: '/orders?status=overdue', label: 'Overdue Orders', icon: AlertCircle, roles: ['admin', 'tailor'] },
   { href: '/tracking', label: 'Order Tracking', icon: PackageSearch, roles: ['admin', 'tailor'] },
   { href: '/customers', label: 'Customers', icon: Contact, roles: ['admin']},
   { href: '/tailors', label: 'Tailor Hub', icon: Users, roles: ['admin'] },
@@ -38,7 +40,8 @@ export default function SidebarNav() {
   return (
     <SidebarMenu>
       {visibleNavItems.map((item) => {
-        const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+        const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href.split('?')[0]) && !item.href.includes('?'));
+        
         return (
           <SidebarMenuItem key={item.href}>
             <Link href={item.href} legacyBehavior passHref>

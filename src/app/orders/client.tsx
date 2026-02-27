@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -38,6 +39,8 @@ interface OrdersClientPageProps {
 export default function OrdersClientPage({ initialTailors, initialOrders }: OrdersClientPageProps) {
   const auth = useAuth();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  
   const [viewMode, setViewMode] = useState<"admin" | "tailor">("admin"); 
   const [selectedTailorId, setSelectedTailorId] = useState<string | null>(null); 
   
@@ -57,6 +60,14 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
   const [statusUpdateConfirm, setStatusUpdateConfirm] = useState<{ orderId: string; status: OrderStatus } | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   
+  // Sync status filter with query param
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam) {
+      setStatusFilter(statusParam as StatusFilterValue);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     setAvailableTailors(initialTailors);
   }, [initialTailors]);
@@ -83,8 +94,6 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
           tempOrders = []; 
         }
       }
-    } else {
-      tempOrders = [];
     }
 
     if (statusFilter === "active_default") {
@@ -115,14 +124,6 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
         if (!order.date) return false;
         const orderDate = startOfDay(parseISO(order.date));
         return orderDate >= rangeStart && orderDate <= rangeEnd;
-      });
-    } else if (!dateRange.from && !dateRange.to && statusFilter === "active_default") { 
-      const fifteenDaysAgo = startOfDay(subDays(new Date(), 15));
-      const today = endOfDay(new Date());
-      tempOrders = tempOrders.filter(order => {
-        if (!order.date) return false;
-        const orderDate = startOfDay(parseISO(order.date));
-        return orderDate >= fifteenDaysAgo && orderDate <= today;
       });
     }
     return tempOrders;
