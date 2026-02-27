@@ -403,35 +403,33 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
               
               return (
               <Card key={order.id} className={cn("shadow-lg hover:shadow-xl transition-shadow flex flex-col", isOverdue && "border-destructive/50 ring-1 ring-destructive/20")}>
-                <CardHeader className="pb-3 border-b bg-muted/20">
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Hash className="h-4 w-4 text-primary/70" />
-                        <CardTitle className="text-lg text-primary truncate">Order #{order.orderNumber}</CardTitle>
-                      </div>
-                      <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1.5">
-                          <CalendarIcon className="h-3.5 w-3.5" />
-                          <span>{order.date ? format(parseISO(order.date), "PPP") : "N/A"}</span>
-                        </div>
-                        {order.customerName && (
-                          <div className="flex items-center gap-1.5 truncate">
-                            <User className="h-3.5 w-3.5" />
-                            <span className="truncate">{order.customerName}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                        <Badge className={`px-2 py-1 text-[10px] font-semibold rounded-full whitespace-nowrap shadow-sm ${getStatusBadgeColor(order.status)}`}>
-                            {order.status}
+                <CardHeader className="pb-3 border-b bg-muted/20 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Badge className={`px-3 py-1 text-[11px] font-bold rounded-full shadow-sm ${getStatusBadgeColor(order.status)}`}>
+                        {order.status}
+                    </Badge>
+                    {isOverdue && (
+                        <Badge variant="destructive" className="px-2 py-1 text-[10px] animate-pulse gap-1">
+                            <AlertCircle className="h-3 w-3" /> OVERDUE
                         </Badge>
-                        {isOverdue && (
-                            <Badge variant="destructive" className="px-2 py-0.5 text-[9px] animate-pulse">
-                                <AlertCircle className="h-3 w-3 mr-1" /> OVERDUE
-                            </Badge>
-                        )}
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Hash className="h-4 w-4 text-primary/70" />
+                      <CardTitle className="text-lg font-bold text-primary truncate flex-1">Order #{order.orderNumber}</CardTitle>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarIcon className="h-3.5 w-3.5" />
+                        <span>{order.date ? format(parseISO(order.date), "PPP") : "N/A"}</span>
+                      </div>
+                      {order.customerName && (
+                        <div className="flex items-center gap-1.5 truncate">
+                          <User className="h-3.5 w-3.5" />
+                          <span className="truncate">{order.customerName}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardHeader>

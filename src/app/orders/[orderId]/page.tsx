@@ -16,8 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CalendarDays, User, Users, MapPin, Tag, IndianRupee, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck, Hash, Key, Images, Ruler, Settings2 } from "lucide-react";
-import { format, parseISO } from 'date-fns';
+import { ArrowLeft, CalendarDays, User, Users, MapPin, Tag, IndianRupee, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck, Hash, Key, Images, Ruler, Settings2, AlertCircle } from "lucide-react";
+import { format, parseISO, startOfDay, isBefore } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
 import { useAuth } from '@/hooks/use-auth';
@@ -121,7 +121,7 @@ export default function OrderDetailsPage() {
     } else {
       toast({ title: "Error", description: result.error || "Failed to update status.", variant: "destructive" });
     }
-    setIsUpdatingStatus(false);
+    isUpdatingStatus && setIsUpdatingStatus(false);
     setPendingStatus(null);
   };
 
@@ -150,6 +150,11 @@ export default function OrderDetailsPage() {
 
   const getMeasurementLabel = (id: string) => allPossibleMeasurements.find(m => m.id === id)?.label || id;
 
+  const isOverdue = currentOrder.dueDate && 
+                   currentOrder.status !== "Delivered" && 
+                   currentOrder.status !== "Cancelled" && 
+                   isBefore(startOfDay(parseISO(currentOrder.dueDate)), startOfDay(new Date()));
+
   return (
     <div className="container mx-auto py-8">
       <Button variant="outline" onClick={() => router.back()} className="mb-6">
@@ -157,25 +162,38 @@ export default function OrderDetailsPage() {
       </Button>
 
       <Card className="shadow-xl">
-        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b">
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
-                <CardTitle className="text-2xl font-bold text-primary flex items-center gap-2">
-                    <Hash className="h-6 w-6" /> Order #{currentOrder.orderNumber}
-                </CardTitle>
-                {currentOrder.isCourier && (
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1.5">
-                        <Truck className="h-3.5 w-3.5" /> Courier
+        <CardHeader className="border-b bg-muted/20 space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2">
+                <Badge className={`px-4 py-1 text-sm font-bold shadow-sm ${getStatusBadgeColor(currentOrder.status)}`}>
+                    {currentOrder.status}
+                </Badge>
+                {isOverdue && (
+                    <Badge variant="destructive" className="px-3 py-1 text-sm animate-pulse gap-1.5 font-bold">
+                        <AlertCircle className="h-4 w-4" /> OVERDUE
                     </Badge>
                 )}
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono bg-muted/50 px-2 py-1 rounded w-fit">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono bg-muted/80 px-2 py-1 rounded shadow-inner">
                 <Key className="h-3 w-3" /> Record Key: {currentOrder.id}
             </div>
           </div>
-          <Badge className={`px-4 py-2 text-sm font-bold shadow-sm ${getStatusBadgeColor(currentOrder.status)}`}>
-              {currentOrder.status}
-          </Badge>
+          
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+                <CardTitle className="text-3xl font-bold text-primary flex items-center gap-2">
+                    <Hash className="h-7 w-7" /> Order #{currentOrder.orderNumber}
+                </CardTitle>
+                {currentOrder.isCourier && (
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1.5 px-3 py-1">
+                        <Truck className="h-4 w-4" /> Courier Delivery
+                    </Badge>
+                )}
+            </div>
+            <CardDescription className="text-md">
+                Management portal for order specifications and production tracking.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
           <div className="grid md:grid-cols-3 gap-6">
