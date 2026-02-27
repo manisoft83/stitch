@@ -117,7 +117,7 @@ export default function MeasurementsClientPage({ initialCustomers, initialStyles
                 <SelectItem key={customer.id} value={customer.id}>
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span>{customer.name} ({customer.email})</span>
+                    <span>{customer.name} {customer.email ? `(${customer.email})` : ''}</span>
                   </div>
                 </SelectItem>
               ))}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -20,7 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 const customerFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Invalid email address." }),
+  email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
   isCourier: z.boolean().default(false),
   street: z.string().optional(),
@@ -63,7 +64,7 @@ export default function CustomerStepPage() {
     defaultValues: currentCustomer 
       ? { 
           name: currentCustomer.name, 
-          email: currentCustomer.email, 
+          email: currentCustomer.email || '', 
           phone: currentCustomer.phone,
           isCourier: workflowIsCourier,
           street: currentCustomer.address?.street || '',
@@ -100,7 +101,7 @@ export default function CustomerStepPage() {
         setSelectedCustomerId(currentCustomer.id);
         reset({
             name: currentCustomer.name,
-            email: currentCustomer.email,
+            email: currentCustomer.email || '',
             phone: currentCustomer.phone,
             isCourier: workflowIsCourier,
             street: currentCustomer.address?.street || '',
@@ -118,7 +119,7 @@ export default function CustomerStepPage() {
 
   const filteredCustomers = allCustomers.filter(customer =>
     customer.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
-    customer.email.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+    (customer.email && customer.email.toLowerCase().includes(customerSearchTerm.toLowerCase())) ||
     (customer.phone && customer.phone.toLowerCase().includes(customerSearchTerm.toLowerCase()))
   );
 
@@ -231,9 +232,9 @@ export default function CustomerStepPage() {
                     <div key={customer.id} className="flex items-center space-x-3 p-2.5 rounded-md hover:bg-accent/20 transition-colors">
                       <RadioGroupItem value={customer.id} id={`cust-${customer.id}`} />
                       <Label htmlFor={`cust-${customer.id}`} className="font-normal cursor-pointer w-full">
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center text-sm">
                             <span>{customer.name}</span>
-                            <span className="text-xs text-muted-foreground">{customer.email} | {customer.phone}</span>
+                            <span className="text-xs text-muted-foreground">{customer.email || 'No email'} | {customer.phone}</span>
                         </div>
                       </Label>
                     </div>
@@ -270,7 +271,7 @@ export default function CustomerStepPage() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">Email Address (Optional)</Label>
                 <Input id="email" type="email" {...register("email")} placeholder="e.g., jane.doe@example.com" />
                 {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
               </div>

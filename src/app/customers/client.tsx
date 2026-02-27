@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { Customer } from '@/lib/mockData'; // Customer type now from mockData after refactor
+import type { Customer } from '@/lib/mockData'; 
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
 import { useAuth } from '@/hooks/use-auth';
 import { Users, PlusCircle, Edit3, Search, Phone, Mail, Trash2 } from 'lucide-react';
@@ -49,10 +49,10 @@ export default function CustomersClientPage({ initialCustomers }: CustomersClien
   useEffect(() => {
     const lowerSearchTerm = searchTerm.toLowerCase();
     setCustomers(
-      initialCustomers.filter( // Filter from initialCustomers to ensure fresh list on search term change
+      initialCustomers.filter( 
         (customer) =>
           customer.name.toLowerCase().includes(lowerSearchTerm) ||
-          customer.email.toLowerCase().includes(lowerSearchTerm) ||
+          (customer.email && customer.email.toLowerCase().includes(lowerSearchTerm)) ||
           (customer.phone && customer.phone.toLowerCase().includes(lowerSearchTerm))
       )
     );
@@ -74,7 +74,6 @@ export default function CustomersClientPage({ initialCustomers }: CustomersClien
   const handleDeleteCustomer = async (customerId: string) => {
     const success = await deleteCustomerAction(customerId);
     if (success) {
-      // Optimistically update UI or rely on revalidation + new initialCustomers prop
       setCustomers(prev => prev.filter(c => c.id !== customerId)); 
       toast({
         title: "Customer Deleted",
@@ -156,10 +155,14 @@ export default function CustomersClientPage({ initialCustomers }: CustomersClien
                       </TableCell>
                       <TableCell className="font-medium">{customer.name}</TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <div className="flex items-center gap-1.5">
-                            <Mail className="h-3.5 w-3.5 text-muted-foreground"/>
-                            {customer.email}
-                        </div>
+                        {customer.email ? (
+                            <div className="flex items-center gap-1.5">
+                                <Mail className="h-3.5 w-3.5 text-muted-foreground"/>
+                                {customer.email}
+                            </div>
+                        ) : (
+                            <span className="text-muted-foreground italic text-xs">No email</span>
+                        )}
                         </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         <div className="flex items-center gap-1.5">
