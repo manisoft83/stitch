@@ -121,7 +121,7 @@ export default function OrderDetailsPage() {
     } else {
       toast({ title: "Error", description: result.error || "Failed to update status.", variant: "destructive" });
     }
-    isUpdatingStatus && setIsUpdatingStatus(false);
+    setIsUpdatingStatus(false);
     setPendingStatus(null);
   };
 
