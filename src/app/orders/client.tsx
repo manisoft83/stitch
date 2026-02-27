@@ -1,18 +1,17 @@
 
-// src/app/orders/client.tsx
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ShoppingCart, PackagePlus, Users, UserCog, CalendarClock, Tag, Filter, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Hash, User, Edit3 } from "lucide-react";
+import { ShoppingCart, PackagePlus, Users, UserCog, CalendarClock, Tag, Filter, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Hash, User, AlertCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, subDays, startOfDay, endOfDay, parseISO } from "date-fns";
+import { format, subDays, startOfDay, endOfDay, parseISO, isBefore } from "date-fns";
 import { cn } from "@/lib/utils";
 import { statusFilterOptions, type Order, type OrderStatus, type StatusFilterValue, type Tailor, allOrderStatuses } from "@/lib/mockData";
 import { useAuth } from "@/hooks/use-auth";
@@ -91,6 +90,12 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
     if (statusFilter === "active_default") {
       const defaultActiveStatuses: OrderStatus[] = ["Pending Assignment", "Assigned", "Processing"];
       tempOrders = tempOrders.filter(order => defaultActiveStatuses.includes(order.status));
+    } else if (statusFilter === "overdue") {
+      const today = startOfDay(new Date());
+      tempOrders = tempOrders.filter(order => {
+        if (!order.dueDate || order.status === "Delivered" || order.status === "Cancelled") return false;
+        return isBefore(startOfDay(parseISO(order.dueDate)), today);
+      });
     } else if (statusFilter !== "all") { 
       tempOrders = tempOrders.filter(order => order.status === statusFilter);
     }
@@ -383,8 +388,14 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
       ) : (
         <>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentOrdersToDisplay.map(order => (
-              <Card key={order.id} className="shadow-lg hover:shadow-xl transition-shadow flex flex-col">
+            {currentOrdersToDisplay.map(order => {
+              const isOverdue = order.dueDate && 
+                               order.status !== "Delivered" && 
+                               order.status !== "Cancelled" && 
+                               isBefore(startOfDay(parseISO(order.dueDate)), startOfDay(new Date()));
+              
+              return (
+              <Card key={order.id} className={cn("shadow-lg hover:shadow-xl transition-shadow flex flex-col", isOverdue && "border-destructive/50 ring-1 ring-destructive/20")}>
                 <CardHeader className="pb-3 border-b bg-muted/20">
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1 min-w-0 space-y-1">
@@ -405,9 +416,16 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
                         )}
                       </div>
                     </div>
-                    <Badge className={`px-2 py-1 text-[10px] font-semibold rounded-full whitespace-nowrap shadow-sm shrink-0 ${getStatusBadgeColor(order.status)}`}>
-                        {order.status}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                        <Badge className={`px-2 py-1 text-[10px] font-semibold rounded-full whitespace-nowrap shadow-sm ${getStatusBadgeColor(order.status)}`}>
+                            {order.status}
+                        </Badge>
+                        {isOverdue && (
+                            <Badge variant="destructive" className="px-2 py-0.5 text-[9px] animate-pulse">
+                                <AlertCircle className="h-3 w-3 mr-1" /> OVERDUE
+                            </Badge>
+                        )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-grow space-y-3 pt-4">
@@ -423,8 +441,8 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
                     </p>
                   )}
                   {order.dueDate && (
-                    <p className="text-sm text-muted-foreground flex items-center">
-                       <CalendarClock className="mr-1.5 h-4 w-4 text-primary/70"/> Due: <span className="font-medium text-foreground/80 ml-1">{format(parseISO(order.dueDate), "PPP")}</span>
+                    <p className={cn("text-sm flex items-center", isOverdue ? "text-destructive font-bold" : "text-muted-foreground")}>
+                       <CalendarClock className={cn("mr-1.5 h-4 w-4", isOverdue ? "text-destructive" : "text-primary/70")}/> Due: <span className="ml-1">{format(parseISO(order.dueDate), "PPP")}</span>
                     </p>
                   )}
                 </CardContent>
@@ -456,7 +474,7 @@ export default function OrdersClientPage({ initialTailors, initialOrders }: Orde
                   </div>
                 </CardFooter>
               </Card>
-            ))}
+            )})}
           </div>
 
           {totalPages > 1 && (

@@ -117,10 +117,11 @@ export interface TailorFormData {
 // Order Statuses and Filter Options
 export const allOrderStatuses: OrderStatus[] = ["Pending Assignment", "Assigned", "Processing", "Shipped", "Delivered", "Cancelled"];
 
-export type StatusFilterValue = OrderStatus | "all" | "active_default";
+export type StatusFilterValue = OrderStatus | "all" | "active_default" | "overdue";
 
 export const statusFilterOptions: { value: StatusFilterValue; label: string }[] = [
   { value: "active_default", label: "Active Orders (Default)" },
+  { value: "overdue", label: "Overdue Orders" },
   { value: "all", label: "All Statuses" },
   ...allOrderStatuses.map(status => ({ value: status, label: status }))
 ];
