@@ -23,7 +23,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 export default function DesignStepPage() {
@@ -74,7 +73,7 @@ export default function DesignStepPage() {
 
   useEffect(() => {
     const fetchPastOrders = async () => {
-        if (!currentCustomer) {
+        if (!currentCustomer?.id) {
             setPastDesigns([]);
             setIsLoadingPastDesigns(false);
             return;
@@ -88,13 +87,12 @@ export default function DesignStepPage() {
                     orderNumber: order.orderNumber,
                     orderDate: order.date
                 }))
-            ).filter(item => item.design && item.orderNumber && item.orderDate); // Filter out any malformed items
+            ).filter(item => item.design && item.orderDate); // More robust filter
             
             // Deduplicate designs based on a summary
             const uniqueDesigns = new Map<string, { design: DesignDetails; orderNumber: number; orderDate: string }>();
             allDesigns.forEach(item => {
                 const summary = generateDesignSummary(item.design);
-                // We can decide to keep the most recent one if needed, but for now, first one wins.
                 if (!uniqueDesigns.has(summary)) {
                     uniqueDesigns.set(summary, item);
                 }
@@ -120,11 +118,10 @@ export default function DesignStepPage() {
       title: editingItemIndex !== null ? "Item Updated" : "Item Added to Order",
       description: `The item design has been ${editingItemIndex !== null ? 'updated' : 'added'}. You can add more items or proceed to summary.`,
     });
-    // Active design is cleared by addOrUpdateItemInOrder, ready for new item or explicit selection
   };
 
   const handleDesignNewItem = () => {
-    clearActiveDesign(); // This sets activeDesign to initialSingleDesignState and editingItemIndex to null
+    clearActiveDesign(); 
   };
   
   const handleEditItem = (index: number) => {
@@ -166,41 +163,16 @@ export default function DesignStepPage() {
             {isLoadingPastDesigns ? (
                 <p className="text-center text-muted-foreground py-4">Loading past designs...</p>
             ) : pastDesigns.length > 0 ? (
-                <div className="space-y-3 max-h-72 overflow-y-auto">
+                <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
                     {pastDesigns.map((past, index) => (
-                        <Card key={index} className="p-3 flex justify-between items-center bg-muted/20">
+                        <Card key={index} className="p-3 flex justify-between items-center bg-muted/20 hover:bg-muted/30 transition-colors">
                             <div>
                                 <p className="font-semibold">{generateDesignSummary(past.design)}</p>
                                 <p className="text-xs text-muted-foreground">From Order #{past.orderNumber} on {format(parseISO(past.orderDate), "PPP")}</p>
                             </div>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button size="sm" variant="secondary" onClick={() => setDesignToConfirm(past.design)}>
-                                        Use this Measurement
-                                    </Button>
-                                </AlertDialogTrigger>
-                                {designToConfirm === past.design && (
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Add this design to your order?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                You are about to add the following design to your current order:
-                                                <br/>
-                                                <strong className="text-foreground mt-2 inline-block">{generateDesignSummary(past.design)}</strong>
-                                                <br/>
-                                                This will add it as a new item. You can edit it after adding.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel onClick={() => setDesignToConfirm(null)}>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => {
-                                                if(designToConfirm) handleUsePastDesign(designToConfirm);
-                                                setDesignToConfirm(null);
-                                            }}>Confirm & Add</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                )}
-                            </AlertDialog>
+                            <Button size="sm" variant="secondary" onClick={() => setDesignToConfirm(past.design)}>
+                                Use this Design
+                            </Button>
                         </Card>
                     ))}
                 </div>
@@ -209,7 +181,6 @@ export default function DesignStepPage() {
             )}
         </CardContent>
     </Card>
-
 
       <Card className="shadow-xl mb-8">
         <CardHeader>
@@ -292,6 +263,31 @@ export default function DesignStepPage() {
           Proceed to Order Summary <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
+
+      {/* Single AlertDialog for past design confirmation */}
+      <AlertDialog open={!!designToConfirm} onOpenChange={(open) => !open && setDesignToConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add this design to your order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to add the following design to your current order:
+              <br/>
+              <strong className="text-foreground mt-2 inline-block">
+                {designToConfirm ? generateDesignSummary(designToConfirm) : ''}
+              </strong>
+              <br/>
+              This will add it as a new item. You can edit it after adding.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDesignToConfirm(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if(designToConfirm) handleUsePastDesign(designToConfirm);
+              setDesignToConfirm(null);
+            }}>Confirm & Add</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
