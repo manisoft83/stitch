@@ -4,8 +4,7 @@
 
 import { db } from '@/lib/firebase/config';
 import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, Timestamp, query, where, getDoc, updateDoc, FieldValue, deleteField, orderBy, limit, writeBatch, runTransaction, type DocumentData } from 'firebase/firestore';
-import type { TailorFormData } from '@/lib/mockData'; 
-import type { Tailor, Customer, Address, Order, OrderStatus, GarmentStyle, DesignDetails } from '@/lib/mockData';
+import type { Tailor, Customer, Address, Order, OrderStatus, GarmentStyle, DesignDetails, TailorFormData } from '@/lib/mockData';
 import { format } from 'date-fns';
 
 const TAILORS_COLLECTION = 'tailors';
@@ -17,6 +16,7 @@ const GARMENT_STYLES_COLLECTION = 'garmentStyles';
 const safeToISOString = (value: any): string | undefined => {
   if (!value) return undefined;
   if (value instanceof Timestamp) return value.toDate().toISOString();
+  if (typeof value === 'string') return value;
   try {
     const date = new Date(value);
     if (!isNaN(date.getTime())) return date.toISOString();
@@ -61,23 +61,40 @@ const orderFromDoc = (docSnapshot: DocumentData, id: string): Order | null => {
     }
 };
 
+const customerFromDoc = (docSnapshot: DocumentData, id: string): Customer | null => {
+  if (!docSnapshot) return null;
+  const data = docSnapshot;
+  return {
+    id: id,
+    name: data.name || '',
+    email: data.email || '',
+    phone: data.phone || '',
+    address: data.address || undefined,
+    savedMeasurements: data.savedMeasurements || {},
+  } as Customer;
+};
+
+const tailorFromDoc = (docSnapshot: DocumentData, id: string): Tailor | null => {
+  if (!docSnapshot) return null;
+  const data = docSnapshot;
+  return {
+    id: id,
+    name: data.name || '',
+    mobile: data.mobile || '',
+    expertise: Array.isArray(data.expertise) ? data.expertise : [],
+    availability: data.availability || 'Available',
+    avatar: data.avatar || `https://placehold.co/100x100.png?text=${(data.name || 'N/A').substring(0,2).toUpperCase()}`,
+    dataAiHint: data.dataAiHint || 'person portrait',
+  } as Tailor;
+};
+
 // --- Tailor Functions ---
 export async function getTailors(): Promise<Tailor[]> {
   try {
     const tailorSnapshot = await getDocs(collection(db, TAILORS_COLLECTION));
-    return tailorSnapshot.docs.map(docSnap => {
-      const data = docSnap.data();
-      return {
-        id: docSnap.id,
-        name: data.name || '',
-        mobile: data.mobile || '',
-        expertise: Array.isArray(data.expertise) ? data.expertise : [],
-        availability: data.availability || 'Available',
-        avatar: data.avatar || `https://placehold.co/100x100.png?text=${(data.name || 'N/A').substring(0,2).toUpperCase()}`,
-        dataAiHint: data.dataAiHint || 'person portrait',
-      } as Tailor;
-    });
+    return tailorSnapshot.docs.map(docSnap => tailorFromDoc(docSnap.data(), docSnap.id)).filter(t => t !== null) as Tailor[];
   } catch (error) {
+    console.error("DataService: Error fetching tailors", error);
     return [];
   }
 }
@@ -95,17 +112,19 @@ export async function saveTailor(formData: TailorFormData, existingTailorId?: st
       const tailorRef = doc(db, TAILORS_COLLECTION, existingTailorId);
       await updateDoc(tailorRef, tailorDataForDb);
       const updatedDocSnap = await getDoc(tailorRef);
-      const updatedData = updatedDocSnap.data()!;
-      return { id: existingTailorId, ...updatedData } as Tailor;
+      return tailorFromDoc(updatedDocSnap.data()!, existingTailorId);
     } else {
       tailorDataForDb.availability = 'Available';
       tailorDataForDb.avatar = `https://placehold.co/100x100.png?text=${formData.name.substring(0,2).toUpperCase()}`;
       tailorDataForDb.createdAt = serverTimestamp();
       const docRef = await addDoc(collection(db, TAILORS_COLLECTION), tailorDataForDb);
       const newDocSnap = await getDoc(docRef);
-      return { id: docRef.id, ...newDocSnap.data() } as Tailor;
+      return tailorFromDoc(newDocSnap.data()!, docRef.id);
     }
-  } catch (error) { return null; }
+  } catch (error) { 
+    console.error("DataService: Error saving tailor", error);
+    return null; 
+  }
 }
 
 export async function deleteTailorById(tailorId: string): Promise<boolean> {
@@ -119,14 +138,17 @@ export async function deleteTailorById(tailorId: string): Promise<boolean> {
 export async function getCustomers(): Promise<Customer[]> {
   try {
     const customerSnapshot = await getDocs(collection(db, CUSTOMERS_COLLECTION));
-    return customerSnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Customer));
-  } catch (error) { return []; }
+    return customerSnapshot.docs.map(docSnap => customerFromDoc(docSnap.data(), docSnap.id)).filter(c => c !== null) as Customer[];
+  } catch (error) { 
+    console.error("DataService: Error fetching customers", error);
+    return []; 
+  }
 }
 
 export async function getCustomerById(customerId: string): Promise<Customer | null> {
   try {
     const docSnap = await getDoc(doc(db, CUSTOMERS_COLLECTION, customerId));
-    return docSnap.exists() ? ({ id: docSnap.id, ...docSnap.data() } as Customer) : null;
+    return docSnap.exists() ? customerFromDoc(docSnap.data(), docSnap.id) : null;
   } catch (error) { return null; }
 }
 
@@ -140,14 +162,17 @@ export async function saveCustomer(input: any, existingCustomerId?: string): Pro
       const customerRef = doc(db, CUSTOMERS_COLLECTION, existingCustomerId);
       await updateDoc(customerRef, customerData);
       const snap = await getDoc(customerRef);
-      return { id: existingCustomerId, ...snap.data() } as Customer;
+      return customerFromDoc(snap.data()!, existingCustomerId);
     } else {
       customerData.createdAt = serverTimestamp();
       const docRef = await addDoc(collection(db, CUSTOMERS_COLLECTION), customerData);
       const snap = await getDoc(docRef);
-      return { id: docRef.id, ...snap.data() } as Customer;
+      return customerFromDoc(snap.data()!, docRef.id);
     }
-  } catch (error) { return null; }
+  } catch (error) { 
+    console.error("DataService: Error saving customer", error);
+    return null; 
+  }
 }
 
 export async function deleteCustomerById(customerId: string): Promise<boolean> {
@@ -210,7 +235,10 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
       }
     }
     return savedOrder;
-  } catch (error) { return null; }
+  } catch (error) { 
+    console.error("DataService: Error saving order", error);
+    return null; 
+  }
 }
 
 export async function getOrdersFromDb(): Promise<Order[]> {
@@ -218,7 +246,10 @@ export async function getOrdersFromDb(): Promise<Order[]> {
     const ordersQuery = query(collection(db, ORDERS_COLLECTION), orderBy("updatedAt", "desc"), limit(50));
     const snapshot = await getDocs(ordersQuery);
     return snapshot.docs.map(docSnap => orderFromDoc(docSnap.data(), docSnap.id)).filter(o => o !== null) as Order[];
-  } catch (error) { return []; }
+  } catch (error) { 
+    console.error("DataService: Error fetching orders", error);
+    return []; 
+  }
 }
 
 export async function getOrdersForCustomer(customerId: string): Promise<Order[]> {
@@ -232,7 +263,10 @@ export async function getOrdersForCustomer(customerId: string): Promise<Order[]>
         return dateB - dateA;
     });
     return list;
-  } catch (error) { return []; }
+  } catch (error) { 
+    console.error("DataService: Error fetching customer orders", error);
+    return []; 
+  }
 }
 
 export async function getOrderByIdFromDb(orderId: string): Promise<Order | null> {
