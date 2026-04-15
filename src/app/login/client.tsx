@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LogIn } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { LogIn, AlertCircle } from 'lucide-react';
 
 interface LoginClientPageProps {
   initialTailors: Tailor[];
@@ -20,26 +21,33 @@ export default function LoginClientPage({ initialTailors }: LoginClientPageProps
   const { login } = useAuth();
   const [selectedRole, setSelectedRole] = useState<"admin" | "tailor">("admin");
   const [selectedTailorId, setSelectedTailorId] = useState<string>("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const [availableTailors, setAvailableTailors] = useState<Tailor[]>(initialTailors);
+  
   useEffect(() => {
     setAvailableTailors(initialTailors);
   }, [initialTailors]);
 
 
   const handleLogin = () => {
+    setError(null);
     if (selectedRole === "admin") {
-      login("admin");
+      if (adminPassword === "ajay1234") {
+        login("admin");
+      } else {
+        setError("Invalid admin password. Please try again.");
+      }
     } else if (selectedRole === "tailor" && selectedTailorId) {
       const tailor = availableTailors.find(t => t.id === selectedTailorId);
       if (tailor) {
         login("tailor", tailor);
       } else {
-        console.error("Selected tailor not found");
-        alert("Error: Selected tailor not found. Please select a valid tailor.");
+        setError("Selected tailor not found. Please select a valid tailor.");
       }
     } else if (selectedRole === "tailor" && !selectedTailorId) {
-        alert("Please select a tailor profile to log in as Tailor.");
+        setError("Please select a tailor profile to log in as Tailor.");
     }
   };
 
@@ -53,7 +61,7 @@ export default function LoginClientPage({ initialTailors }: LoginClientPageProps
             </svg>
           </div>
           <CardTitle className="text-3xl font-bold text-primary">Welcome to StitchStyle</CardTitle>
-          <CardDescription>Please select your role to continue.</CardDescription>
+          <CardDescription>Please select your role and enter credentials to continue.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
@@ -61,7 +69,11 @@ export default function LoginClientPage({ initialTailors }: LoginClientPageProps
             <RadioGroup
               id="role-selector"
               value={selectedRole}
-              onValueChange={(value: "admin" | "tailor") => setSelectedRole(value)}
+              onValueChange={(value: "admin" | "tailor") => {
+                setSelectedRole(value);
+                setError(null);
+                setAdminPassword("");
+              }}
               className="mt-2 grid grid-cols-2 gap-4"
             >
               <div>
@@ -85,8 +97,22 @@ export default function LoginClientPage({ initialTailors }: LoginClientPageProps
             </RadioGroup>
           </div>
 
+          {selectedRole === "admin" && (
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+              <Label htmlFor="admin-password">Admin Password</Label>
+              <Input
+                id="admin-password"
+                type="password"
+                placeholder="Enter admin password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+              />
+            </div>
+          )}
+
           {selectedRole === "tailor" && (
-            <div className="space-y-2">
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
               <Label htmlFor="tailor-select" className="text-base font-medium">Select Tailor Profile</Label>
               <Select value={selectedTailorId} onValueChange={setSelectedTailorId}>
                 <SelectTrigger id="tailor-select" className="w-full">
@@ -102,12 +128,19 @@ export default function LoginClientPage({ initialTailors }: LoginClientPageProps
               </Select>
             </div>
           )}
+
+          {error && (
+            <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <p>{error}</p>
+            </div>
+          )}
         </CardContent>
         <CardFooter>
           <Button 
             className="w-full text-lg py-6 shadow-md hover:shadow-lg" 
             onClick={handleLogin}
-            disabled={(selectedRole === 'tailor' && !selectedTailorId)}
+            disabled={(selectedRole === 'tailor' && !selectedTailorId) || (selectedRole === 'admin' && !adminPassword)}
           >
             <LogIn className="mr-2 h-5 w-5" /> Login as {selectedRole === "admin" ? "Admin" : "Tailor"}
           </Button>
