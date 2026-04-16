@@ -31,22 +31,15 @@ const ORDERS_COLLECTION = 'orders';
 const COUNTERS_COLLECTION = 'counters';
 const GARMENT_STYLES_COLLECTION = 'garmentStyles';
 
-/**
- * Strips undefined values from an object recursively.
- * Firestore does not allow undefined values in documents.
- */
 function deepClean(obj: any): any {
   if (obj === null || typeof obj !== 'object') {
     return obj;
   }
 
-  // Preserve Firestore Timestamps and Dates
-  if (obj instanceof Date || (obj && typeof obj.toDate === 'function')) {
+  if (obj instanceof Date || obj instanceof Timestamp) {
     return obj;
   }
 
-  // Preserve Firestore FieldValues (like serverTimestamp())
-  // Using a more robust check for FieldValue objects
   const isFieldValue = obj && (
     obj.constructor?.name === 'FieldValue' || 
     obj.constructor?.name === 'FieldValueImpl' || 
@@ -91,14 +84,11 @@ const orderFromDoc = (docSnapshot: DocumentData | undefined, id: string): Order 
     if (!docSnapshot) return null;
     const data = docSnapshot;
     try {
-        // Convert detailedItems Map back to Array for the client
         let detailedItemsArray: DesignDetails[] | undefined = undefined;
         if (data.detailedItems) {
             if (Array.isArray(data.detailedItems)) {
                 detailedItemsArray = data.detailedItems;
             } else {
-                // If stored as a map (to avoid nested array error), convert back to array
-                // We assume keys are 'item_0', 'item_1', etc. to maintain order
                 detailedItemsArray = Object.keys(data.detailedItems)
                     .sort((a, b) => {
                         const idxA = parseInt(a.replace('item_', ''));
@@ -163,13 +153,11 @@ const tailorFromDoc = (docSnapshot: DocumentData | undefined, id: string): Tailo
   } as Tailor;
 };
 
-// --- Tailor Functions ---
 export async function getTailors(): Promise<Tailor[]> {
   try {
     const tailorSnapshot = await getDocs(collection(db, TAILORS_COLLECTION));
     return tailorSnapshot.docs.map(docSnap => tailorFromDoc(docSnap.data(), docSnap.id)).filter(t => t !== null) as Tailor[];
   } catch (error) {
-    console.error("DataService: Error fetching tailors", error);
     return [];
   }
 }
@@ -198,7 +186,6 @@ export async function saveTailor(formData: TailorFormData, existingTailorId?: st
       return tailorFromDoc(newDocSnap.data()!, docRef.id);
     }
   } catch (error) { 
-    console.error("DataService: Error saving tailor", error);
     return null; 
   }
 }
@@ -210,13 +197,11 @@ export async function deleteTailorById(tailorId: string): Promise<boolean> {
   } catch (error) { return false; }
 }
 
-// --- Customer Functions ---
 export async function getCustomers(): Promise<Customer[]> {
   try {
     const customerSnapshot = await getDocs(collection(db, CUSTOMERS_COLLECTION));
     return customerSnapshot.docs.map(docSnap => customerFromDoc(docSnap.data(), docSnap.id)).filter(c => c !== null) as Customer[];
   } catch (error) { 
-    console.error("DataService: Error fetching customers", error);
     return []; 
   }
 }
@@ -246,7 +231,6 @@ export async function saveCustomer(input: any, existingCustomerId?: string): Pro
       return customerFromDoc(snap.data()!, docRef.id);
     }
   } catch (error) { 
-    console.error("DataService: Error saving customer", error);
     return null; 
   }
 }
@@ -268,28 +252,25 @@ export async function saveMeasurementsForCustomer(customerId: string, styleId: s
   } catch (error) { return false; }
 }
 
-// --- Order Functions ---
-
 export async function saveOrderToDb(orderData: any, existingOrderId?: string): Promise<{ success: boolean; data?: Order; error?: string }> {
   try {
+    let rawItems = orderData.detailedItems || [];
+    let itemsMap: any = {};
+    if (Array.isArray(rawItems)) {
+        rawItems.forEach((item, index) => {
+            itemsMap[`item_${index}`] = item;
+        });
+    } else {
+        itemsMap = rawItems;
+    }
+
     let dataToSave: any = {
       ...orderData,
+      detailedItems: itemsMap,
       date: orderData.date ? new Date(orderData.date) : new Date(), 
       dueDate: orderData.dueDate ? new Date(orderData.dueDate) : null,
       updatedAt: serverTimestamp(),
     };
-
-    // CRITICAL FIX: Handle Firestore's nested array limitation.
-    // detailedItems is an array, and its elements (DesignDetails) contain an array (referenceImages).
-    // Firestore rejects this structure. We must store detailedItems as a Map.
-    if (Array.isArray(dataToSave.detailedItems)) {
-        const itemsMap: any = {};
-        dataToSave.detailedItems.forEach((item, index) => {
-            // We use 'item_N' keys to preserve order when converting back
-            itemsMap[`item_${index}`] = item;
-        });
-        dataToSave.detailedItems = itemsMap;
-    }
 
     let resultOrder: Order | null = null;
     if (existingOrderId) {
@@ -312,22 +293,15 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
       resultOrder = orderFromDoc(newDocSnap.data(), docRef.id);
     }
 
-    // Sync measurements back to customer profile
-    if (resultOrder && dataToSave.customerId && dataToSave.detailedItems) {
+    if (resultOrder && dataToSave.customerId && rawItems) {
       const customerRef = doc(db, CUSTOMERS_COLLECTION, dataToSave.customerId);
       const measurements: any = {};
-      
-      // Handle detailedItems as Map or Array during sync
-      const items = Array.isArray(dataToSave.detailedItems) 
-        ? dataToSave.detailedItems 
-        : Object.values(dataToSave.detailedItems);
-
-      items.forEach((item: any) => {
+      const itemsList = Array.isArray(rawItems) ? rawItems : Object.values(rawItems);
+      itemsList.forEach((item: any) => {
         if (item.styleId && item.measurements) {
             measurements[item.styleId] = item.measurements;
         }
       });
-      
       if (Object.keys(measurements).length > 0) {
         await setDoc(customerRef, { 
           savedMeasurements: deepClean(measurements), 
@@ -341,7 +315,6 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
     }
     return { success: false, error: "Failed to retrieve saved order." };
   } catch (error: any) { 
-    console.error("DataService: Firestore Save Error:", error);
     return { success: false, error: error.message || "Unknown database error." }; 
   }
 }
@@ -352,7 +325,6 @@ export async function getOrdersFromDb(): Promise<Order[]> {
     const snapshot = await getDocs(ordersQuery);
     return snapshot.docs.map(docSnap => orderFromDoc(docSnap.data(), docSnap.id)).filter(o => o !== null) as Order[];
   } catch (error) { 
-    console.error("DataService: Error fetching orders", error);
     return []; 
   }
 }
@@ -369,7 +341,6 @@ export async function getOrdersForCustomer(customerId: string): Promise<Order[]>
     });
     return list;
   } catch (error) { 
-    console.error("DataService: Error fetching customer orders", error);
     return []; 
   }
 }
@@ -411,12 +382,9 @@ export async function assignTailorToOrderInDb(orderId: string, details: any): Pr
     await batch.commit();
     return true;
   } catch (error) { 
-    console.error("DataService: Error assigning tailor", error);
     return false; 
   }
 }
-
-// --- Garment Style Functions ---
 
 export async function getGarmentStyles(): Promise<GarmentStyle[]> {
   try {
@@ -441,7 +409,6 @@ export async function saveGarmentStyle(data: any, existingStyleId?: string): Pro
       return { id: snap.id, ...snap.data() } as GarmentStyle;
     }
   } catch (error) { 
-    console.error("DataService: Error saving garment style", error);
     return null; 
   }
 }
