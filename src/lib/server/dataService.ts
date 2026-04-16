@@ -34,7 +34,6 @@ const GARMENT_STYLES_COLLECTION = 'garmentStyles';
 /**
  * Strips undefined values from an object recursively.
  * Firestore does not allow undefined values in documents.
- * Critically, it preserves Firestore-specific objects like FieldValues and Timestamps.
  */
 function deepClean(obj: any): any {
   if (obj === null || typeof obj !== 'object') {
@@ -47,8 +46,14 @@ function deepClean(obj: any): any {
   }
 
   // Preserve Firestore FieldValues (like serverTimestamp())
-  // These are internal SDK objects and should not be recursed into.
-  if (obj.constructor?.name === 'FieldValue' || obj.constructor?.name === 'FieldValueImpl' || (obj._methodName && typeof obj._methodName === 'string')) {
+  // Using a more robust check for FieldValue objects
+  const isFieldValue = obj && (
+    obj.constructor?.name === 'FieldValue' || 
+    obj.constructor?.name === 'FieldValueImpl' || 
+    (typeof obj._methodName === 'string')
+  );
+
+  if (isFieldValue) {
     return obj;
   }
 
@@ -86,6 +91,24 @@ const orderFromDoc = (docSnapshot: DocumentData | undefined, id: string): Order 
     if (!docSnapshot) return null;
     const data = docSnapshot;
     try {
+        // Convert detailedItems Map back to Array for the client
+        let detailedItemsArray: DesignDetails[] | undefined = undefined;
+        if (data.detailedItems) {
+            if (Array.isArray(data.detailedItems)) {
+                detailedItemsArray = data.detailedItems;
+            } else {
+                // If stored as a map (to avoid nested array error), convert back to array
+                // We assume keys are 'item_0', 'item_1', etc. to maintain order
+                detailedItemsArray = Object.keys(data.detailedItems)
+                    .sort((a, b) => {
+                        const idxA = parseInt(a.replace('item_', ''));
+                        const idxB = parseInt(b.replace('item_', ''));
+                        return idxA - idxB;
+                    })
+                    .map(key => data.detailedItems[key]);
+            }
+        }
+
         return {
             id: id,
             orderNumber: data.orderNumber || 0,
@@ -95,7 +118,7 @@ const orderFromDoc = (docSnapshot: DocumentData | undefined, id: string): Order 
             items: Array.isArray(data.items) ? data.items : [],
             customerId: data.customerId || '',
             customerName: data.customerName || '',
-            detailedItems: Array.isArray(data.detailedItems) ? data.detailedItems as DesignDetails[] : undefined,
+            detailedItems: detailedItemsArray,
             assignedTailorId: data.assignedTailorId || null,
             assignedTailorName: data.assignedTailorName || null,
             dueDate: safeToFormattedDate(data.dueDate),
@@ -256,10 +279,21 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
       updatedAt: serverTimestamp(),
     };
 
+    // CRITICAL FIX: Handle Firestore's nested array limitation.
+    // detailedItems is an array, and its elements (DesignDetails) contain an array (referenceImages).
+    // Firestore rejects this structure. We must store detailedItems as a Map.
+    if (Array.isArray(dataToSave.detailedItems)) {
+        const itemsMap: any = {};
+        dataToSave.detailedItems.forEach((item, index) => {
+            // We use 'item_N' keys to preserve order when converting back
+            itemsMap[`item_${index}`] = item;
+        });
+        dataToSave.detailedItems = itemsMap;
+    }
+
     let resultOrder: Order | null = null;
     if (existingOrderId) {
       const orderRef = doc(db, ORDERS_COLLECTION, existingOrderId);
-      // Use setDoc with merge for more robust deep object updates
       await setDoc(orderRef, deepClean(dataToSave), { merge: true });
       const updatedDocSnap = await getDoc(orderRef);
       resultOrder = orderFromDoc(updatedDocSnap.data(), existingOrderId);
@@ -282,7 +316,13 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
     if (resultOrder && dataToSave.customerId && dataToSave.detailedItems) {
       const customerRef = doc(db, CUSTOMERS_COLLECTION, dataToSave.customerId);
       const measurements: any = {};
-      dataToSave.detailedItems.forEach((item: any) => {
+      
+      // Handle detailedItems as Map or Array during sync
+      const items = Array.isArray(dataToSave.detailedItems) 
+        ? dataToSave.detailedItems 
+        : Object.values(dataToSave.detailedItems);
+
+      items.forEach((item: any) => {
         if (item.styleId && item.measurements) {
             measurements[item.styleId] = item.measurements;
         }
