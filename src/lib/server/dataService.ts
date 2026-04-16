@@ -251,7 +251,13 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
     let savedOrder: Order | null = null;
     if (existingOrderId) {
       const orderRef = doc(db, ORDERS_COLLECTION, existingOrderId);
-      await updateDoc(orderRef, deepClean(dataToSave));
+      const cleanedData = deepClean(dataToSave);
+      
+      // Remove fields that should not be updated in the document body
+      delete cleanedData.id;
+      delete cleanedData.createdAt;
+
+      await updateDoc(orderRef, cleanedData);
       const updatedDocSnap = await getDoc(orderRef);
       savedOrder = orderFromDoc(updatedDocSnap.data(), existingOrderId);
     } else {
@@ -269,7 +275,7 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
       savedOrder = orderFromDoc(newDocSnap.data(), docRef.id);
     }
 
-    // Sync measurements back to customer profile for future "Start from previous design" autofill
+    // Sync measurements back to customer profile
     if (savedOrder && dataToSave.customerId && dataToSave.detailedItems) {
       const customerRef = doc(db, CUSTOMERS_COLLECTION, dataToSave.customerId);
       const measurements: any = {};
@@ -280,7 +286,6 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
       });
       
       if (Object.keys(measurements).length > 0) {
-        // Use setDoc with merge to update the savedMeasurements map on the customer doc
         await setDoc(customerRef, { 
           savedMeasurements: deepClean(measurements), 
           updatedAt: serverTimestamp() 
