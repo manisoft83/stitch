@@ -40,12 +40,13 @@ function deepClean(obj: any): any {
     return obj;
   }
 
-  if (Array.isArray(obj)) {
-    return obj.map(deepClean);
+  // Preserve Firestore Timestamps and Dates
+  if (obj instanceof Date || (obj && typeof obj.toDate === 'function')) {
+    return obj;
   }
 
-  if (obj instanceof Date || obj instanceof Timestamp) {
-    return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(deepClean);
   }
 
   return Object.keys(obj).reduce((acc: any, key: string) => {
@@ -183,7 +184,7 @@ export async function deleteTailorById(tailorId: string): Promise<boolean> {
 export async function getCustomers(): Promise<Customer[]> {
   try {
     const customerSnapshot = await getDocs(collection(db, CUSTOMERS_COLLECTION));
-    return customerSnapshot.docs.map(docSnap => customerFromDoc(docSnap.data(), docSnap.id)).filter(c => c !== null) as Customer[];
+    return customerSnapshot.docs.map(docSnap => customerFromDoc(docSnapshot.data(), docSnap.id)).filter(c => c !== null) as Customer[];
   } catch (error) { 
     console.error("DataService: Error fetching customers", error);
     return []; 
@@ -239,7 +240,7 @@ export async function saveMeasurementsForCustomer(customerId: string, styleId: s
 
 // --- Order Functions ---
 
-export async function saveOrderToDb(orderData: any, existingOrderId?: string): Promise<Order | null> {
+export async function saveOrderToDb(orderData: any, existingOrderId?: string): Promise<{ success: boolean; data?: Order; error?: string }> {
   try {
     let dataToSave: any = {
       ...orderData,
@@ -248,7 +249,7 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
       updatedAt: serverTimestamp(),
     };
 
-    let savedOrder: Order | null = null;
+    let resultOrder: Order | null = null;
     if (existingOrderId) {
       const orderRef = doc(db, ORDERS_COLLECTION, existingOrderId);
       const cleanedData = deepClean(dataToSave);
@@ -259,7 +260,7 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
 
       await updateDoc(orderRef, cleanedData);
       const updatedDocSnap = await getDoc(orderRef);
-      savedOrder = orderFromDoc(updatedDocSnap.data(), existingOrderId);
+      resultOrder = orderFromDoc(updatedDocSnap.data(), existingOrderId);
     } else {
       const orderCounterRef = doc(db, COUNTERS_COLLECTION, 'orderCounter');
       const newOrderNumber = await runTransaction(db, async (transaction) => {
@@ -272,11 +273,11 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
       dataToSave.createdAt = serverTimestamp();
       const docRef = await addDoc(collection(db, ORDERS_COLLECTION), deepClean(dataToSave));
       const newDocSnap = await getDoc(docRef);
-      savedOrder = orderFromDoc(newDocSnap.data(), docRef.id);
+      resultOrder = orderFromDoc(newDocSnap.data(), docRef.id);
     }
 
     // Sync measurements back to customer profile
-    if (savedOrder && dataToSave.customerId && dataToSave.detailedItems) {
+    if (resultOrder && dataToSave.customerId && dataToSave.detailedItems) {
       const customerRef = doc(db, CUSTOMERS_COLLECTION, dataToSave.customerId);
       const measurements: any = {};
       dataToSave.detailedItems.forEach((item: any) => {
@@ -292,14 +293,14 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
         }, { merge: true });
       }
     }
-    return savedOrder;
+    
+    if (resultOrder) {
+        return { success: true, data: resultOrder };
+    }
+    return { success: false, error: "Failed to retrieve saved order." };
   } catch (error: any) { 
-    console.error("DataService: Error saving order - Details:", {
-        message: error.message,
-        code: error.code,
-        stack: error.stack
-    });
-    return null; 
+    console.error("DataService: Firestore Save Error:", error);
+    return { success: false, error: error.message || "Unknown database error." }; 
   }
 }
 

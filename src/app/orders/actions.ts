@@ -17,16 +17,16 @@ export async function saveOrderAction(orderData: Omit<Order, 'id' | 'createdAt' 
   console.log(`Server Action: saveOrderAction for ${existingOrderId ? 'updating order ' + existingOrderId : 'adding new order'}`);
   try {
     const result = await saveOrderToDb(orderData, existingOrderId);
-    if (result) {
-      console.log("Server Action: Order saved/updated successfully in DB. ID:", result.id);
+    if (result.success && result.data) {
+      console.log("Server Action: Order saved/updated successfully in DB. ID:", result.data.id);
       revalidatePath('/orders');
-      revalidatePath(`/orders/${result.id}`);
-      if(existingOrderId && existingOrderId !== result.id) revalidatePath(`/orders/${existingOrderId}`);
+      revalidatePath(`/orders/${result.data.id}`);
+      if(existingOrderId && existingOrderId !== result.data.id) revalidatePath(`/orders/${existingOrderId}`);
       revalidatePath('/tracking');
-      return { success: true, order: result };
+      return { success: true, order: result.data };
     } else {
-      console.error("Server Action: saveOrderToDb returned null.");
-      return { success: false, order: null, error: "Database operation failed to save order." };
+      console.error("Server Action: saveOrderToDb reported failure:", result.error);
+      return { success: false, order: null, error: result.error || "Database operation failed to save order." };
     }
   } catch (error) {
     console.error("Server Action: Unexpected error during saveOrderAction:", error);
