@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CalendarDays, User, Users, MapPin, Tag, IndianRupee, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck, Hash, Key, Images, Ruler, Settings2, AlertCircle } from "lucide-react";
+import { ArrowLeft, CalendarDays, User, Users, MapPin, Tag, IndianRupee, Info, Edit3, Palette, FileText, Shirt, Pencil, Truck, Hash, Key, Images, Ruler, Settings2, AlertCircle, Maximize2 } from "lucide-react";
 import { format, parseISO, startOfDay, isBefore } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
@@ -32,6 +32,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const getStatusBadgeColor = (status: OrderStatus | undefined) => {
     if (!status) return "bg-gray-100 text-gray-700 border border-gray-300";
@@ -57,6 +63,7 @@ export default function OrderDetailsPage() {
   const [customerForOrder, setCustomerForOrder] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [priceInput, setPriceInput] = useState<string>("");
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Confirmation state
   const [pendingStatus, setPendingStatus] = useState<OrderStatus | null>(null);
@@ -331,7 +338,11 @@ export default function OrderDetailsPage() {
                                     {design.referenceImages && design.referenceImages.length > 0 ? (
                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                             {design.referenceImages.map((img, imgIdx) => (
-                                                <div key={imgIdx} className="relative aspect-square rounded-lg overflow-hidden border shadow-sm group">
+                                                <div 
+                                                  key={imgIdx} 
+                                                  className="relative aspect-square rounded-lg overflow-hidden border shadow-sm group cursor-pointer"
+                                                  onClick={() => setPreviewImage(img)}
+                                                >
                                                     <Image 
                                                         src={img} 
                                                         alt={`Item ${index+1} Reference ${imgIdx+1}`} 
@@ -340,6 +351,9 @@ export default function OrderDetailsPage() {
                                                         className="object-cover transition-transform group-hover:scale-110" 
                                                         data-ai-hint="clothing design photo"
                                                     />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <Maximize2 className="h-6 w-6 text-white" />
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -391,6 +405,26 @@ export default function OrderDetailsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Image Preview Dialog */}
+      <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+        <DialogContent className="max-w-4xl p-1 bg-black overflow-hidden border-none">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Image Preview</DialogTitle>
+          </DialogHeader>
+          {previewImage && (
+            <div className="relative w-full h-[80vh]">
+              <Image 
+                src={previewImage} 
+                alt="Reference Image Preview" 
+                fill
+                unoptimized
+                className="object-contain"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
