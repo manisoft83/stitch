@@ -57,14 +57,24 @@ export function OrderWorkflowProvider({ children }: { children: ReactNode }) {
   const [workflowState, setWorkflowState] = useState<OrderWorkflowState>({...initialState});
 
   const setCustomer = useCallback((customer: Customer | null) => {
-    setWorkflowState(prevState => ({
-      ...initialState, // Reset most of the workflow when customer changes, unless editing existing order
-      currentCustomer: customer,
-      isCourier: prevState.isCourier, // Maintain courier state during customer selection if needed
-      // If editing an order, customer change shouldn't wipe items yet, handle in calling component
-      editingOrderId: customer?.id === prevState.currentCustomer?.id ? prevState.editingOrderId : null,
-      workflowReturnPath: customer?.id === prevState.currentCustomer?.id ? prevState.workflowReturnPath : null,
-    }));
+    setWorkflowState(prevState => {
+      // CRITICAL FIX: If we are editing an order and confirming the customer,
+      // we must NOT reset the orderItems that were preloaded.
+      if (prevState.editingOrderId && customer?.id === prevState.currentCustomer?.id) {
+        return {
+          ...prevState,
+          currentCustomer: customer,
+        };
+      }
+
+      // For a completely new order or if changing the customer entirely, reset to defaults
+      return {
+        ...initialState,
+        currentCustomer: customer,
+        // Carry over courier preference if it was already toggled
+        isCourier: prevState.isCourier, 
+      };
+    });
   }, []);
 
   const setActiveDesign = useCallback((design: DesignDetails | null) => {

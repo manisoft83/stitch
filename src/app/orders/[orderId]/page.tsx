@@ -142,7 +142,8 @@ export default function OrderDetailsPage() {
   };
 
   const handleEditOrder = () => {
-    if (customerForOrder && currentOrder?.detailedItems) {
+    if (customerForOrder && currentOrder) {
+      // Robustly load order for editing regardless of item count
       loadOrderForEditing(currentOrder, customerForOrder);
       router.push('/workflow/customer-step');
     }
