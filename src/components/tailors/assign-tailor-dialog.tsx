@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, type ChangeEvent } from 'react';
-import Image from 'next/image'; // For image preview
+import Image from 'next/image'; 
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from "@/dialog";
 import {
   Select,
   SelectContent,
@@ -26,12 +26,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input"; // For file input styling
-import { Textarea } from "@/components/ui/textarea"; // For instructions
-import { Calendar as CalendarIcon, CheckCircle } from "lucide-react";
-import { format, addDays } from "date-fns"; // Added addDays
+import { Input } from "@/components/ui/input"; 
+import { Textarea } from "@/components/ui/textarea"; 
+import { Calendar as CalendarIcon, CheckCircle, Loader2 } from "lucide-react";
+import { format, addDays } from "date-fns"; 
 import { cn } from "@/lib/utils";
 import type { Tailor, Order } from '@/lib/mockData'; 
+import imageCompression from 'browser-image-compression';
+import { useToast } from '@/hooks/use-toast';
 
 interface AssignTailorDialogProps {
   isOpen: boolean;
@@ -55,42 +57,53 @@ export function AssignTailorDialog({
   tailors,
   onAssign,
 }: AssignTailorDialogProps) {
+  const { toast } = useToast();
   const [selectedTailorId, setSelectedTailorId] = useState<string | undefined>(undefined);
   const [dueDate, setDueDate] = useState<Date | undefined>(addDays(new Date(), 5)); 
   const [instructions, setInstructions] = useState<string>("");
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   useEffect(() => {
     if (order && isOpen) {
       setSelectedTailorId(undefined);
-      setDueDate(addDays(new Date(), 5)); // Default to 5 days from now
-      setInstructions("");
-      setSelectedImage(null);
-      setImagePreviewUrl(null);
-    } else if (!isOpen) {
-      // Optionally clear fields when dialog is closed if not submitted
-      // This part can be adjusted based on desired behavior if dialog is cancelled
-      setSelectedTailorId(undefined);
       setDueDate(addDays(new Date(), 5)); 
       setInstructions("");
-      setSelectedImage(null);
       setImagePreviewUrl(null);
+      setIsCompressing(false);
     }
   }, [order, isOpen]);
 
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      setSelectedImage(file);
+    if (!file) {
+      setImagePreviewUrl(null);
+      return;
+    }
+
+    setIsCompressing(true);
+    const compressionOptions = {
+      maxSizeMB: 0.5,
+      maxWidthOrHeight: 1200,
+      useWebWorker: true,
+    };
+
+    try {
+      const compressedFile = await imageCompression(file, compressionOptions);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreviewUrl(reader.result as string);
+        setIsCompressing(false);
       };
-      reader.readAsDataURL(file);
-    } else {
-      setSelectedImage(null);
-      setImagePreviewUrl(null);
+      reader.readAsDataURL(compressedFile);
+    } catch (error) {
+      console.error("Image compression failed:", error);
+      toast({
+        title: "Compression Error",
+        description: "Could not optimize image. Try a smaller file.",
+        variant: "destructive"
+      });
+      setIsCompressing(false);
     }
   };
 
@@ -104,7 +117,7 @@ export function AssignTailorDialog({
             selectedTailor.name, 
             dueDate,
             instructions,
-            imagePreviewUrl || undefined // Pass Data URL
+            imagePreviewUrl || undefined
         );
         onOpenChange(false); 
       }
@@ -161,7 +174,7 @@ export function AssignTailorDialog({
                   selected={dueDate}
                   onSelect={setDueDate}
                   initialFocus
-                  disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() -1))} // Disable past dates
+                  disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() -1))} 
                 />
               </PopoverContent>
             </Popover>
@@ -179,14 +192,21 @@ export function AssignTailorDialog({
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="image-upload-assign">Reference Image (Optional)</Label> {/* Changed ID to avoid conflict */}
+            <Label htmlFor="image-upload-assign">Reference Image (Optional)</Label>
             <Input 
               id="image-upload-assign" 
               type="file" 
               accept="image/*" 
               onChange={handleImageChange} 
+              disabled={isCompressing}
               className="text-sm file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
             />
+            {isCompressing && (
+              <div className="flex items-center gap-2 text-xs text-primary mt-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Optimizing image...
+              </div>
+            )}
             {imagePreviewUrl && (
               <div className="mt-2">
                 <Label className="text-xs text-muted-foreground">Image Preview:</Label>
@@ -195,6 +215,7 @@ export function AssignTailorDialog({
                     alt="Reference preview" 
                     width={100} 
                     height={100} 
+                    unoptimized
                     className="mt-1 rounded-md border object-cover" 
                     data-ai-hint="design reference"
                 />
@@ -207,9 +228,9 @@ export function AssignTailorDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={!selectedTailorId || !dueDate}
+            disabled={!selectedTailorId || !dueDate || isCompressing}
           >
-            <CheckCircle className="mr-2 h-4 w-4" /> Assign Order
+            <CheckCircle className="mr-2 h-4 w-4" /> {isCompressing ? "Processing..." : "Assign Order"}
           </Button>
         </DialogFooter>
       </DialogContent>

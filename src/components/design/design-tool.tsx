@@ -9,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { UploadCloud, XCircle, Save, Ruler, Shirt } from 'lucide-react';
+import { UploadCloud, XCircle, Save, Ruler, Shirt, Loader2 } from 'lucide-react';
 import type { DesignDetails, GarmentStyle } from '@/contexts/order-workflow-context';
 import { useOrderWorkflow } from '@/contexts/order-workflow-context';
 import { allPossibleMeasurements } from '@/lib/mockData';
 import { useToast } from '@/hooks/use-toast';
+import imageCompression from 'browser-image-compression';
 
 
 interface DesignToolProps {
@@ -32,6 +33,7 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
   const [referenceImagePreviews, setReferenceImagePreviews] = useState<string[]>([]);
   const [measurements, setMeasurements] = useState<{ [key: string]: string | number | undefined }>({});
   const [autofilledStyleId, setAutofilledStyleId] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
 
 
   useEffect(() => {
@@ -42,7 +44,6 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
       setMeasurements(initialDesign.measurements || {});
       setAutofilledStyleId(null);
     } else {
-      // Reset all fields for a new design
       setStyleId('');
       setCustomNotes('');
       setReferenceImagePreviews([]);
@@ -57,19 +58,17 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
 
   const handleStyleChange = (newStyleId: string) => {
     setStyleId(newStyleId);
-    setAutofilledStyleId(null); // Reset autofill message on every style change
+    setAutofilledStyleId(null); 
     
-    // Autofill logic
     const savedMeasurements = currentCustomer?.savedMeasurements?.[newStyleId];
     if (savedMeasurements) {
         setMeasurements(savedMeasurements);
-        setAutofilledStyleId(newStyleId); // Set the style ID that was autofilled
+        setAutofilledStyleId(newStyleId); 
         toast({
             title: "Measurements Autofilled",
             description: `Saved measurements for this style have been applied for ${currentCustomer.name}.`
         });
     } else {
-        // Reset measurements when style changes to avoid carrying over irrelevant data
         setMeasurements({});
     }
   };
@@ -78,25 +77,57 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
     setMeasurements(prev => ({ ...prev, [field]: value }));
   };
   
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files) {
-      const newPreviews: string[] = [...referenceImagePreviews];
-      Array.from(files).forEach(file => {
+    if (!files || files.length === 0) return;
+
+    setIsCompressing(true);
+    const newPreviews: string[] = [...referenceImagePreviews];
+    
+    const compressionOptions = {
+      maxSizeMB: 0.5,
+      maxWidthOrHeight: 1200,
+      useWebWorker: true,
+    };
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        if (newPreviews.length >= 5) break;
+        
+        const file = files[i];
+        const compressedFile = await imageCompression(file, compressionOptions);
         const reader = new FileReader();
-        reader.onloadend = () => {
-          if (reader.result) {
-            newPreviews.push(reader.result as string);
-            if (newPreviews.length <= 5) {
-              setReferenceImagePreviews([...newPreviews]); 
-            } else {
-              alert("You can upload a maximum of 5 images.");
-              setReferenceImagePreviews(newPreviews.slice(0,5)); // Truncate to 5
+        
+        await new Promise<void>((resolve) => {
+          reader.onloadend = () => {
+            if (reader.result) {
+              newPreviews.push(reader.result as string);
             }
-          }
-        };
-        reader.readAsDataURL(file);
+            resolve();
+          };
+          reader.readAsDataURL(compressedFile);
+        });
+      }
+      
+      setReferenceImagePreviews(newPreviews.slice(0, 5));
+      if (files.length + referenceImagePreviews.length > 5) {
+        toast({
+          title: "Limit Reached",
+          description: "Maximum of 5 images allowed. Extra images were ignored.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Compression failed:", error);
+      toast({
+        title: "Error",
+        description: "Failed to compress images. Please try smaller files.",
+        variant: "destructive"
       });
+    } finally {
+      setIsCompressing(false);
+      // Reset input value so same file can be selected again if removed
+      event.target.value = '';
     }
   };
 
@@ -116,7 +147,7 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
     onSaveDesign(designDetails);
   };
 
-  const isFormValid = !!selectedStyle;
+  const isFormValid = !!selectedStyle && !isCompressing;
   const measurementFields = useMemo(() => {
     if (!selectedStyle) return [];
     return allPossibleMeasurements.filter(m => selectedStyle.requiredMeasurements.includes(m.id));
@@ -200,18 +231,27 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><UploadCloud className="h-6 w-6 text-primary" /> Reference Images</CardTitle>
-          <CardDescription>Upload up to 5 images for design reference (e.g., inspiration, specific details).</CardDescription>
+          <CardDescription>Upload up to 5 images for design reference (e.g., inspiration, specific details). Images will be optimized automatically.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Input 
-            id="image-upload" 
-            type="file" 
-            accept="image/*" 
-            multiple
-            onChange={handleImageChange} 
-            className="text-sm file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
-            disabled={referenceImagePreviews.length >= 5}
-          />
+          <div className="flex flex-col gap-4">
+            <Input 
+              id="image-upload" 
+              type="file" 
+              accept="image/*" 
+              multiple
+              onChange={handleImageChange} 
+              className="text-sm file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20"
+              disabled={referenceImagePreviews.length >= 5 || isCompressing}
+            />
+            {isCompressing && (
+              <div className="flex items-center gap-2 text-sm text-primary">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Optimizing images...
+              </div>
+            )}
+          </div>
+
           {referenceImagePreviews.length > 0 && (
             <div className="mt-4 space-y-2">
               <Label className="text-xs text-muted-foreground">Image Previews:</Label>
@@ -223,6 +263,7 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
                         alt={`Reference ${index + 1}`} 
                         width={80} 
                         height={80} 
+                        unoptimized
                         className="rounded-md border object-cover" 
                         data-ai-hint="design clothing reference"
                     />
@@ -259,7 +300,7 @@ export function DesignTool({ initialDesign, onSaveDesign, submitButtonText = "Sa
               onClick={handleSubmitDesign}
               disabled={!isFormValid}
             >
-              <Save className="mr-2 h-4 w-4"/> {submitButtonText}
+              <Save className="mr-2 h-4 w-4"/> {isCompressing ? "Processing Images..." : submitButtonText}
             </Button>
           </CardFooter>
         </Card>
