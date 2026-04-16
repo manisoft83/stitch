@@ -31,15 +31,21 @@ const ORDERS_COLLECTION = 'orders';
 const COUNTERS_COLLECTION = 'counters';
 const GARMENT_STYLES_COLLECTION = 'garmentStyles';
 
+/**
+ * Robust utility to remove undefined values from objects before Firestore operations.
+ * Preserves Firestore special types like Timestamp and serverTimestamp.
+ */
 function deepClean(obj: any): any {
   if (obj === null || typeof obj !== 'object') {
     return obj;
   }
 
+  // Preserve Date and Firestore Timestamp
   if (obj instanceof Date || obj instanceof Timestamp) {
     return obj;
   }
 
+  // Preserve Firestore FieldValues (like serverTimestamp())
   const isFieldValue = obj && (
     obj.constructor?.name === 'FieldValue' || 
     obj.constructor?.name === 'FieldValueImpl' || 
@@ -80,15 +86,29 @@ const safeToFormattedDate = (value: any): string | undefined => {
     return format(new Date(isoString), "yyyy-MM-dd");
 };
 
+/**
+ * Maps a Firestore document to an Order object.
+ * Handles the potential stringified or Map-based detailedItems for backward compatibility and flexibility.
+ */
 const orderFromDoc = (docSnapshot: DocumentData | undefined, id: string): Order | null => {
     if (!docSnapshot) return null;
     const data = docSnapshot;
     try {
         let detailedItemsArray: DesignDetails[] | undefined = undefined;
+        
         if (data.detailedItems) {
-            if (Array.isArray(data.detailedItems)) {
+            if (typeof data.detailedItems === 'string') {
+                // Handle JSON stringified version (Newest, most reliable solution)
+                try {
+                    detailedItemsArray = JSON.parse(data.detailedItems);
+                } catch (e) {
+                    console.error(`DataService: Failed to parse detailedItems string for order ${id}`, e);
+                }
+            } else if (Array.isArray(data.detailedItems)) {
+                // Standard array
                 detailedItemsArray = data.detailedItems;
             } else {
+                // Handle legacy Map structure
                 detailedItemsArray = Object.keys(data.detailedItems)
                     .sort((a, b) => {
                         const idxA = parseInt(a.replace('item_', ''));
@@ -121,7 +141,7 @@ const orderFromDoc = (docSnapshot: DocumentData | undefined, id: string): Order 
             updatedAt: safeToISOString(data.updatedAt),
         } as Order;
     } catch (e) {
-        console.error(`DataService: Failed to parse order ${id}`, e);
+        console.error(`DataService: Critical parsing error for order ${id}`, e);
         return null;
     }
 };
@@ -252,27 +272,29 @@ export async function saveMeasurementsForCustomer(customerId: string, styleId: s
   } catch (error) { return false; }
 }
 
+/**
+ * Saves or updates an order in Firestore.
+ * Critical: Stringifies detailedItems to avoid "invalid nested entity" (nested arrays) error.
+ */
 export async function saveOrderToDb(orderData: any, existingOrderId?: string): Promise<{ success: boolean; data?: Order; error?: string }> {
   try {
-    let rawItems = orderData.detailedItems || [];
-    let itemsMap: any = {};
-    if (Array.isArray(rawItems)) {
-        rawItems.forEach((item, index) => {
-            itemsMap[`item_${index}`] = item;
-        });
-    } else {
-        itemsMap = rawItems;
-    }
+    const rawItems = orderData.detailedItems || [];
+    
+    // 1. Flatten the nested structure by stringifying detailedItems.
+    // This is the most reliable way to avoid Firestore's "nested array" limitation.
+    const itemsJson = rawItems.length > 0 ? JSON.stringify(deepClean(rawItems)) : null;
 
     let dataToSave: any = {
       ...orderData,
-      detailedItems: itemsMap,
+      detailedItems: itemsJson,
       date: orderData.date ? new Date(orderData.date) : new Date(), 
       dueDate: orderData.dueDate ? new Date(orderData.dueDate) : null,
       updatedAt: serverTimestamp(),
     };
 
     let resultOrder: Order | null = null;
+    
+    // 2. Perform database write
     if (existingOrderId) {
       const orderRef = doc(db, ORDERS_COLLECTION, existingOrderId);
       await setDoc(orderRef, deepClean(dataToSave), { merge: true });
@@ -293,11 +315,11 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
       resultOrder = orderFromDoc(newDocSnap.data(), docRef.id);
     }
 
-    if (resultOrder && dataToSave.customerId && rawItems) {
+    // 3. Update customer's saved measurements for convenience
+    if (resultOrder && dataToSave.customerId && rawItems.length > 0) {
       const customerRef = doc(db, CUSTOMERS_COLLECTION, dataToSave.customerId);
       const measurements: any = {};
-      const itemsList = Array.isArray(rawItems) ? rawItems : Object.values(rawItems);
-      itemsList.forEach((item: any) => {
+      rawItems.forEach((item: any) => {
         if (item.styleId && item.measurements) {
             measurements[item.styleId] = item.measurements;
         }
@@ -315,6 +337,7 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
     }
     return { success: false, error: "Failed to retrieve saved order." };
   } catch (error: any) { 
+    console.error("DataService: Order save failed", error);
     return { success: false, error: error.message || "Unknown database error." }; 
   }
 }
