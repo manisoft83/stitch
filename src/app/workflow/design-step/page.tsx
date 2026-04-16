@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -229,7 +230,7 @@ export default function DesignStepPage() {
                    {item.referenceImages && item.referenceImages.length > 0 && (
                     <div className="mt-2 flex gap-2">
                         {item.referenceImages.slice(0,3).map((src, imgIdx) => (
-                             <Image key={imgIdx} src={src} alt={`Ref ${imgIdx+1}`} width={30} height={30} className="rounded border object-cover" data-ai-hint="thumbnail design reference"/>
+                             <Image key={imgIdx} src={src} alt={`Ref ${imgIdx+1}`} width={30} height={30} unoptimized className="rounded border object-cover" data-ai-hint="thumbnail design reference"/>
                         ))}
                         {item.referenceImages.length > 3 && <span className="text-xs self-end text-muted-foreground">+{item.referenceImages.length - 3} more</span>}
                     </div>

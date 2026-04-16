@@ -336,6 +336,7 @@ export default function OrderDetailsPage() {
                                                         src={img} 
                                                         alt={`Item ${index+1} Reference ${imgIdx+1}`} 
                                                         fill 
+                                                        unoptimized
                                                         className="object-cover transition-transform group-hover:scale-110" 
                                                         data-ai-hint="clothing design photo"
                                                     />

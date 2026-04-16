@@ -199,7 +199,7 @@ export default function SummaryStepPage() {
                     {itemDesign.referenceImages && itemDesign.referenceImages.length > 0 && (
                         <div className="flex gap-2">
                             {itemDesign.referenceImages.slice(0, 5).map((src, i) => (
-                                <Image key={i} src={src} alt="Ref" width={40} height={40} className="rounded border bg-background" />
+                                <Image key={i} src={src} alt="Ref" width={40} height={40} unoptimized className="rounded border bg-background" />
                             ))}
                         </div>
                     )}
