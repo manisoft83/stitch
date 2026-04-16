@@ -34,6 +34,7 @@ const GARMENT_STYLES_COLLECTION = 'garmentStyles';
 /**
  * Strips undefined values from an object recursively.
  * Firestore does not allow undefined values in documents.
+ * Critically, it preserves Firestore-specific objects like FieldValues and Timestamps.
  */
 function deepClean(obj: any): any {
   if (obj === null || typeof obj !== 'object') {
@@ -45,8 +46,14 @@ function deepClean(obj: any): any {
     return obj;
   }
 
+  // Preserve Firestore FieldValues (like serverTimestamp())
+  // These are internal SDK objects and should not be recursed into.
+  if (obj.constructor?.name === 'FieldValue' || obj.constructor?.name === 'FieldValueImpl' || (obj._methodName && typeof obj._methodName === 'string')) {
+    return obj;
+  }
+
   if (Array.isArray(obj)) {
-    return obj.map(deepClean);
+    return obj.map(deepClean).filter(v => v !== undefined);
   }
 
   return Object.keys(obj).reduce((acc: any, key: string) => {
@@ -184,7 +191,7 @@ export async function deleteTailorById(tailorId: string): Promise<boolean> {
 export async function getCustomers(): Promise<Customer[]> {
   try {
     const customerSnapshot = await getDocs(collection(db, CUSTOMERS_COLLECTION));
-    return customerSnapshot.docs.map(docSnap => customerFromDoc(docSnapshot.data(), docSnap.id)).filter(c => c !== null) as Customer[];
+    return customerSnapshot.docs.map(docSnap => customerFromDoc(docSnap.data(), docSnap.id)).filter(c => c !== null) as Customer[];
   } catch (error) { 
     console.error("DataService: Error fetching customers", error);
     return []; 
@@ -252,13 +259,8 @@ export async function saveOrderToDb(orderData: any, existingOrderId?: string): P
     let resultOrder: Order | null = null;
     if (existingOrderId) {
       const orderRef = doc(db, ORDERS_COLLECTION, existingOrderId);
-      const cleanedData = deepClean(dataToSave);
-      
-      // Remove fields that should not be updated in the document body
-      delete cleanedData.id;
-      delete cleanedData.createdAt;
-
-      await updateDoc(orderRef, cleanedData);
+      // Use setDoc with merge for more robust deep object updates
+      await setDoc(orderRef, deepClean(dataToSave), { merge: true });
       const updatedDocSnap = await getDoc(orderRef);
       resultOrder = orderFromDoc(updatedDocSnap.data(), existingOrderId);
     } else {
